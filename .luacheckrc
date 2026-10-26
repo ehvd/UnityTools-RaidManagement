@@ -42,7 +42,8 @@ read_globals = {
     "UTRM_LOCALE_OVERRIDE",
 
     -- Frames / UI
-    "UIParent", "GameTooltip", "PlaySound", "SOUNDKIT", "StaticPopup_Show", "YES", "NO", "CLOSE", "MenuUtil", "MenuResponse",
+    "UIParent", "GameTooltip", "PlaySound", "SOUNDKIT",
+    "GameFontNormalSmall", "GameFontHighlightSmall", "GameFontDisableSmall", "StaticPopup_Show", "YES", "NO", "CLOSE", "MenuUtil", "MenuResponse",
 
     -- Game API
     "C_AddOns", "GetAddOnMetadata", "IsAddOnLoaded",
