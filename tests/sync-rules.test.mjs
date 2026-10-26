@@ -95,6 +95,9 @@ test('the active encounter follows the newer choice, for the same plan only', ()
   assert.equal(act({ id: 'e1@100', a: 'mc:garr', at: 20 }, { id: 'e1@100', a: 'mc:lucifron', at: 10 }), true);
   assert.equal(act({ id: 'e1@100', a: 'mc:garr', at: 5 }, { id: 'e1@100', a: 'mc:lucifron', at: 10 }), false);
   assert.equal(act({ id: 'e2@100', a: 'mc:garr', at: 20 }, { id: 'e1@100', a: 'mc:lucifron', at: 10 }), false);
+  // Two choices in the same server second: the window makes the later one a hair newer
+  assert.equal(act({ id: 'e1@100', a: 'mc:garr', at: 100.001 }, { id: 'e1@100', a: 'mc:lucifron', at: 100 }), true);
+  assert.equal(act({ id: 'e1@100', a: 'mc:garr', at: 100 }, { id: 'e1@100', a: 'mc:lucifron', at: 100 }), false);
 });
 
 test('the meta of a plan falls back to the import time when nothing chose it', () => {

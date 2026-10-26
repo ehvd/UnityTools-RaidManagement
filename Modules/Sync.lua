@@ -4,29 +4,34 @@ local L = UTRM.L
 local Rules = ns.SyncRules
 local Codec = ns.PlanCodec
 
--- Keeps the raid plan and the active encounter the same for the raid leader and the assistants (issue #17).
--- Only promoted players take part: a client sends, requests and accepts only while it is lead or assist itself,
--- and only from senders who are lead or assist when the message arrives. Which copy wins: Modules/SyncRules.lua.
+-- Keeps the raid plan and the active encounter the same across the raid (issue #17). Which copy wins:
+-- Modules/SyncRules.lua.
 --
---   state    (raid)     which plan this client has and its active encounter; sent after joining or being
---                        promoted, after an import, after choosing an encounter, and in answer to an older state
---   request  (whisper)  "send me your plan" to the sender of a newer state
---   plan     (whisper)  the plan, answering a request
---   force    (raid)     Force sync: the sender's plan for everybody; each recipient confirms before it replaces theirs
+-- Trust: only the raid leader and assistants are sources. Plans, force syncs and active encounters are accepted only
+-- from senders who are lead or assist when the message arrives, and only they answer requests and force sync. Every
+-- raid member with the addon receives: members say which plan they have when they join or reload, so a promoted
+-- client can answer, and they may request a plan. A member's own plan is never taken by anybody.
+--
+--   state    (raid or whisper)  which plan this client has and its active encounter; sent when joining the raid,
+--                               when promoted, after an import and after choosing an encounter (lead and assists),
+--                               to a member who just joined, and in answer to somebody with an older plan
+--   request  (whisper)          "send me your plan" to the lead or assist who sent a newer state
+--   plan     (whisper)          the plan, answering a request
+--   force    (raid)             Force sync: the sender's plan for everybody; each recipient confirms first
 local Sync = UTRM:NewModule("Sync", "AceEvent-3.0", "AceTimer-3.0", "AceComm-3.0")
 
 local Serializer = LibStub("AceSerializer-3.0")
 local LibDeflate = LibStub("LibDeflate")
 
 local PREFIX = "UTRM"
-local STATE_DELAY = 2          -- seconds: several triggers in a row send one state
+local STATE_DELAY = 2          -- seconds: several triggers in a row (joining, roster updates) send one state
 local REQUEST_COOLDOWN = 60    -- seconds before the same plan is requested again
 local SEND_COOLDOWN = 30       -- seconds before the same requester gets the plan again
-local GREET_COOLDOWN = 30      -- seconds before a member who joined or was promoted is whispered our state again
+local ANSWER_COOLDOWN = 10     -- seconds before the same player is whispered our state again
 
-local wasPromoted = false
-local knownPromoted = {}       -- raid member -> promoted, as of the last roster update
-local greeted = {}             -- raid member -> GetTime() of the last state whispered to them
+local wasInRaid, wasPromoted = false, false
+local members = {}             -- raid member names as of the last roster update
+local answered = {}            -- player -> GetTime() of the last state whispered to them
 local requested = {}           -- plan id .. chosen time -> GetTime() of the request
 local sentTo = {}              -- requester -> GetTime() of the last plan sent
 local declined = {}            -- plan id .. chosen time -> true: force syncs this client declined (this session)
@@ -37,7 +42,7 @@ local function isPromoted(unit)
     return UnitIsGroupLeader(unit) or UnitIsGroupAssistant(unit)
 end
 
--- Whether this client takes part right now
+-- Whether this client is a source: lead or assist in a raid (answers requests, Force sync)
 function Sync:CanSync()
     return IsInRaid() and isPromoted("player")
 end
@@ -99,23 +104,37 @@ local function stateMessage()
 end
 
 function Sync:SendState()
-    self.stateTimer = nil
-    if not self:CanSync() then return end
-    self:Transmit(stateMessage())
+    if self.stateTimer then
+        self:CancelTimer(self.stateTimer)
+        self.stateTimer = nil
+    end
+    if IsInRaid() then
+        self:Transmit(stateMessage())
+    end
 end
 
--- Several triggers in a row (roster updates, an import right after joining) send one state
+-- Several triggers in a row (joining, roster updates, an import right after joining) send one state
 function Sync:QueueState()
-    if self.stateTimer or not self:CanSync() then return end
+    if self.stateTimer or not IsInRaid() then return end
     self.stateTimer = self:ScheduleTimer("SendState", STATE_DELAY)
 end
 
-function Sync:OnState(sender, msg)
+-- Whispers our state to one player (a newcomer, or somebody whose plan is older), not too often
+function Sync:AnswerState(target)
+    local last = answered[target]
+    if last and GetTime() - last < ANSWER_COOLDOWN then return end
+    answered[target] = GetTime()
+    self:Transmit(stateMessage(), target)
+end
+
+function Sync:OnState(sender, msg, trusted)
     local theirs = Rules.MetaOfState(msg, sender)
     local plan = currentPlan()
     local mine = Rules.Meta(plan, myName())
 
     if Rules.PlanWins(theirs, mine) then
+        -- A newer plan, but only lead and assists are sources
+        if not trusted then return end
         local key = versionKey(theirs)
         if declined[key] or pendingForce then return end
         local last = requested[key]
@@ -123,9 +142,9 @@ function Sync:OnState(sender, msg)
         requested[key] = GetTime()
         self:Transmit({ t = "request", id = theirs.id }, sender)
     elseif Rules.PlanWins(mine, theirs) then
-        -- Ours is the one to keep: tell everybody, so the sender asks for it
-        self:QueueState()
-    elseif Rules.ActiveWins(theirs, mine) then
+        -- Ours is the one to keep: tell the sender, so they ask for it (if we are a source)
+        if self:CanSync() then self:AnswerState(sender) end
+    elseif trusted and Rules.ActiveWins(theirs, mine) then
         for _, encounter in ipairs(plan.encounters) do
             if encounter.key == theirs.a then
                 plan.active, plan.activeAt = theirs.a, theirs.at
@@ -214,8 +233,9 @@ end
 ---------------------------------------------------------------------------------------------- receive ---
 
 function Sync:OnComm(prefix, text, _, sender)
-    if prefix ~= PREFIX or not sender or Ambiguate(sender, "none") == myName() then return end
-    if not self:CanSync() or not isPromoted(Ambiguate(sender, "none")) then return end
+    if prefix ~= PREFIX or not sender or not IsInRaid() then return end
+    local name = Ambiguate(sender, "none")
+    if name == myName() or not UnitInRaid(name) then return end
 
     local ok, raw = Serializer:Deserialize(text)
     if not ok then return end
@@ -223,51 +243,46 @@ function Sync:OnComm(prefix, text, _, sender)
     if not msg then
         if why == "version" and not versionWarned then
             versionWarned = true
-            UTRM:Print(format(L["%s uses another version of the raid plan sync: update Unity Tools - Raid Management."],
-                Ambiguate(sender, "none")))
+            UTRM:Print(format(L["%s uses another version of the raid plan sync: update Unity Tools - Raid Management."], name))
         end
         return
     end
 
-    local handler = ({ state = "OnState", request = "OnRequest", plan = "OnPlan", force = "OnForce" })[msg.t]
-    local handled, err = pcall(self[handler], self, sender, msg)
+    local trusted = isPromoted(name)
+    local handled, err = true, nil
+    if msg.t == "state" then
+        handled, err = pcall(self.OnState, self, sender, msg, trusted)
+    elseif msg.t == "request" then
+        if self:CanSync() then handled, err = pcall(self.OnRequest, self, sender, msg) end
+    elseif trusted then   -- plan, force: only from lead and assists
+        handled, err = pcall(msg.t == "plan" and self.OnPlan or self.OnForce, self, sender, msg)
+    end
     if not handled then geterrorhandler()(err) end
 end
 
--- Joining a raid or being promoted: say which plan we have, so the others can answer
-function Sync:CheckPromotion()
-    local promoted = self:CanSync()
-    if promoted and not wasPromoted then
+-- Joining the raid (or a reload in it) or being promoted: tell the raid which plan we have, so the others answer.
+-- A member who joined: whisper our state to them (when we are a source with a plan), so they get it at once.
+function Sync:CheckRoster()
+    local inRaid, promoted = IsInRaid(), self:CanSync()
+    if inRaid and (not wasInRaid or (promoted and not wasPromoted)) then
         self:QueueState()
     end
-    wasPromoted = promoted
-end
-
--- Somebody joined the raid or was promoted: whisper our state to them, so they learn about our plan at once.
--- Only promoted members take part, so a member who joins without assist gets it when they are promoted.
-function Sync:CheckRoster()
-    local syncingBefore = wasPromoted
-    self:CheckPromotion()
 
     local now = {}
-    if IsInRaid() then
+    if inRaid then
         for i = 1, GetNumGroupMembers() do
-            local name, rank = GetRaidRosterInfo(i)
-            if name then now[name] = rank > 0 end
+            local name = GetRaidRosterInfo(i)
+            if name then now[name] = true end
         end
     end
-    -- When we have just started syncing ourselves, CheckPromotion already told the whole raid
-    if syncingBefore and self:CanSync() and currentPlan() then
-        for name, promoted in pairs(now) do
-            local last = greeted[name]
-            if promoted and not knownPromoted[name] and Ambiguate(name, "none") ~= myName()
-                and not (last and GetTime() - last < GREET_COOLDOWN) then
-                greeted[name] = GetTime()
-                self:Transmit(stateMessage(), name)
+    if wasInRaid and promoted and currentPlan() then
+        for name in pairs(now) do
+            if not members[name] and Ambiguate(name, "none") ~= myName() then
+                self:AnswerState(name)
             end
         end
     end
-    knownPromoted = now
+    members, wasInRaid, wasPromoted = now, inRaid, promoted
 end
 
 function Sync:OnEnable()
@@ -275,9 +290,12 @@ function Sync:OnEnable()
     for _, event in ipairs({ "GROUP_ROSTER_UPDATE", "PARTY_LEADER_CHANGED", "PLAYER_ENTERING_WORLD" }) do
         self:RegisterEvent(event, "CheckRoster")
     end
-    -- A plan imported here or an encounter chosen here: tell the others
+    -- A plan imported here (by a source): tell the raid
     self:RegisterMessage("UTRM_PLAN_IMPORTED", function(_, _, source)
-        if source ~= "sync" then self:QueueState() end
+        if source ~= "sync" and self:CanSync() then self:QueueState() end
     end)
-    self:RegisterMessage("UTRM_ENCOUNTER_ACTIVATED", "QueueState")
+    -- An encounter chosen here (by a source): tell the raid at once, so their windows follow the note
+    self:RegisterMessage("UTRM_ENCOUNTER_ACTIVATED", function()
+        if self:CanSync() then self:SendState() end
+    end)
 end

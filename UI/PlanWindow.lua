@@ -58,7 +58,9 @@ function PlanWindow:Activate(index)
     local plan = currentPlan()
     local encounter = plan and plan.encounters[index]
     if not encounter then return end
-    plan.active, plan.activeAt = encounter.key, GetServerTime()   -- the time lets the sync pick the newest choice
+    -- The time lets the sync pick the newest choice. Server time counts whole seconds, so a quicker click must still
+    -- be newer than the last one: otherwise the others would keep the previous encounter.
+    plan.active, plan.activeAt = encounter.key, math.max(GetServerTime(), (plan.activeAt or 0) + 0.001)
 
     -- The note, then the groups: the status line shows both in short, its tooltip the whole messages
     local ok, message = UTRM:GetModule("MRT"):Post(encounter.note)
