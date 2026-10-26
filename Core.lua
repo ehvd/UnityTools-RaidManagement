@@ -15,6 +15,7 @@ UTRM.version = (version and not version:find("@", 1, true)) and version or "dev"
 -- profile: settings (shared by all characters unless a character picks another profile), global: account-wide data
 local defaults = {
     profile = {
+        noteWindow = { width = 560, height = 440 },   -- AceGUI status table of the note editor (position, size)
     },
     global = {
     },
@@ -28,11 +29,27 @@ end
 function UTRM:OnEnable()
 end
 
-function UTRM:OnSlashCommand(input)
-    local command = strlower(strtrim(input or ""))
+function UTRM:PrintHelp()
     self:Print(format(L["Version %s"], self.version))
-    if command ~= "version" then
-        self:Print(L["Commands:"])
-        self:Print("  /utrm version - " .. L["show the addon version"])
+    self:Print(L["Commands:"])
+    self:Print("  /utrm note - " .. L["open the raid note editor"])
+    self:Print("  /utrm note <text> - " .. L["send <text> as the Method Raid Tools note (\\n starts a new line)"])
+    self:Print("  /utrm version - " .. L["show the addon version"])
+end
+
+function UTRM:OnSlashCommand(input)
+    local command, rest = (input or ""):match("^%s*(%S*)%s*(.-)%s*$")
+    command = strlower(command)
+    if command == "note" then
+        if rest == "" then
+            self.NoteEditor:Open()
+        else
+            local _, message = self:GetModule("MRT"):Post((rest:gsub("\\n", "\n")))
+            self:Print(message)
+        end
+    elseif command == "version" then
+        self:Print(format(L["Version %s"], self.version))
+    else
+        self:PrintHelp()
     end
 end

@@ -15,8 +15,8 @@ LOCALE    ?=
 VERSION   ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 
 DEST          := $(ADDON_DIR)/$(ADDON)
-# Everything the game needs (no docs, CI files, tests). Add Modules / UI here when they exist.
-INSTALL_FILES := $(ADDON).toc embeds.xml Core.lua LICENSE Locales Media Libs
+# Everything the game needs (no docs, CI files, tests)
+INSTALL_FILES := $(ADDON).toc embeds.xml Core.lua LICENSE Locales Media Modules UI Libs
 
 # PowerShell snippets (the path comes in through the T / S environment variables to survive spaces)
 PS_EXIT_IF_LINK  = if ((Test-Path -LiteralPath $$env:T) -and ((Get-Item -LiteralPath $$env:T -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { exit 1 }
@@ -42,7 +42,7 @@ Libs/.fetched: Makefile
 	@mkdir -p Libs .libs-tmp
 	@git clone --quiet --depth 1 https://github.com/WoWUIDev/Ace3.git .libs-tmp/ace3
 	@for lib in LibStub CallbackHandler-1.0 AceAddon-3.0 AceDB-3.0 AceConsole-3.0 AceEvent-3.0 AceTimer-3.0 \
-	           AceLocale-3.0; do \
+	           AceLocale-3.0 AceGUI-3.0; do \
 	  cp -r ".libs-tmp/ace3/$$lib" "Libs/$$lib" || exit 1; \
 	done
 	@rm -rf .libs-tmp

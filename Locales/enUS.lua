@@ -24,3 +24,16 @@ end
 L["Version %s"] = true
 L["Commands:"] = true
 L["show the addon version"] = true
+L["open the raid note editor"] = true
+L["send <text> as the Method Raid Tools note (\\n starts a new line)"] = true
+
+-- Method Raid Tools notes
+L["Method Raid Tools is not loaded."] = true
+L["This version of Method Raid Tools is not supported (its note has changed)."] = true
+L["Method Raid Tools could not send the note."] = true
+L["Note sent to Method Raid Tools."] = true
+L["Note sent, but you are not raid leader or assistant: players who only accept notes from promoted players ignore it."] = true
+L["Raid note"] = true
+L["Note text. Method Raid Tools markup works: {rt1}, {spell:12345}, colours."] = true
+L["Send"] = true
+L["Reload from MRT"] = true
