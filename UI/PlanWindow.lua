@@ -58,7 +58,7 @@ function PlanWindow:Activate(index)
     local plan = currentPlan()
     local encounter = plan and plan.encounters[index]
     if not encounter then return end
-    plan.active = encounter.key
+    plan.active, plan.activeAt = encounter.key, GetServerTime()   -- the time lets the sync pick the newest choice
 
     -- The note, then the groups: the status line shows both in short, its tooltip the whole messages
     local ok, message = UTRM:GetModule("MRT"):Post(encounter.note)
@@ -216,6 +216,13 @@ local function openOptionsMenu(owner)
             local label = gargulState == "current" and L["Gargul: loot priorities are up to date"]
                 or ("|cffffa040" .. L["Gargul: import the loot priorities"] .. "|r")
             root:CreateButton(label, function() PlanWindow:ImportGargul() end)
+        end
+        -- Force sync: this plan and its active encounter for every lead and assist (they confirm)
+        if plan and UTRM:GetModule("Sync"):CanSync() then
+            root:CreateButton(L["Force sync"], function()
+                local ok, message = UTRM:GetModule("Sync"):ForceSync()
+                PlanWindow:Refresh(ok and message or ("|cffff4040" .. message .. "|r"))
+            end)
         end
         root:CreateCheckbox(L["Lock position"],
             function() return settings().locked end,

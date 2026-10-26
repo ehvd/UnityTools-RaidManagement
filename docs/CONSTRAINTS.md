@@ -85,3 +85,15 @@ WeakAuras uses. The edit box is an AceGUI widget from a pool shared with other a
 `OnChar` / `OnUpdate` scripts and the byte limit before releasing it.
 
 Source: `UI/ImportWindow.lua`; the format of the export: UnityWiki `docs/addon-export.md`
+
+## 7. Raid plan sync
+
+`Modules/Sync.lua` talks over AceComm (prefix `UTRM`): small `state` messages to the raid, the plan itself only by
+whisper to a client that asked for it. Addon messages are throttled per prefix (section 3), so a full night's plan
+(serialized, deflated with LibDeflate and encoded for the addon channel) takes a while to arrive; ChatThrottleLib
+queues it at BULK priority so it never delays other addons' traffic. Only the raid leader and assistants take part,
+checked on both ends for every message (`UnitIsGroupLeader` / `UnitIsGroupAssistant` on the sender's name), because
+a plan can change notes and move people. Times are server time (`GetServerTime`) so every client compares the same
+clock; which copy wins is `Modules/SyncRules.lua` (tested in `tests/sync-rules.test.mjs`).
+
+Source: <https://warcraft.wiki.gg/wiki/API_C_ChatInfo.SendAddonMessage>, AceComm-3.0

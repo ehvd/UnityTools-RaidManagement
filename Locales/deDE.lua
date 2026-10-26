@@ -100,3 +100,13 @@ L["This client cannot change the loot method from an addon."] = "Dieser Client e
 L["Master Loot set: you are the master looter."] = "Plündermeister eingestellt: du bist der Plündermeister."
 L["Only the raid leader or an assistant can invite."] = "Nur der Schlachtzugsleiter oder ein Assistent kann einladen."
 L["Invited %d players: %s"] = "%d Spieler eingeladen: %s"
+
+L["Force sync"] = "Synchronisierung erzwingen"
+L["Synced from %s"] = "Synchronisiert von %s"
+L["%s chose %s"] = "%s hat %s gewählt"
+L["Raid plan %s synced from %s."] = "Raidplan %s von %s synchronisiert."
+L["Only the raid leader or an assistant can sync, in a raid."] = "Nur der Schlachtzugsleiter oder ein Assistent kann im Schlachtzug synchronisieren."
+L["Force sync sent: the others are asked to accept your raid plan."] = "Erzwungene Synchronisierung gesendet: Die anderen werden gefragt, deinen Raidplan anzunehmen."
+L["%s wants to replace your raid plan with \"%s\" (Force sync). Accept?"] = "%s möchte deinen Raidplan durch „%s“ ersetzen (erzwungene Synchronisierung). Annehmen?"
+L["Force sync from %s declined: your raid plan is kept."] = "Erzwungene Synchronisierung von %s abgelehnt: Dein Raidplan bleibt."
+L["%s uses another version of the raid plan sync: update Unity Tools - Raid Management."] = "%s verwendet eine andere Version der Raidplan-Synchronisierung: Aktualisiere Unity Tools - Raid Management."

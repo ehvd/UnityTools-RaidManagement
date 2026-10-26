@@ -49,10 +49,20 @@ function PlanImport:GetPlan()
     return UTRM.db.global.plan
 end
 
+-- A plan imported on this client. Server time, so clients compare the same clock (Modules/SyncRules.lua):
+-- importing is choosing this plan.
 function PlanImport:Store(plan)
-    plan.importedAt = time()
+    plan.importedAt = GetServerTime()
+    plan.chosenAt = plan.importedAt
+    plan.syncedFrom = nil
     UTRM.db.global.plan = plan
-    UTRM:SendMessage("UTRM_PLAN_IMPORTED", plan)
+    UTRM:SendMessage("UTRM_PLAN_IMPORTED", plan, "import")
+end
+
+-- A plan received from another client (Modules/Sync.lua): kept as it came, with its import, chosen and active times
+function PlanImport:StoreSynced(plan)
+    UTRM.db.global.plan = plan
+    UTRM:SendMessage("UTRM_PLAN_IMPORTED", plan, "sync")
 end
 
 -- A few lines describing a plan for the import window
@@ -70,5 +80,8 @@ function PlanImport:Summary(plan)
         format(L["Exported %s, imported %s"], date("%Y-%m-%d %H:%M", plan.generatedAt or 0),
             date("%Y-%m-%d %H:%M", plan.importedAt or 0)),
     }
+    if plan.syncedFrom then
+        lines[#lines + 1] = format(L["Synced from %s"], plan.syncedFrom)
+    end
     return table.concat(lines, "\n")
 end
