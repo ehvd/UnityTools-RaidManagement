@@ -7,7 +7,8 @@ local L = UTRM.L
 local PlanWindow = UTRM:NewModule("PlanWindow", "AceEvent-3.0")
 UTRM.PlanWindow = PlanWindow
 
-local WIDTH, HEIGHT = 230, 42
+local WIDTH, HEIGHT = 230, 58
+local TITLE = 16    -- height of the title row (event title and close button)
 local ROW = 18      -- height of the encounter row: the arrows are square
 local PADDING = 5
 local SCALES = { 0.8, 0.9, 1, 1.1, 1.25 }
@@ -173,13 +174,25 @@ local function create()
     frame:SetPoint(s.point or "TOP", UIParent, s.relativePoint or "TOP", s.x or 0, s.y or -120)
     frame:SetScale(s.scale or 1)
 
-    -- Row 1: ◀ encounter ▶ (or Import when there is no plan)
+    -- Row 1: the event's title and a close button
+    frame.close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    frame.close:SetSize(TITLE + 4, TITLE + 4)
+    frame.close:SetPoint("TOPRIGHT", -1, -1)
+    frame.close:SetScript("OnClick", function() PlanWindow:Hide() end)
+
+    frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    frame.title:SetPoint("TOPLEFT", PADDING + 3, -PADDING - 1)
+    frame.title:SetPoint("TOPRIGHT", frame.close, "TOPLEFT", -2, -PADDING)
+    frame.title:SetJustifyH("LEFT")
+    frame.title:SetWordWrap(false)
+
+    -- Row 2: ◀ encounter ▶ (or Import when there is no plan)
     frame.prev = arrowButton("Prev")
-    frame.prev:SetPoint("TOPLEFT", PADDING, -PADDING)
+    frame.prev:SetPoint("TOPLEFT", PADDING, -PADDING - TITLE)
     frame.prev:SetScript("OnClick", function() PlanWindow:Step(-1) end)
 
     frame.next = arrowButton("Next")
-    frame.next:SetPoint("TOPRIGHT", -PADDING, -PADDING)
+    frame.next:SetPoint("TOPRIGHT", -PADDING, -PADDING - TITLE)
     frame.next:SetScript("OnClick", function() PlanWindow:Step(1) end)
 
     -- The encounter's name fills most of the bar, so it also moves the window and opens the options
@@ -206,11 +219,11 @@ local function create()
 
     frame.import = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     frame.import:SetSize(100, ROW)
-    frame.import:SetPoint("TOP", 0, -PADDING)
+    frame.import:SetPoint("TOP", 0, -PADDING - TITLE)
     frame.import:SetText(L["Import"])
     frame.import:SetScript("OnClick", function() UTRM.ImportWindow:Open() end)
 
-    -- Row 2: the result of the last action
+    -- Row 3: the result of the last action
     frame.status = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     frame.status:SetPoint("BOTTOMLEFT", PADDING + 2, PADDING)
     frame.status:SetPoint("BOTTOMRIGHT", -PADDING - 2, PADDING)
@@ -226,6 +239,7 @@ function PlanWindow:Refresh(status)
     end
 
     if not plan then
+        frame.title:SetText(L["Raid plan"])
         frame.status:SetText(L["No raid plan imported yet."])
         frame.prev:Hide()
         frame.next:Hide()
@@ -234,6 +248,7 @@ function PlanWindow:Refresh(status)
         return
     end
 
+    frame.title:SetText(plan.event.title)
     frame.import:Hide()
     frame.prev:Show()
     frame.next:Show()
