@@ -82,6 +82,7 @@ function ImportWindow:Store(plan)
         self.editBox:SetText("")
     end
     self:Refresh(format(L["Imported %s."], plan.event.title))
+    UTRM.PlanWindow:Show()
 end
 
 StaticPopupDialogs["UNITYTOOLSRAIDMANAGEMENT_REPLACE_PLAN"] = {

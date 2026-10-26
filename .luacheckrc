@@ -15,6 +15,7 @@ globals = {
     "UnityToolsRaidManagementDB",
     "UnityToolsRaidManagementNoteFrame",
     "UnityToolsRaidManagementImportFrame",
+    "UnityToolsRaidManagementPlanFrame",
     "SlashCmdList",
     "StaticPopupDialogs",
     "UISpecialFrames",
@@ -41,7 +42,7 @@ read_globals = {
     "UTRM_LOCALE_OVERRIDE",
 
     -- Frames / UI
-    "UIParent", "GameTooltip", "PlaySound", "SOUNDKIT", "StaticPopup_Show", "YES", "NO",
+    "UIParent", "GameTooltip", "PlaySound", "SOUNDKIT", "StaticPopup_Show", "YES", "NO", "CLOSE", "MenuUtil", "MenuResponse",
 
     -- Game API
     "C_AddOns", "GetAddOnMetadata", "IsAddOnLoaded",
