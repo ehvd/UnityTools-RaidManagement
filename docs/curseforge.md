@@ -30,6 +30,7 @@ Early development: more raid management features arrive in the next releases.
   encounter, from a small window (`/utrm plan`); the raid is sorted into the planned groups at the same time
 - Loads the guild's loot priorities into [Gargul](https://www.curseforge.com/wow/addons/gargul) with one click and shows
   whether Gargul has the current ones
+- A readiness icon: Master Loot on, the planned players in the raid, Method Raid Tools and Gargul ready
 - Write the raid note and send it to [Method Raid Tools](https://www.curseforge.com/wow/addons/method-raid-tools)
   (`/utrm note`), or send a one-line note from a macro (`/utrm note {rt1} Tanks on the left\nHealers in the middle`)
 - Available in English, German, French, Spanish and Italian

@@ -25,6 +25,7 @@ Modules\PlanImport.lua
 Modules\GroupPlan.lua
 Modules\RaidGroups.lua
 Modules\Gargul.lua
+Modules\Readiness.lua
 
 UI\NoteEditor.lua
 UI\ImportWindow.lua

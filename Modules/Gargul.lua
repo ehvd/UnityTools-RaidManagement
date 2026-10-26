@@ -58,6 +58,7 @@ function Gargul:Import(text)
     end
     -- Gargul keeps no fingerprint of what was imported, only a new id per import: remember both
     UTRM.db.global.gargulImport = { id = importId(GL), checksum = Codec.Checksum(text) }
+    UTRM:SendMessage("UTRM_GARGUL_IMPORTED")
     return true, L["Loot priorities imported into Gargul."]
 end
 

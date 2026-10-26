@@ -18,6 +18,11 @@ local CLOSE_MARGIN = 5                  -- UIPanelCloseButton is 32×32 with ~5 
 local DROPDOWN = 26                     -- the height AceGUI gives UIDropDownMenuTemplate without a label
 local ARROW_WIDTH = 18                  -- UIPanelScrollUp/DownButtonTemplate are 18×16
 local TEXT_ROW = 16
+local READY_ICON = 16                   -- the ready check icons, as raid frames show them
+
+local READY = "Interface\\RaidFrame\\ReadyCheck-Ready"
+local NOT_READY = "Interface\\RaidFrame\\ReadyCheck-NotReady"
+local WAITING = "Interface\\RaidFrame\\ReadyCheck-Waiting"
 local ROW1 = INSET                      -- title, settings, close
 local ROW2 = ROW1 + PANEL_BUTTON + GAP  -- ◀ [encounter ▼] ▶
 local ROW3 = ROW2 + DROPDOWN + GAP      -- status line
@@ -93,6 +98,69 @@ function PlanWindow:RenderStatus()
     if self.noteStatus then parts[#parts + 1] = self.noteStatus end
     if self.groupStatus then parts[#parts + 1] = self.groupStatus end
     frame.status:SetText(table.concat(parts, "  ·  "))
+end
+
+-- Runs a fix from the readiness menu and shows its result on the status line
+function PlanWindow:RunFix(fix)
+    local ok, message = fix.run()
+    if message then
+        self:Refresh(ok and message or ("|cffff4040" .. message .. "|r"))
+        self.noteMessage = message
+    end
+    self:UpdateReadiness()
+end
+
+-- Clicking the readiness icon: the fixes for the current problems (Modules/Readiness.lua)
+local function openReadinessMenu(owner)
+    GameTooltip:Hide()
+    PlanWindow:UpdateReadiness()
+    local readiness = PlanWindow.readiness
+    MenuUtil.CreateContextMenu(owner, function(_, root)
+        root:CreateTitle(L["Raid readiness"])
+        if not readiness.inRaid then
+            root:CreateTitle(L["Checked in a raid only."])
+            return
+        end
+        if readiness.problems == 0 then
+            root:CreateTitle(L["Everything is ready."])
+            return
+        end
+        for _, check in ipairs(readiness.checks) do
+            if not check.ok then
+                if check.fix then
+                    root:CreateButton(check.fix.label, function() PlanWindow:RunFix(check.fix) end)
+                else
+                    root:CreateTitle(check.hint or check.text)
+                end
+            end
+        end
+    end)
+end
+
+-- The readiness icon's tooltip: every check with a ready check icon, and its details (Modules/Readiness.lua)
+local function showReadinessTooltip(self)
+    PlanWindow:UpdateReadiness()
+    local readiness = PlanWindow.readiness
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+    GameTooltip:AddLine(L["Raid readiness"])
+    if not readiness.inRaid then
+        GameTooltip:AddLine(L["Checked in a raid only."], 0.75, 0.75, 0.75)
+    end
+    for _, check in ipairs(readiness.checks) do
+        local icon = format("|T%s:14|t ", check.ok and READY or NOT_READY)
+        if check.ok then
+            GameTooltip:AddLine(icon .. check.text, 1, 1, 1, true)
+        else
+            GameTooltip:AddLine(icon .. check.text, 1, 0.35, 0.35, true)
+        end
+        for _, line in ipairs(check.details or {}) do
+            GameTooltip:AddLine(line, 0.75, 0.75, 0.75, true)
+        end
+    end
+    if readiness.problems > 0 then
+        GameTooltip:AddLine(L["Click: fix"], 0.5, 0.5, 0.5)
+    end
+    GameTooltip:Show()
 end
 
 local function showStatusTooltip(self)
@@ -330,9 +398,19 @@ local function create()
     frame.settings:SetPoint("TOPRIGHT", frame.close, "TOPLEFT", CLOSE_MARGIN - GAP, -CLOSE_MARGIN)
     frame.settings:SetScript("OnClick", function(self) openOptionsMenu(self) end)
 
+    -- Readiness: one ready check icon left of the settings; the tooltip lists the checks
+    frame.ready = CreateFrame("Button", nil, frame)
+    frame.ready:SetSize(READY_ICON, READY_ICON)
+    frame.ready:SetPoint("RIGHT", frame.settings, "LEFT", -GAP, 0)
+    frame.ready.icon = frame.ready:CreateTexture(nil, "ARTWORK")
+    frame.ready.icon:SetAllPoints()
+    frame.ready:SetScript("OnClick", openReadinessMenu)
+    frame.ready:SetScript("OnEnter", showReadinessTooltip)
+    frame.ready:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
     frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     frame.title:SetPoint("TOPLEFT", INSET, -ROW1)
-    frame.title:SetPoint("TOPRIGHT", frame.settings, "TOPLEFT", -GAP, 0)
+    frame.title:SetPoint("TOPRIGHT", frame.settings, "TOPLEFT", -GAP - READY_ICON - GAP, 0)
     frame.title:SetHeight(PANEL_BUTTON)
     frame.title:SetJustifyH("LEFT")
     frame.title:SetWordWrap(false)
@@ -397,6 +475,7 @@ function PlanWindow:Refresh(status)
         frame.next:Hide()
         frame.encounter:Hide()
         frame.import:Show()
+        self:UpdateReadiness()
         return
     end
 
@@ -414,6 +493,24 @@ function PlanWindow:Refresh(status)
     frame.prev:SetEnabled(index ~= nil and index > 1)
     frame.next:SetEnabled(count > 0 and (index or 0) < count)
     frame.encounter.button:SetEnabled(count > 0)
+    self:UpdateReadiness()
+end
+
+-- The readiness icon: waiting (grey) outside a raid, ready when every check passes, not ready otherwise
+function PlanWindow:UpdateReadiness()
+    self.readiness = UTRM:GetModule("Readiness"):Evaluate()
+    if not frame then return end
+    local readiness = self.readiness
+    local icon = frame.ready.icon
+    if not readiness.inRaid then
+        icon:SetTexture(WAITING)
+        icon:SetDesaturated(true)
+        frame.ready:SetAlpha(0.5)
+    else
+        icon:SetTexture(readiness.problems == 0 and READY or NOT_READY)
+        icon:SetDesaturated(false)
+        frame.ready:SetAlpha(1)
+    end
 end
 
 function PlanWindow:Show()
