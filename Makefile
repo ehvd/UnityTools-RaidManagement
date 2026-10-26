@@ -16,7 +16,7 @@ VERSION   ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo de
 
 DEST          := $(ADDON_DIR)/$(ADDON)
 # Everything the game needs (no docs, CI files, tests). Add Modules / UI here when they exist.
-INSTALL_FILES := $(ADDON).toc embeds.xml Core.lua LICENSE Locales Libs
+INSTALL_FILES := $(ADDON).toc embeds.xml Core.lua LICENSE Locales Media Libs
 
 # PowerShell snippets (the path comes in through the T / S environment variables to survive spaces)
 PS_EXIT_IF_LINK  = if ((Test-Path -LiteralPath $$env:T) -and ((Get-Item -LiteralPath $$env:T -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { exit 1 }

@@ -5,6 +5,7 @@
 ## Version: @project-version@
 ## SavedVariables: UnityToolsRaidManagementDB
 ## Category: Raid
+## IconTexture: Interface\AddOns\UnityTools-RaidManagement\Media\icon
 ## X-Curse-Project-ID: 1766854
 ## OptionalDeps: MRT
 
