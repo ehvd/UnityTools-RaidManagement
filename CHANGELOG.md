@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-26
+
 ### Added
 
 - Addon skeleton: Ace3 core, `/utrm` slash command, localization (enUS, deDE, frFR, esES, itIT)
@@ -27,4 +29,5 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - Minimap button: left click shows or hides the raid plan window, right click opens the options (import, Gargul,
   Force sync, note editor, hide the button); `/utrm minimap` shows or hides it
 
-[Unreleased]: https://github.com/ehvd/UnityTools-RaidManagement/commits/develop
+[Unreleased]: https://github.com/ehvd/UnityTools-RaidManagement/compare/v0.1.0...develop
+[0.1.0]: https://github.com/ehvd/UnityTools-RaidManagement/releases/tag/v0.1.0

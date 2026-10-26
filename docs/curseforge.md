@@ -20,9 +20,11 @@ Raid leader toolkit for WoW Classic Era: organise your raid and post raid notes 
 
 # Unity Tools - Raid Management
 
-Raid management tools for raid leaders and officers, starting with posting raid notes to Method Raid Tools.
+Raid management tools for raid leaders and officers: the night's raid plan, Method Raid Tools notes, raid groups,
+Gargul loot priorities and readiness checks, from one small window.
 
-Early development: more raid management features arrive in the next releases.
+Works with [Method Raid Tools](https://www.curseforge.com/wow/addons/method-raid-tools) (notes and raid groups) and
+[Gargul](https://www.curseforge.com/wow/addons/gargul) (loot priorities); both are optional.
 
 ## Features
 
