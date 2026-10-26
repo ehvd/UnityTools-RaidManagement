@@ -99,6 +99,12 @@ Trust: only the raid leader and assistants are sources, checked for every messag
 active encounters are accepted only from them, and only they answer requests. Every raid member receives; a member's
 own state only lets a source know it should answer.
 
+ChatThrottleLib shares one bandwidth budget between all addons and also counts what other addons send (MRT's note
+is several messages), so a burst of quick encounter choices used to queue stale states behind each other. Now the
+plan window waits until the clicking stops (0.3 s) before it sends the note, sorts the groups and syncs, for the
+encounter it stopped on only. States go at ALERT priority with at most one on its way: a newer choice meanwhile is
+sent once the previous state has left.
+
 Times are server time (`GetServerTime`, whole seconds) so every client compares the same clock. The active encounter's
 time is made at least a millisecond newer than the previous choice, so quick clicks within one second still count
 as newer. Which copy wins is `Modules/SyncRules.lua` (tested in `tests/sync-rules.test.mjs`).

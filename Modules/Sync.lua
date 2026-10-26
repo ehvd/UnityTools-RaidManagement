@@ -28,6 +28,7 @@ local STATE_DELAY = 2          -- seconds: several triggers in a row (joining, r
 local REQUEST_COOLDOWN = 60    -- seconds before the same plan is requested again
 local SEND_COOLDOWN = 30       -- seconds before the same requester gets the plan again
 local ANSWER_COOLDOWN = 10     -- seconds before the same player is whispered our state again
+local IN_FLIGHT_TIMEOUT = 5    -- seconds after which a state that never reported leaving no longer blocks the next
 
 local wasInRaid, wasPromoted = false, false
 local members = {}             -- raid member names as of the last roster update
@@ -67,13 +68,17 @@ end
 
 ------------------------------------------------------------------------------------------------- wire ---
 
-function Sync:Transmit(msg, target, priority)
+-- `onSent` (optional) is called once the whole message has left (AceComm reports every chunk)
+function Sync:Transmit(msg, target, priority, onSent)
     msg.v = Rules.VERSION
     local text = Serializer:Serialize(msg)
+    local callback = onSent and function(_, sent, total)
+        if sent >= total then onSent() end
+    end
     if target then
-        self:SendCommMessage(PREFIX, text, "WHISPER", target, priority or "NORMAL")
+        self:SendCommMessage(PREFIX, text, "WHISPER", target, priority or "NORMAL", callback)
     else
-        self:SendCommMessage(PREFIX, text, "RAID", nil, priority or "NORMAL")
+        self:SendCommMessage(PREFIX, text, "RAID", nil, priority or "NORMAL", callback)
     end
 end
 
@@ -103,14 +108,26 @@ local function stateMessage()
     } or { t = "state" }
 end
 
+-- Sends the state to the raid at ALERT priority (ahead of other addons' queued traffic). Only one is on its way at a
+-- time: asking again meanwhile sends the latest state once the previous one has left, so a quick series of choices
+-- never queues stale states.
 function Sync:SendState()
     if self.stateTimer then
         self:CancelTimer(self.stateTimer)
         self.stateTimer = nil
     end
-    if IsInRaid() then
-        self:Transmit(stateMessage())
+    if not IsInRaid() then return end
+    if self.stateSentAt and GetTime() - self.stateSentAt < IN_FLIGHT_TIMEOUT then
+        self.stateDirty = true
+        return
     end
+    self.stateSentAt, self.stateDirty = GetTime(), false
+    self:Transmit(stateMessage(), nil, "ALERT", function()
+        self.stateSentAt = nil
+        if self.stateDirty then
+            self:SendState()
+        end
+    end)
 end
 
 -- Several triggers in a row (joining, roster updates, an import right after joining) send one state
@@ -124,7 +141,7 @@ function Sync:AnswerState(target)
     local last = answered[target]
     if last and GetTime() - last < ANSWER_COOLDOWN then return end
     answered[target] = GetTime()
-    self:Transmit(stateMessage(), target)
+    self:Transmit(stateMessage(), target, "ALERT")
 end
 
 function Sync:OnState(sender, msg, trusted)

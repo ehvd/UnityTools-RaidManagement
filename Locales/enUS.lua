@@ -69,6 +69,7 @@ L["The plan has no encounters."] = true
 L["The night's groups"] = true
 L["Groups: %s"] = true
 L["This encounter has no note: the MRT note was cleared."] = true
+L["Sending..."] = true
 L["Note sent"] = true
 L["Note cleared"] = true
 L["Note not sent"] = true
