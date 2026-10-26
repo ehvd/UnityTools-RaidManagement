@@ -7,19 +7,17 @@ local L = UTRM.L
 local PlanWindow = UTRM:NewModule("PlanWindow", "AceEvent-3.0")
 UTRM.PlanWindow = PlanWindow
 
--- Sizes and positions follow the Figma wireframe (1 px = 1 UI pixel at 100% scale): three rows, 16 px buttons, 2 px
--- gaps, 2 px between the border and the content. The look is Blizzard's own art and templates; where a native control
--- needs more room than the wireframe (the dropdown is 26 px tall) the native size wins.
+-- Composition from the Figma wireframe (1 px = 1 UI pixel at 100% scale): three rows, 2 px gaps, 2 px between the
+-- border and the content. The look is Blizzard's own art and templates. Every row and button has the height of the
+-- native dropdown, so the rows line up: the buttons are ROW × ROW squares.
 local BORDER = 4                        -- the tooltip backdrop's border (its insets)
 local INSET = BORDER + 2
-local BUTTON = 16
+local ROW = 26                          -- the height AceGUI gives UIDropDownMenuTemplate without a label
 local GAP = 2
-local DROPDOWN = 26                     -- the height AceGUI gives UIDropDownMenuTemplate without a label
-local ARROW_WIDTH = 18                  -- UIPanelScrollUp/DownButtonTemplate are 18×16
 local ROW1 = INSET                      -- title, settings, close
-local ROW2 = ROW1 + BUTTON + GAP        -- ◀ [encounter ▼] ▶
-local ROW3 = ROW2 + DROPDOWN + GAP      -- status line
-local WIDTH, HEIGHT = 172 + 2 * INSET, ROW3 + BUTTON + INSET
+local ROW2 = ROW1 + ROW + GAP           -- ◀ [encounter ▼] ▶
+local ROW3 = ROW2 + ROW + GAP           -- status line
+local WIDTH, HEIGHT = 172 + 2 * INSET, ROW3 + ROW + INSET
 
 local SCALES = { 0.8, 0.9, 1, 1.1, 1.25 }
 local TOOLTIP_NOTE_LINES = 12
@@ -113,7 +111,7 @@ end
 -- around the art, so it fills the 16 px slot; 0 keeps the texture as Blizzard draws it.
 local function artButton(path, highlight, crop)
     local button = CreateFrame("Button", nil, frame)
-    button:SetSize(BUTTON, BUTTON)
+    button:SetSize(ROW, ROW)
     button:SetNormalTexture(path .. "Up")
     button:SetPushedTexture(path .. "Down")
     button:SetDisabledTexture(path .. "Disabled")
@@ -130,6 +128,7 @@ end
 -- ◀ ▶: the buttons of Blizzard's scroll bars, turned a quarter (the up arrow points left, the down arrow right)
 local function scrollArrowButton(template)
     local button = CreateFrame("Button", nil, frame, template)
+    button:SetSize(ROW, ROW)   -- 18×16 in the template; square here so it matches the other buttons of the row
     for _, texture in ipairs({ button:GetNormalTexture(), button:GetPushedTexture(),
             button:GetDisabledTexture(), button:GetHighlightTexture() }) do
         texture:SetRotation(math.pi / 2)
@@ -146,7 +145,7 @@ end
 -- A red panel button (UIPanelButtonTemplate) with the small font
 local function panelButton(width, label)
     local button = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    button:SetSize(width, BUTTON)
+    button:SetSize(width, ROW)
     button:SetNormalFontObject(GameFontNormalSmall)
     button:SetHighlightFontObject(GameFontHighlightSmall)
     button:SetDisabledFontObject(GameFontDisableSmall)
@@ -156,10 +155,10 @@ end
 
 -- ⚙: a panel button with Blizzard's options cogwheel
 local function settingsButton()
-    local button = panelButton(BUTTON)
+    local button = panelButton(ROW)
     local cog = button:CreateTexture(nil, "OVERLAY")
     cog:SetTexture("Interface\\Buttons\\UI-OptionsButton")
-    cog:SetSize(12, 12)
+    cog:SetSize(18, 18)
     cog:SetPoint("CENTER")
     return button
 end
@@ -273,12 +272,12 @@ local function create()
     frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     frame.title:SetPoint("TOPLEFT", INSET, -ROW1)
     frame.title:SetPoint("TOPRIGHT", frame.settings, "TOPLEFT", -GAP, 0)
-    frame.title:SetHeight(BUTTON)
+    frame.title:SetHeight(ROW)
     frame.title:SetJustifyH("LEFT")
     frame.title:SetWordWrap(false)
 
     -- Row 2: ◀ [encounter ▼] ▶ (or Import when there is no plan); the arrows are centred on the dropdown
-    local rowMiddle = -(ROW2 + DROPDOWN / 2)
+    local rowMiddle = -(ROW2 + ROW / 2)
     frame.prev = scrollArrowButton("UIPanelScrollUpButtonTemplate")
     frame.prev:SetPoint("LEFT", frame, "TOPLEFT", INSET, rowMiddle)
     frame.prev:SetScript("OnClick", function() PlanWindow:Step(-1) end)
@@ -289,9 +288,9 @@ local function create()
 
     -- The encounter box fills most of the bar, so it also moves the window and opens the options
     frame.encounter = CreateFrame("Frame", nil, frame)
-    frame.encounter:SetPoint("TOPLEFT", INSET + ARROW_WIDTH + GAP, -ROW2)
-    frame.encounter:SetPoint("TOPRIGHT", -INSET - ARROW_WIDTH - GAP, -ROW2)
-    frame.encounter:SetHeight(DROPDOWN)
+    frame.encounter:SetPoint("TOPLEFT", INSET + ROW + GAP, -ROW2)
+    frame.encounter:SetPoint("TOPRIGHT", -INSET - ROW - GAP, -ROW2)
+    frame.encounter:SetHeight(ROW)
     encounterDropdown(frame.encounter)
     local function onEncounterClick(self, button)
         if button == "RightButton" then
@@ -318,7 +317,7 @@ local function create()
     frame.status = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     frame.status:SetPoint("TOPLEFT", INSET, -ROW3)
     frame.status:SetPoint("TOPRIGHT", -INSET, -ROW3)
-    frame.status:SetHeight(BUTTON)
+    frame.status:SetHeight(ROW)
     frame.status:SetTextColor(0.75, 0.75, 0.75)
     frame.status:SetWordWrap(false)
 end
