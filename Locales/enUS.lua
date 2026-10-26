@@ -56,3 +56,16 @@ L["%d encounters, %d named group layouts"] = true
 L["Gargul loot priorities included"] = true
 L["No Gargul loot priorities"] = true
 L["Exported %s, imported %s"] = true
+
+-- Raid plan window
+L["show or hide the raid plan window"] = true
+L["Raid plan"] = true
+L["Import raid plan..."] = true
+L["Lock position"] = true
+L["Scale"] = true
+L["Choose the encounter"] = true
+L["Click: choose the encounter"] = true
+L["The plan has no encounters."] = true
+L["The night's groups"] = true
+L["Groups: %s"] = true
+L["This encounter has no note: the MRT note was cleared."] = true

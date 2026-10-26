@@ -25,3 +25,4 @@ Modules\PlanImport.lua
 
 UI\NoteEditor.lua
 UI\ImportWindow.lua
+UI\PlanWindow.lua
