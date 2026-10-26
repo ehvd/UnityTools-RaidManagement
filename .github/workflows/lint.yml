@@ -1,0 +1,17 @@
+name: Lint
+
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+
+jobs:
+  luacheck:
+    name: luacheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run luacheck
+        uses: lunarmodules/luacheck@v1
+      - name: Check translations
+        run: make locales

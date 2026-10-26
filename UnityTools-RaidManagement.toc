@@ -1,0 +1,18 @@
+## Interface: 11509
+## Title: Unity Tools - Raid Management
+## Notes: Raid management tools for raid leaders and officers, starting with posting raid notes to Method Raid Tools.
+## Author: ehvd
+## Version: @project-version@
+## SavedVariables: UnityToolsRaidManagementDB
+## Category: Raid
+## OptionalDeps: MRT
+
+embeds.xml
+
+Locales\enUS.lua
+Locales\frFR.lua
+Locales\deDE.lua
+Locales\esES.lua
+Locales\itIT.lua
+
+Core.lua

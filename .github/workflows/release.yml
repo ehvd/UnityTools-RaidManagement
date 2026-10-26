@@ -1,0 +1,92 @@
+name: Release
+
+# v1.2.3         -> CurseForge release
+# v1.2.3-beta.1  -> CurseForge beta
+# v1.2.3-alpha.1 -> CurseForge alpha
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    env:
+      CF_API_KEY: ${{ secrets.CF_API_KEY }}
+      GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Package and upload
+        uses: BigWigsMods/packager@v2
+
+      # CurseForge has no API to edit a project's description. For full releases (not alpha/beta) the repo's
+      # description is attached to the GitHub release and shown in the job summary, ready to paste (make description).
+      - name: Attach the CurseForge description
+        if: ${{ !contains(github.ref_name, '-') }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp docs/curseforge.md curseforge-description.md
+          gh release upload "$GITHUB_REF_NAME" curseforge-description.md --clobber
+          {
+            echo "## CurseForge description for $GITHUB_REF_NAME"
+            echo "Paste this into the project description (https://authors.curseforge.com/#/projects/CF_PROJECT_ID/description). It is also attached to the release as curseforge-description.md."
+            echo
+            cat docs/curseforge.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Nothing to do when the description is unchanged since the previous full release. Otherwise an issue
+      # assigned to the repository owner is the notification that the CurseForge description needs pasting.
+      - name: Open an issue when the CurseForge description changed
+        if: ${{ !contains(github.ref_name, '-') }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          RELEASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+          EDITOR_URL: https://authors.curseforge.com/#/projects/CF_PROJECT_ID/description
+        run: |
+          previous=$(git describe --tags --abbrev=0 --exclude='*-*' "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          if [ -n "$previous" ] && git diff --quiet "$previous" "$GITHUB_REF_NAME" -- docs/curseforge.md; then
+            echo "The CurseForge description is unchanged since $previous."
+            exit 0
+          fi
+          # The description goes into the issue as a code block (GitHub adds a copy button). The fence is one
+          # backtick longer than the longest backtick run in the text, so the text can never close it early.
+          fence=$(grep -o '`\+' docs/curseforge.md | awk '{ if (length($0) > m) m = length($0) } END { n = (m < 3 ? 3 : m + 1); s = ""; for (i = 0; i < n; i++) s = s "`"; print s }')
+          {
+            echo "docs/curseforge.md changed since ${previous:-the first release}. CurseForge cannot be updated by CI, so please paste it:"
+            echo
+            echo "1. Open the [project description editor on CurseForge]($EDITOR_URL)"
+            echo "2. Copy the snippet below with its copy button (or run \`make description\`, or download \`curseforge-description.md\` from [the release]($RELEASE_URL))"
+            echo "3. Paste it into the editor and save"
+            echo "4. Close this issue"
+            echo
+            echo "## Description (Markdown)"
+            echo
+            echo "${fence}markdown"
+            printf '%s\n' "$(cat docs/curseforge.md)"
+            echo "$fence"
+          } > issue-body.md
+          url=$(gh issue create \
+            --title "Update the CurseForge description for $GITHUB_REF_NAME" \
+            --assignee "$OWNER" \
+            --label "type: docs" \
+            --body-file issue-body.md)
+          echo "$url"
+          new=${url##*/}
+
+          # The newest text replaces the older reminders: close the ones that are still open
+          gh issue list --state open --label "type: docs" --limit 100 --json number,title \
+            --jq '.[] | select(.title | startswith("Update the CurseForge description for ")) | .number' |
+          while read -r number; do
+            if [ "$number" != "$new" ]; then
+              gh issue close "$number" --reason "not planned" \
+                --comment "Superseded by #$new, which has the newest description."
+            fi
+          done

@@ -1,0 +1,13 @@
+# Libraries are fetched by `make libs` and by the packager
+Libs/
+*.zip
+.release/
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store
+.env
+
+# Local tooling
+.libs-tmp/
+local.mk
