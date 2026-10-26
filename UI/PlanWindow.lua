@@ -100,6 +100,43 @@ function PlanWindow:RenderStatus()
     frame.status:SetText(table.concat(parts, "  ·  "))
 end
 
+-- Runs a fix from the readiness menu and shows its result on the status line
+function PlanWindow:RunFix(fix)
+    local ok, message = fix.run()
+    if message then
+        self:Refresh(ok and message or ("|cffff4040" .. message .. "|r"))
+        self.noteMessage = message
+    end
+    self:UpdateReadiness()
+end
+
+-- Clicking the readiness icon: the fixes for the current problems (Modules/Readiness.lua)
+local function openReadinessMenu(owner)
+    GameTooltip:Hide()
+    PlanWindow:UpdateReadiness()
+    local readiness = PlanWindow.readiness
+    MenuUtil.CreateContextMenu(owner, function(_, root)
+        root:CreateTitle(L["Raid readiness"])
+        if not readiness.inRaid then
+            root:CreateTitle(L["Checked in a raid only."])
+            return
+        end
+        if readiness.problems == 0 then
+            root:CreateTitle(L["Everything is ready."])
+            return
+        end
+        for _, check in ipairs(readiness.checks) do
+            if not check.ok then
+                if check.fix then
+                    root:CreateButton(check.fix.label, function() PlanWindow:RunFix(check.fix) end)
+                else
+                    root:CreateTitle(check.hint or check.text)
+                end
+            end
+        end
+    end)
+end
+
 -- The readiness icon's tooltip: every check with a ready check icon, and its details (Modules/Readiness.lua)
 local function showReadinessTooltip(self)
     PlanWindow:UpdateReadiness()
@@ -119,6 +156,9 @@ local function showReadinessTooltip(self)
         for _, line in ipairs(check.details or {}) do
             GameTooltip:AddLine(line, 0.75, 0.75, 0.75, true)
         end
+    end
+    if readiness.problems > 0 then
+        GameTooltip:AddLine(L["Click: fix"], 0.5, 0.5, 0.5)
     end
     GameTooltip:Show()
 end
@@ -364,6 +404,7 @@ local function create()
     frame.ready:SetPoint("RIGHT", frame.settings, "LEFT", -GAP, 0)
     frame.ready.icon = frame.ready:CreateTexture(nil, "ARTWORK")
     frame.ready.icon:SetAllPoints()
+    frame.ready:SetScript("OnClick", openReadinessMenu)
     frame.ready:SetScript("OnEnter", showReadinessTooltip)
     frame.ready:SetScript("OnLeave", function() GameTooltip:Hide() end)
 

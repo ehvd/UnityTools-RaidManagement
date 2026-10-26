@@ -19,6 +19,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - Import the plan's loot priorities into Gargul from the raid plan window's options; the menu shows whether Gargul
   still has them
 - Raid readiness icon in the raid plan window: Master Loot on, Method Raid Tools loaded, Gargul has the plan's loot
-  priorities, and the planned players are in the raid; its tooltip lists every check
+  priorities, the planned players are in the raid and in their groups; its tooltip lists every check, and a click
+  offers the fixes (set Master Loot, import into Gargul, invite the missing players, sort the groups)
 
 [Unreleased]: https://github.com/ehvd/UnityTools-RaidManagement/commits/develop
