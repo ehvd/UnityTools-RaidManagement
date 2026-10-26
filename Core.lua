@@ -18,6 +18,7 @@ local defaults = {
         noteWindow = { width = 560, height = 440 },   -- AceGUI status table of the note editor (position, size)
         importWindow = { width = 520, height = 400 }, -- the same for the raid plan import window
         planWindow = { shown = false, locked = false, scale = 1 },   -- plus point, relativePoint, x, y, width once moved
+        minimap = { hide = false },                   -- LibDBIcon adds minimapPos when the button is moved
     },
     global = {
         -- plan = the raid plan imported from UnityWiki (Modules/PlanImport.lua), absent until the first import
@@ -39,6 +40,7 @@ function UTRM:PrintHelp()
     self:Print("  /utrm note <text> - " .. L["send <text> as the Method Raid Tools note (\\n starts a new line)"])
     self:Print("  /utrm plan - " .. L["show or hide the raid plan window"])
     self:Print("  /utrm import - " .. L["import a raid plan from the UnityWiki raid planner"])
+    self:Print("  /utrm minimap - " .. L["show or hide the minimap button"])
     self:Print("  /utrm version - " .. L["show the addon version"])
 end
 
@@ -52,6 +54,8 @@ function UTRM:OnSlashCommand(input)
             local _, message = self:GetModule("MRT"):Post((rest:gsub("\\n", "\n")))
             self:Print(message)
         end
+    elseif command == "minimap" then
+        self:GetModule("Minimap"):Toggle()
     elseif command == "plan" then
         self.PlanWindow:Toggle()
     elseif command == "import" then

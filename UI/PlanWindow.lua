@@ -101,9 +101,7 @@ end
 
 -- Hands the plan's loot priorities to Gargul; the result replaces the status line
 function PlanWindow:ImportGargul()
-    local ok, message = UTRM:GetModule("Gargul"):ImportPlan(currentPlan())
-    self:Refresh(ok and message or ("|cffff4040" .. message .. "|r"))
-    self.noteMessage = message   -- the whole text in the status tooltip
+    self:ShowResult(UTRM:GetModule("Gargul"):ImportPlan(currentPlan()))
 end
 
 -- The raid groups' part of the status line (Modules/RaidGroups.lua), with tooltip lines naming the players
@@ -225,25 +223,41 @@ local function openEncounterMenu(owner)
     end)
 end
 
+-- The plan actions both the ⚙ menu and the minimap button's menu offer (UI/Minimap.lua)
+function PlanWindow:AddPlanActions(root)
+    local plan = currentPlan()
+    root:CreateButton(L["Import raid plan..."], function() UTRM.ImportWindow:Open() end)
+    -- Gargul: only when the plan carries loot priorities and Gargul can be used
+    local gargulState = UTRM:GetModule("Gargul"):GetState(plan)
+    if gargulState then
+        local label = gargulState == "current" and L["Gargul: loot priorities are up to date"]
+            or ("|cffffa040" .. L["Gargul: import the loot priorities"] .. "|r")
+        root:CreateButton(label, function() PlanWindow:ImportGargul() end)
+    end
+    -- Force sync: this plan and its active encounter for the raid (they confirm)
+    if plan and UTRM:GetModule("Sync"):CanSync() then
+        root:CreateButton(L["Force sync"], function()
+            PlanWindow:ShowResult(UTRM:GetModule("Sync"):ForceSync())
+        end)
+    end
+end
+
+-- A result for the status line, or for the chat while the window is hidden (an action from the minimap button)
+function PlanWindow:ShowResult(ok, message)
+    if not message then return end
+    if frame and frame:IsShown() then
+        self:Refresh(ok and message or ("|cffff4040" .. message .. "|r"))
+        self.noteMessage = message
+    else
+        UTRM:Print(ok and message or ("|cffff4040" .. message .. "|r"))
+    end
+end
+
 local function openOptionsMenu(owner)
     local plan = currentPlan()
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(plan and plan.event.title or L["Raid plan"])
-        root:CreateButton(L["Import raid plan..."], function() UTRM.ImportWindow:Open() end)
-        -- Gargul: only when the plan carries loot priorities and Gargul can be used
-        local gargulState = UTRM:GetModule("Gargul"):GetState(plan)
-        if gargulState then
-            local label = gargulState == "current" and L["Gargul: loot priorities are up to date"]
-                or ("|cffffa040" .. L["Gargul: import the loot priorities"] .. "|r")
-            root:CreateButton(label, function() PlanWindow:ImportGargul() end)
-        end
-        -- Force sync: this plan and its active encounter for every lead and assist (they confirm)
-        if plan and UTRM:GetModule("Sync"):CanSync() then
-            root:CreateButton(L["Force sync"], function()
-                local ok, message = UTRM:GetModule("Sync"):ForceSync()
-                PlanWindow:Refresh(ok and message or ("|cffff4040" .. message .. "|r"))
-            end)
-        end
+        PlanWindow:AddPlanActions(root)
         root:CreateCheckbox(L["Lock position"],
             function() return settings().locked end,
             function()

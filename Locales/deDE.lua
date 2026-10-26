@@ -111,3 +111,11 @@ L["Force sync sent: the others are asked to accept your raid plan."] = "Erzwunge
 L["%s wants to replace your raid plan with \"%s\" (Force sync). Accept?"] = "%s möchte deinen Raidplan durch „%s“ ersetzen (erzwungene Synchronisierung). Annehmen?"
 L["Force sync from %s declined: your raid plan is kept."] = "Erzwungene Synchronisierung von %s abgelehnt: Dein Raidplan bleibt."
 L["%s uses another version of the raid plan sync: update Unity Tools - Raid Management."] = "%s verwendet eine andere Version der Raidplan-Synchronisierung: Aktualisiere Unity Tools - Raid Management."
+
+L["Unity Tools - Raid Management"] = "Unity Tools - Raid Management"
+L["show or hide the minimap button"] = "zeigt oder verbirgt die Minikarten-Schaltfläche"
+L["Left-click: show or hide the raid plan window"] = "Linksklick: Raidplan-Fenster zeigen oder verbergen"
+L["Right-click: options"] = "Rechtsklick: Optionen"
+L["Raid note editor..."] = "Raid-Notiz-Editor..."
+L["Hide minimap button"] = "Minikarten-Schaltfläche verbergen"
+L["Minimap button hidden: /utrm minimap shows it again."] = "Minikarten-Schaltfläche verborgen: /utrm minimap zeigt sie wieder."

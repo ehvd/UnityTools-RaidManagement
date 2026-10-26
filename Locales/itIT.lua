@@ -111,3 +111,11 @@ L["Force sync sent: the others are asked to accept your raid plan."] = "Sincroni
 L["%s wants to replace your raid plan with \"%s\" (Force sync). Accept?"] = "%s vuole sostituire il tuo piano d'incursione con «%s» (sincronizzazione forzata). Accettare?"
 L["Force sync from %s declined: your raid plan is kept."] = "Sincronizzazione forzata da %s rifiutata: il tuo piano resta."
 L["%s uses another version of the raid plan sync: update Unity Tools - Raid Management."] = "%s usa un'altra versione della sincronizzazione del piano: aggiorna Unity Tools - Raid Management."
+
+L["Unity Tools - Raid Management"] = "Unity Tools - Raid Management"
+L["show or hide the minimap button"] = "mostra o nasconde il pulsante della minimappa"
+L["Left-click: show or hide the raid plan window"] = "Clic sinistro: mostra o nasconde la finestra del piano d'incursione"
+L["Right-click: options"] = "Clic destro: opzioni"
+L["Raid note editor..."] = "Editor della nota d'incursione..."
+L["Hide minimap button"] = "Nascondi il pulsante della minimappa"
+L["Minimap button hidden: /utrm minimap shows it again."] = "Pulsante della minimappa nascosto: /utrm minimap lo mostra di nuovo."
