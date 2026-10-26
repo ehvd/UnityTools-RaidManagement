@@ -27,12 +27,15 @@ local PREFIX = "UTRM"
 local STATE_DELAY = 2          -- seconds: several triggers in a row (joining, roster updates) send one state
 local REQUEST_COOLDOWN = 60    -- seconds before the same plan is requested again
 local SEND_COOLDOWN = 30       -- seconds before the same requester gets the plan again
-local ANSWER_COOLDOWN = 10     -- seconds before the same player is whispered our state again
+local GREET_DELAY = 3          -- seconds after a member joined before we greet them with our state
+local GREET_COOLDOWN = 10      -- seconds before the same member is greeted again
+local REPLY_GUARD = 1          -- seconds: a burst of their states gets one reply
 local IN_FLIGHT_TIMEOUT = 5    -- seconds after which a state that never reported leaving no longer blocks the next
 
 local wasInRaid, wasPromoted = false, false
 local members = {}             -- raid member names as of the last roster update
-local answered = {}            -- player -> GetTime() of the last state whispered to them
+local greeted = {}             -- player -> GetTime() of the last greeting whispered to them
+local replied = {}             -- player -> GetTime() of the last reply to a state they sent
 local requested = {}           -- plan id .. chosen time -> GetTime() of the request
 local sentTo = {}              -- requester -> GetTime() of the last plan sent
 local declined = {}            -- plan id .. chosen time -> true: force syncs this client declined (this session)
@@ -137,10 +140,14 @@ function Sync:QueueState()
 end
 
 -- Whispers our state to one player (a newcomer, or somebody whose plan is older), not too often
-function Sync:AnswerState(target)
-    local last = answered[target]
-    if last and GetTime() - last < ANSWER_COOLDOWN then return end
-    answered[target] = GetTime()
+-- Whispers our state to one player. A greeting (`reply` false) waits GREET_COOLDOWN before greeting them again;
+-- a reply to a state they sent only skips duplicates within REPLY_GUARD: their state proves their client is ready,
+-- so it must never be swallowed by an earlier greeting that arrived before they were in the raid.
+function Sync:AnswerState(target, reply)
+    local sent = reply and replied or greeted
+    local last = sent[target]
+    if last and GetTime() - last < (reply and REPLY_GUARD or GREET_COOLDOWN) then return end
+    sent[target] = GetTime()
     self:Transmit(stateMessage(), target, "ALERT")
 end
 
@@ -158,9 +165,10 @@ function Sync:OnState(sender, msg, trusted)
         if last and GetTime() - last < REQUEST_COOLDOWN then return end
         requested[key] = GetTime()
         self:Transmit({ t = "request", id = theirs.id }, sender)
-    elseif Rules.PlanWins(mine, theirs) then
-        -- Ours is the one to keep: tell the sender, so they ask for it (if we are a source)
-        if self:CanSync() then self:AnswerState(sender) end
+    elseif Rules.PlanWins(mine, theirs) or Rules.ActiveWins(mine, theirs) then
+        -- Ours is newer (the plan, or for the same plan the active encounter): tell the sender, so they ask for the
+        -- plan or follow the encounter (if we are a source). The side with the older data never answers back.
+        if self:CanSync() then self:AnswerState(sender, true) end
     elseif trusted and Rules.ActiveWins(theirs, mine) then
         for _, encounter in ipairs(plan.encounters) do
             if encounter.key == theirs.a then
@@ -305,10 +313,14 @@ function Sync:CheckRoster()
             if name then now[name] = true end
         end
     end
+    -- Greet newcomers a moment later: right at the roster update their client usually is not in the raid yet
+    -- and would drop the whisper (they also announce themselves, which gets a reply)
     if wasInRaid and promoted and currentPlan() then
         for name in pairs(now) do
             if not members[name] and Ambiguate(name, "none") ~= myName() then
-                self:AnswerState(name)
+                self:ScheduleTimer(function()
+                    if self:CanSync() and UnitInRaid(Ambiguate(name, "none")) then self:AnswerState(name) end
+                end, GREET_DELAY)
             end
         end
     end
