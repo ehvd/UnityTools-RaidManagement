@@ -20,5 +20,8 @@ Locales\itIT.lua
 Core.lua
 
 Modules\MRT.lua
+Modules\PlanCodec.lua
+Modules\PlanImport.lua
 
 UI\NoteEditor.lua
+UI\ImportWindow.lua

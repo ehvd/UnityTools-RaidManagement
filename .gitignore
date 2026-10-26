@@ -11,3 +11,6 @@ Thumbs.db
 # Local tooling
 .libs-tmp/
 local.mk
+
+# Test tooling (tests/: npm install)
+tests/node_modules/

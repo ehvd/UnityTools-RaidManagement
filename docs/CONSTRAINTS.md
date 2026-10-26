@@ -49,3 +49,13 @@ Treat these as internals that can change with an MRT update: every MRT access li
 `type(...)` checks, and the user gets a clear message instead of a Lua error when the shape is different.
 
 Source: `Interface/AddOns/MRT/Note.lua` (MRT 5335)
+
+## 5. Pasting long strings
+
+A raid plan export is up to ~60,000 characters. A multi-line edit box that holds that much text freezes the client
+while it lays the text out. The import window caps the edit box with `SetMaxBytes(2500)` and collects the paste in
+`OnChar`, which still fires for every pasted character, joining it on the next frame: the technique the import of
+WeakAuras uses. The edit box is an AceGUI widget from a pool shared with other addons, so the window removes its
+`OnChar` / `OnUpdate` scripts and the byte limit before releasing it.
+
+Source: `UI/ImportWindow.lua`; the format of the export: UnityWiki `docs/addon-export.md`

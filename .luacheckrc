@@ -6,6 +6,7 @@ self = false
 exclude_files = {
     "**/Libs/**",
     ".release/**",
+    "tests/node_modules/**",
 }
 
 -- Globals written by the addon (SavedVariables, slash commands, binding / XML referenced names)
@@ -13,6 +14,7 @@ globals = {
     "UnityToolsRaidManagement",
     "UnityToolsRaidManagementDB",
     "UnityToolsRaidManagementNoteFrame",
+    "UnityToolsRaidManagementImportFrame",
     "SlashCmdList",
     "StaticPopupDialogs",
     "UISpecialFrames",
@@ -39,7 +41,7 @@ read_globals = {
     "UTRM_LOCALE_OVERRIDE",
 
     -- Frames / UI
-    "UIParent", "GameTooltip", "PlaySound", "SOUNDKIT",
+    "UIParent", "GameTooltip", "PlaySound", "SOUNDKIT", "StaticPopup_Show", "YES", "NO",
 
     -- Game API
     "C_AddOns", "GetAddOnMetadata", "IsAddOnLoaded",

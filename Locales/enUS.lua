@@ -37,3 +37,22 @@ L["Raid note"] = true
 L["Note text. Method Raid Tools markup works: {rt1}, {spell:12345}, colours."] = true
 L["Send"] = true
 L["Reload from MRT"] = true
+
+-- Raid plan import
+L["import a raid plan from the UnityWiki raid planner"] = true
+L["Import raid plan"] = true
+L["Current plan"] = true
+L["Paste the string from Export for addon in the UnityWiki raid planner:"] = true
+L["Import"] = true
+L["%d characters pasted. Press Import."] = true
+L["Imported %s."] = true
+L["Replace the imported raid plan \"%s\" with \"%s\"?"] = true
+L["Paste the string from the raid planner's Export for addon first."] = true
+L["This is not a complete raid plan export (%s). Copy it again with Copy for addon."] = true
+L["This export uses protocol version %d, but this addon supports version %s. Update Unity Tools - Raid Management."] = true
+L["The raid plan export is damaged (%s). Export it again from the raid planner."] = true
+L["No raid plan imported yet."] = true
+L["%d encounters, %d named group layouts"] = true
+L["Gargul loot priorities included"] = true
+L["No Gargul loot priorities"] = true
+L["Exported %s, imported %s"] = true
