@@ -7,7 +7,9 @@ local L = UTRM.L
 local PlanWindow = UTRM:NewModule("PlanWindow", "AceEvent-3.0")
 UTRM.PlanWindow = PlanWindow
 
-local WIDTH, HEIGHT = 250, 74
+local WIDTH, HEIGHT = 230, 42
+local ROW = 18      -- height of the encounter row: the arrows are square
+local PADDING = 5
 local SCALES = { 0.8, 0.9, 1, 1.1, 1.25 }
 local TOOLTIP_NOTE_LINES = 12
 
@@ -74,8 +76,9 @@ local function openEncounterMenu(owner)
 end
 
 local function openOptionsMenu(owner)
+    local plan = currentPlan()
     MenuUtil.CreateContextMenu(owner, function(_, root)
-        root:CreateTitle(L["Raid plan"])
+        root:CreateTitle(plan and plan.event.title or L["Raid plan"])
         root:CreateButton(L["Import raid plan..."], function() UTRM.ImportWindow:Open() end)
         root:CreateCheckbox(L["Lock position"],
             function() return settings().locked end,
@@ -97,7 +100,7 @@ end
 
 local function arrowButton(direction)
     local button = CreateFrame("Button", nil, frame)
-    button:SetSize(26, 26)
+    button:SetSize(ROW, ROW)
     local path = "Interface\\Buttons\\UI-SpellbookIcon-" .. direction .. "Page-"
     button:SetNormalTexture(path .. "Up")
     button:SetPushedTexture(path .. "Down")
@@ -116,8 +119,11 @@ local function showEncounterTooltip(self)
     local plan = currentPlan()
     local encounter = plan and plan.encounters[PlanWindow:GetActiveIndex(plan) or 0]
     GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+    if plan then
+        GameTooltip:AddLine(plan.event.title)
+    end
     if encounter then
-        GameTooltip:AddLine(encounter.label)
+        GameTooltip:AddLine(encounter.label, 1, 1, 1)
         GameTooltip:AddLine(encounter.layout == "default" and L["The night's groups"]
             or format(L["Groups: %s"], encounter.layout), 0.6, 0.8, 1)
         local shown = 0
@@ -131,6 +137,7 @@ local function showEncounterTooltip(self)
         end
     end
     GameTooltip:AddLine(L["Click: choose the encounter"], 0.5, 0.5, 0.5)
+    GameTooltip:AddLine(L["Right-click: options"], 0.5, 0.5, 0.5)
     GameTooltip:Show()
 end
 
@@ -149,13 +156,15 @@ local function create()
     frame:SetMovable(true)
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart", function(self)
-        if not settings().locked then self:StartMoving() end
-    end)
-    frame:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
+    local function startMoving()
+        if not settings().locked then frame:StartMoving() end
+    end
+    local function stopMoving()
+        frame:StopMovingOrSizing()
         savePosition()
-    end)
+    end
+    frame:SetScript("OnDragStart", startMoving)
+    frame:SetScript("OnDragStop", stopMoving)
     frame:SetScript("OnMouseUp", function(self, button)
         if button == "RightButton" then openOptionsMenu(self) end
     end)
@@ -164,46 +173,48 @@ local function create()
     frame:SetPoint(s.point or "TOP", UIParent, s.relativePoint or "TOP", s.x or 0, s.y or -120)
     frame:SetScale(s.scale or 1)
 
-    frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    frame.title:SetPoint("TOPLEFT", 10, -8)
-    frame.title:SetPoint("TOPRIGHT", -26, -8)
-    frame.title:SetJustifyH("LEFT")
-    frame.title:SetWordWrap(false)
-
-    frame.close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-    frame.close:SetSize(22, 22)
-    frame.close:SetPoint("TOPRIGHT", 0, 0)
-    frame.close:SetScript("OnClick", function() PlanWindow:Hide() end)
-
+    -- Row 1: ◀ encounter ▶ (or Import when there is no plan)
     frame.prev = arrowButton("Prev")
-    frame.prev:SetPoint("LEFT", 6, -2)
+    frame.prev:SetPoint("TOPLEFT", PADDING, -PADDING)
     frame.prev:SetScript("OnClick", function() PlanWindow:Step(-1) end)
 
     frame.next = arrowButton("Next")
-    frame.next:SetPoint("RIGHT", -6, -2)
+    frame.next:SetPoint("TOPRIGHT", -PADDING, -PADDING)
     frame.next:SetScript("OnClick", function() PlanWindow:Step(1) end)
 
+    -- The encounter's name fills most of the bar, so it also moves the window and opens the options
     frame.encounter = CreateFrame("Button", nil, frame)
-    frame.encounter:SetPoint("LEFT", frame.prev, "RIGHT", 2, 0)
-    frame.encounter:SetPoint("RIGHT", frame.next, "LEFT", -2, 0)
-    frame.encounter:SetHeight(22)
+    frame.encounter:SetPoint("TOPLEFT", frame.prev, "TOPRIGHT", 2, 0)
+    frame.encounter:SetPoint("BOTTOMRIGHT", frame.next, "BOTTOMLEFT", -2, 0)
     frame.encounter:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-    frame.encounter.text = frame.encounter:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    frame.encounter:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    frame.encounter:RegisterForDrag("LeftButton")
+    frame.encounter.text = frame.encounter:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     frame.encounter.text:SetAllPoints()
     frame.encounter.text:SetWordWrap(false)
-    frame.encounter:SetScript("OnClick", openEncounterMenu)
+    frame.encounter:SetScript("OnClick", function(self, button)
+        if button == "RightButton" then
+            openOptionsMenu(self)
+        else
+            openEncounterMenu(self)
+        end
+    end)
+    frame.encounter:SetScript("OnDragStart", startMoving)
+    frame.encounter:SetScript("OnDragStop", stopMoving)
     frame.encounter:SetScript("OnEnter", showEncounterTooltip)
     frame.encounter:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     frame.import = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    frame.import:SetSize(120, 22)
-    frame.import:SetPoint("CENTER", 0, -2)
+    frame.import:SetSize(100, ROW)
+    frame.import:SetPoint("TOP", 0, -PADDING)
     frame.import:SetText(L["Import"])
     frame.import:SetScript("OnClick", function() UTRM.ImportWindow:Open() end)
 
+    -- Row 2: the result of the last action
     frame.status = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    frame.status:SetPoint("BOTTOMLEFT", 10, 8)
-    frame.status:SetPoint("BOTTOMRIGHT", -10, 8)
+    frame.status:SetPoint("BOTTOMLEFT", PADDING + 2, PADDING)
+    frame.status:SetPoint("BOTTOMRIGHT", -PADDING - 2, PADDING)
+    frame.status:SetTextColor(0.75, 0.75, 0.75)
     frame.status:SetWordWrap(false)
 end
 
@@ -215,7 +226,6 @@ function PlanWindow:Refresh(status)
     end
 
     if not plan then
-        frame.title:SetText(L["Raid plan"])
         frame.status:SetText(L["No raid plan imported yet."])
         frame.prev:Hide()
         frame.next:Hide()
@@ -224,7 +234,6 @@ function PlanWindow:Refresh(status)
         return
     end
 
-    frame.title:SetText(plan.event.title)
     frame.import:Hide()
     frame.prev:Show()
     frame.next:Show()
