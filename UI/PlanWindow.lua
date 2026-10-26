@@ -4,7 +4,7 @@ local L = UTRM.L
 -- Small window for the raid leader during the raid: pick the active encounter of the imported raid plan (previous,
 -- next, or the list behind the encounter's name), which sends its note to Method Raid Tools. Other modules follow
 -- the active encounter through the UTRM_ENCOUNTER_ACTIVATED message (encounter, its layout's 40 names).
-local PlanWindow = UTRM:NewModule("PlanWindow", "AceEvent-3.0")
+local PlanWindow = UTRM:NewModule("PlanWindow", "AceEvent-3.0", "AceTimer-3.0")
 UTRM.PlanWindow = PlanWindow
 
 -- Composition from the Figma wireframe (1 px = 1 UI pixel at 100% scale): three rows, 2 px gaps, 2 px between the
@@ -31,6 +31,7 @@ local MAX_WIDTH = 600
 local GRIP = 16                         -- the chat frame's size grabber
 
 local SCALES = { 0.8, 0.9, 1, 1.1, 1.25 }
+local SETTLE_SECONDS = 0.3              -- after the last click, the note, groups and sync go out
 local TOOLTIP_NOTE_LINES = 12
 
 local frame
@@ -58,7 +59,26 @@ function PlanWindow:Activate(index)
     local plan = currentPlan()
     local encounter = plan and plan.encounters[index]
     if not encounter then return end
-    plan.active = encounter.key
+    -- The time lets the sync pick the newest choice. Server time counts whole seconds, so a quicker click must still
+    -- be newer than the last one: otherwise the others would keep the previous encounter.
+    plan.active, plan.activeAt = encounter.key, math.max(GetServerTime(), (plan.activeAt or 0) + 0.001)
+
+    -- The window follows at once; the note, the groups and the sync go once the clicking stops, for the encounter
+    -- it stopped on. Clicking through ten encounters then sends one note instead of ten.
+    self.noteStatus, self.noteMessage, self.groupStatus, self.groupDetails = L["Sending..."], nil, nil, nil
+    self:Refresh()
+    if self.commitTimer then
+        self:CancelTimer(self.commitTimer)
+    end
+    self.commitTimer = self:ScheduleTimer("Commit", SETTLE_SECONDS)
+end
+
+-- Sends the active encounter's note, sorts its groups and tells the sync
+function PlanWindow:Commit()
+    self.commitTimer = nil
+    local plan = currentPlan()
+    local encounter = plan and plan.encounters[self:GetActiveIndex(plan) or 0]
+    if not encounter then return end
 
     -- The note, then the groups: the status line shows both in short, its tooltip the whole messages
     local ok, message = UTRM:GetModule("MRT"):Post(encounter.note)
@@ -216,6 +236,13 @@ local function openOptionsMenu(owner)
             local label = gargulState == "current" and L["Gargul: loot priorities are up to date"]
                 or ("|cffffa040" .. L["Gargul: import the loot priorities"] .. "|r")
             root:CreateButton(label, function() PlanWindow:ImportGargul() end)
+        end
+        -- Force sync: this plan and its active encounter for every lead and assist (they confirm)
+        if plan and UTRM:GetModule("Sync"):CanSync() then
+            root:CreateButton(L["Force sync"], function()
+                local ok, message = UTRM:GetModule("Sync"):ForceSync()
+                PlanWindow:Refresh(ok and message or ("|cffff4040" .. message .. "|r"))
+            end)
         end
         root:CreateCheckbox(L["Lock position"],
             function() return settings().locked end,

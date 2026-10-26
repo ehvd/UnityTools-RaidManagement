@@ -69,6 +69,7 @@ L["The plan has no encounters."] = true
 L["The night's groups"] = true
 L["Groups: %s"] = true
 L["This encounter has no note: the MRT note was cleared."] = true
+L["Sending..."] = true
 L["Note sent"] = true
 L["Note cleared"] = true
 L["Note not sent"] = true
@@ -125,3 +126,14 @@ L["This client cannot change the loot method from an addon."] = true
 L["Master Loot set: you are the master looter."] = true
 L["Only the raid leader or an assistant can invite."] = true
 L["Invited %d players: %s"] = true
+
+-- Sync
+L["Force sync"] = true
+L["Synced from %s"] = true
+L["%s chose %s"] = true
+L["Raid plan %s synced from %s."] = true
+L["Only the raid leader or an assistant can sync, in a raid."] = true
+L["Force sync sent: the others are asked to accept your raid plan."] = true
+L["%s wants to replace your raid plan with \"%s\" (Force sync). Accept?"] = true
+L["Force sync from %s declined: your raid plan is kept."] = true
+L["%s uses another version of the raid plan sync: update Unity Tools - Raid Management."] = true

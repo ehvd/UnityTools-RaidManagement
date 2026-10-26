@@ -46,6 +46,22 @@ function MRT:SendNote(text)
     return true
 end
 
+-- Sets this client's MRT note without sending it to anybody (the sync brought a newer active encounter, after
+-- joining or reloading for example). frame:SetTo() without a draft keeps VMRT.Note.Text1 and redraws MRT's note
+-- windows and options. Returns true when the note was set.
+function MRT:SetLocalNote(text)
+    local note = self:GetNoteModule()
+    if not note or type(note.frame.SetTo) ~= "function" then return false end
+    if VMRT.Note.Text1 == text then return true end
+    VMRT.Note.Text1 = text
+    local ok, err = pcall(note.frame.SetTo, note.frame)
+    if not ok then
+        geterrorhandler()(err)
+        return false
+    end
+    return true
+end
+
 -- Returns MRT's raid groups module, or nil and the reason why it cannot be used.
 function MRT:GetRaidGroupsModule()
     if not isAddOnLoaded("MRT") then

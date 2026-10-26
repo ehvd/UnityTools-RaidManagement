@@ -43,6 +43,9 @@ source (`Note.lua`):
 - `GMRT.F:GetNote()` strips colour codes (it passes `GMRT.F` as `removeColors`), so the editor reads
   `VMRT.Note.Text1` directly to keep the markup.
 - Receivers with "only from promoted players" enabled ignore notes from senders who are not raid leader / assistant.
+- A local note without sending: set `VMRT.Note.Text1`, then `GMRT.A.Note.frame:SetTo()` without a draft id keeps the
+  text, redraws MRT's note windows and options, and sends nothing. The sync uses it (`MRT:SetLocalNote`) when it
+  brings a plan or a newer active encounter, so somebody who joined after the note was sent still gets it.
 - Raid groups: `GMRT.A.RaidGroups:ApplyGroups(list)` (`RaidGroups.lua`) takes 40 names in raid-groups order (group 1
   slots 1-5, group 2 ...), the same order the UnityWiki export uses. It does nothing outside a raid, refuses (with
   its own chat error) while any raid member is in combat, matches names exactly (only a realm suffix is stripped),
@@ -85,3 +88,28 @@ WeakAuras uses. The edit box is an AceGUI widget from a pool shared with other a
 `OnChar` / `OnUpdate` scripts and the byte limit before releasing it.
 
 Source: `UI/ImportWindow.lua`; the format of the export: UnityWiki `docs/addon-export.md`
+
+## 7. Raid plan sync
+
+`Modules/Sync.lua` talks over AceComm (prefix `UTRM`): small `state` messages to the raid (and by whisper to a member
+who just joined, or to somebody whose plan is older), the plan itself only by whisper to a client that asked for it.
+Addon messages are throttled per prefix (section 3), so a full night's plan (serialized, deflated with LibDeflate and
+encoded for the addon channel) takes a while to arrive; ChatThrottleLib queues it at BULK priority so it never delays
+other addons' traffic.
+
+Trust: only the raid leader and assistants are sources, checked for every message (`UnitIsGroupLeader` /
+`UnitIsGroupAssistant` on the sender's name), because a plan can change notes and move people. Plans, force syncs and
+active encounters are accepted only from them, and only they answer requests. Every raid member receives; a member's
+own state only lets a source know it should answer.
+
+ChatThrottleLib shares one bandwidth budget between all addons and also counts what other addons send (MRT's note
+is several messages), so a burst of quick encounter choices used to queue stale states behind each other. Now the
+plan window waits until the clicking stops (0.3 s) before it sends the note, sorts the groups and syncs, for the
+encounter it stopped on only. States go at ALERT priority with at most one on its way: a newer choice meanwhile is
+sent once the previous state has left.
+
+Times are server time (`GetServerTime`, whole seconds) so every client compares the same clock. The active encounter's
+time is made at least a millisecond newer than the previous choice, so quick clicks within one second still count
+as newer. Which copy wins is `Modules/SyncRules.lua` (tested in `tests/sync-rules.test.mjs`).
+
+Source: <https://warcraft.wiki.gg/wiki/API_C_ChatInfo.SendAddonMessage>, AceComm-3.0

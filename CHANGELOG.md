@@ -21,5 +21,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - Raid readiness icon in the raid plan window: Master Loot on, Method Raid Tools loaded, Gargul has the plan's loot
   priorities, the planned players are in the raid and in their groups; its tooltip lists every check, and a click
   offers the fixes (set Master Loot, import into Gargul, invite the missing players, sort the groups)
+- Raid plan sync from the raid leader and assistants: the most recently chosen plan and the active encounter
+  reach everybody in the raid (only lead and assists are sources); Force sync (options) sends yours to all, each
+  recipient confirms
 
 [Unreleased]: https://github.com/ehvd/UnityTools-RaidManagement/commits/develop
