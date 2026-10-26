@@ -14,5 +14,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - Import the night's raid plan exported from the UnityWiki raid planner (`/utrm import`, protocol 1)
 - Raid plan window (`/utrm plan`): pick the active encounter (previous, next or from the list) to send its note to
   Method Raid Tools; movable, resizable in width, lockable and scalable from its options button
+- Activating an encounter also sorts the raid into its planned groups (with Method Raid Tools' sorter); the status
+  line says when they match and its tooltip names who is missing or not in the plan
 
 [Unreleased]: https://github.com/ehvd/UnityTools-RaidManagement/commits/develop

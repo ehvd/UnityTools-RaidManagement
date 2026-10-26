@@ -43,6 +43,14 @@ source (`Note.lua`):
 - `GMRT.F:GetNote()` strips colour codes (it passes `GMRT.F` as `removeColors`), so the editor reads
   `VMRT.Note.Text1` directly to keep the markup.
 - Receivers with "only from promoted players" enabled ignore notes from senders who are not raid leader / assistant.
+- Raid groups: `GMRT.A.RaidGroups:ApplyGroups(list)` (`RaidGroups.lua`) takes 40 names in raid-groups order (group 1
+  slots 1-5, group 2 ...), the same order the UnityWiki export uses. It does nothing outside a raid, refuses (with
+  its own chat error) while any raid member is in combat, matches names exactly (only a realm suffix is stripped),
+  and moves people with `SetRaidSubgroup` / `SwapRaidSubgroup` over several `GROUP_ROSTER_UPDATE`s, swapping
+  unplanned members aside when a group is full. In Classic it ignores positions inside a group unless its "keep
+  position in group" option is on. `Modules/RaidGroups.lua` therefore checks raid / lead or assist / combat itself,
+  passes the raid's own spelling of each planned name (matched case-insensitively, realm ignored:
+  `Modules/GroupPlan.lua`), and watches the roster until the groups match or 15 s pass.
 - Callbacks `Note_SendText`, `Note_ReceivedText` and `Note_UpdateText` fire through MRT's callback system.
 
 Treat these as internals that can change with an MRT update: every MRT access lives in `Modules/MRT.lua`, guarded with

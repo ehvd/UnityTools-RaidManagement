@@ -55,12 +55,52 @@ function PlanWindow:Activate(index)
     if not encounter then return end
     plan.active = encounter.key
 
+    -- The note, then the groups: the status line shows both in short, its tooltip the whole messages
     local ok, message = UTRM:GetModule("MRT"):Post(encounter.note)
-    if ok and encounter.note == "" then
-        message = L["This encounter has no note: the MRT note was cleared."]
+    local short
+    if not ok then
+        short = "|cffff4040" .. L["Note not sent"] .. "|r"
+    elseif encounter.note == "" then
+        short, message = L["Note cleared"], L["This encounter has no note: the MRT note was cleared."]
+    elseif UTRM:GetModule("MRT"):CanSendToRaid() then
+        short = L["Note sent"]
+    else
+        short = "|cffffa040" .. L["Note sent, not as lead or assist"] .. "|r"
     end
+    self.noteStatus, self.noteMessage = short, message
+    self.groupStatus, self.groupDetails = nil, nil
+    self:Refresh()
+    UTRM:GetModule("RaidGroups"):Apply(plan.layouts[encounter.layout])
     self:SendMessage("UTRM_ENCOUNTER_ACTIVATED", encounter, plan.layouts[encounter.layout])
-    self:Refresh(ok and message or ("|cffff4040" .. message .. "|r"))
+end
+
+-- The raid groups' part of the status line (Modules/RaidGroups.lua), with tooltip lines naming the players
+function PlanWindow:SetGroupStatus(text, details)
+    self.groupStatus, self.groupDetails = text, details
+    self:RenderStatus()
+end
+
+function PlanWindow:RenderStatus()
+    if not frame then return end
+    local parts = {}
+    if self.noteStatus then parts[#parts + 1] = self.noteStatus end
+    if self.groupStatus then parts[#parts + 1] = self.groupStatus end
+    frame.status:SetText(table.concat(parts, "  ·  "))
+end
+
+local function showStatusTooltip(self)
+    if not PlanWindow.noteMessage and not PlanWindow.groupStatus then return end
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+    if PlanWindow.noteMessage then
+        GameTooltip:AddLine(PlanWindow.noteMessage, 1, 1, 1, true)
+    end
+    if PlanWindow.groupStatus then
+        GameTooltip:AddLine(PlanWindow.groupStatus, 1, 1, 1, true)
+        for _, line in ipairs(PlanWindow.groupDetails or {}) do
+            GameTooltip:AddLine(line, 0.75, 0.75, 0.75, true)
+        end
+    end
+    GameTooltip:Show()
 end
 
 function PlanWindow:Step(by)
@@ -319,14 +359,22 @@ local function create()
     frame.status:SetHeight(TEXT_ROW)
     frame.status:SetTextColor(0.75, 0.75, 0.75)
     frame.status:SetWordWrap(false)
+    -- Hover: the whole messages, and who is missing or not in the plan
+    frame.statusHover = CreateFrame("Frame", nil, frame)
+    frame.statusHover:SetAllPoints(frame.status)
+    frame.statusHover:SetScript("OnEnter", showStatusTooltip)
+    frame.statusHover:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
 function PlanWindow:Refresh(status)
     if not frame then return end
     local plan = currentPlan()
     if status then
-        frame.status:SetText(status)
+        -- A new status replaces both parts ("" clears the line, after an import for example)
+        self.noteStatus = status ~= "" and status or nil
+        self.noteMessage, self.groupStatus, self.groupDetails = nil, nil, nil
     end
+    self:RenderStatus()
 
     if not plan then
         frame.title:SetText(L["Raid plan"])
