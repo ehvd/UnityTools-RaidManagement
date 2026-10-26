@@ -7,10 +7,22 @@ local L = UTRM.L
 local PlanWindow = UTRM:NewModule("PlanWindow", "AceEvent-3.0")
 UTRM.PlanWindow = PlanWindow
 
-local WIDTH, HEIGHT = 230, 58
-local TITLE = 16    -- height of the title row (event title and close button)
-local ROW = 18      -- height of the encounter row: the arrows are square
-local PADDING = 5
+-- Layout from the Figma wireframe (1 px = 1 UI pixel at 100% scale): three rows inside a 4 px inset,
+-- 16 px square buttons with 2 px gaps.
+local WIDTH, HEIGHT = 180, 58
+local INSET = 4
+local BUTTON = 16
+local GAP = 2
+local ROW1, ROW2, ROW3 = 4, 22, 39     -- top of the title row, the encounter row and the status line
+
+local WHITE8 = "Interface\\Buttons\\WHITE8x8"
+local SQUARE = { bgFile = WHITE8, edgeFile = WHITE8, edgeSize = 1 }
+local BUTTON_FILL = { 0.35, 0.04, 0.04 }          -- #5a0b0b
+local BUTTON_EDGE = { 0.54, 0.43, 0.17 }          -- #8a6d2a
+local SYMBOL = { 1, 0.82, 0 }                     -- #ffd100
+local BOX_FILL = { 0.2, 0.2, 0.21 }               -- #323236
+local BOX_EDGE = { 0.62, 0.62, 0.66 }             -- #9e9ea8
+
 local SCALES = { 0.8, 0.9, 1, 1.1, 1.25 }
 local TOOLTIP_NOTE_LINES = 12
 
@@ -99,15 +111,64 @@ end
 
 ------------------------------------------------------------------------------------------------ the frame ---
 
-local function arrowButton(direction)
-    local button = CreateFrame("Button", nil, frame)
-    button:SetSize(ROW, ROW)
-    local path = "Interface\\Buttons\\UI-SpellbookIcon-" .. direction .. "Page-"
-    button:SetNormalTexture(path .. "Up")
-    button:SetPushedTexture(path .. "Down")
-    button:SetDisabledTexture(path .. "Disabled")
-    button:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+-- A flat square button (red fill, gold edge) like the others in the window; the symbol goes on top
+local function squareButton(width)
+    local button = CreateFrame("Button", nil, frame, "BackdropTemplate")
+    button:SetSize(width or BUTTON, BUTTON)
+    button:SetBackdrop(SQUARE)
+    button:SetBackdropColor(unpack(BUTTON_FILL))
+    button:SetBackdropBorderColor(unpack(BUTTON_EDGE))
+    local highlight = button:CreateTexture(nil, "HIGHLIGHT")
+    highlight:SetPoint("TOPLEFT", 1, -1)
+    highlight:SetPoint("BOTTOMRIGHT", -1, 1)
+    highlight:SetColorTexture(1, 1, 1, 0.15)
     return button
+end
+
+-- ◀ ▶ ▼: the gold arrow of Blizzard's dropdown menus, pointing right; flipped or turned for the others
+local function arrowButton(direction)
+    local button = squareButton()
+    local arrow = button:CreateTexture(nil, "ARTWORK")
+    arrow:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+    arrow:SetSize(12, 12)
+    arrow:SetPoint("CENTER")
+    if direction == "left" then
+        arrow:SetTexCoord(1, 0, 0, 1)
+    elseif direction == "down" then
+        arrow:SetRotation(-math.pi / 2)
+    end
+    button.symbol = arrow
+    return button
+end
+
+-- ×: two gold lines
+local function closeButton()
+    local button = squareButton()
+    for _, angle in ipairs({ math.pi / 4, -math.pi / 4 }) do
+        local line = button:CreateTexture(nil, "ARTWORK")
+        line:SetColorTexture(unpack(SYMBOL))
+        line:SetSize(10, 2)
+        line:SetPoint("CENTER")
+        line:SetRotation(angle)
+    end
+    return button
+end
+
+-- Blizzard's options cogwheel, tinted gold
+local function settingsButton()
+    local button = squareButton()
+    local cog = button:CreateTexture(nil, "ARTWORK")
+    cog:SetTexture("Interface\\Buttons\\UI-OptionsButton")
+    cog:SetSize(12, 12)
+    cog:SetPoint("CENTER")
+    cog:SetVertexColor(unpack(SYMBOL))
+    return button
+end
+
+local function setEnabled(button, enabled)
+    button:SetEnabled(enabled)
+    button:SetAlpha(enabled and 1 or 0.4)
+    if button.symbol then button.symbol:SetDesaturated(not enabled) end
 end
 
 local function savePosition()
@@ -153,6 +214,7 @@ local function create()
         insets = { left = 4, right = 4, top = 4, bottom = 4 },
     })
     frame:SetBackdropColor(0, 0, 0, 0.85)
+    frame:SetBackdropBorderColor(unpack(BOX_EDGE))
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -174,36 +236,53 @@ local function create()
     frame:SetPoint(s.point or "TOP", UIParent, s.relativePoint or "TOP", s.x or 0, s.y or -120)
     frame:SetScale(s.scale or 1)
 
-    -- Row 1: the event's title and a close button
-    frame.close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-    frame.close:SetSize(TITLE + 4, TITLE + 4)
-    frame.close:SetPoint("TOPRIGHT", -1, -1)
+    -- Row 1: the event's title, settings and close
+    frame.close = closeButton()
+    frame.close:SetPoint("TOPRIGHT", -INSET, -ROW1)
     frame.close:SetScript("OnClick", function() PlanWindow:Hide() end)
 
+    frame.settings = settingsButton()
+    frame.settings:SetPoint("TOPRIGHT", frame.close, "TOPLEFT", -GAP, 0)
+    frame.settings:SetScript("OnClick", function(self) openOptionsMenu(self) end)
+
     frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    frame.title:SetPoint("TOPLEFT", PADDING + 3, -PADDING - 1)
-    frame.title:SetPoint("TOPRIGHT", frame.close, "TOPLEFT", -2, -PADDING)
+    frame.title:SetPoint("TOPLEFT", INSET, -ROW1)
+    frame.title:SetPoint("TOPRIGHT", frame.settings, "TOPLEFT", -GAP, 0)
+    frame.title:SetHeight(BUTTON)
     frame.title:SetJustifyH("LEFT")
     frame.title:SetWordWrap(false)
 
-    -- Row 2: ◀ encounter ▶ (or Import when there is no plan)
-    frame.prev = arrowButton("Prev")
-    frame.prev:SetPoint("TOPLEFT", PADDING, -PADDING - TITLE)
+    -- Row 2: ◀ [encounter] ▼ ▶ (or Import when there is no plan)
+    frame.prev = arrowButton("left")
+    frame.prev:SetPoint("TOPLEFT", INSET, -ROW2)
     frame.prev:SetScript("OnClick", function() PlanWindow:Step(-1) end)
 
-    frame.next = arrowButton("Next")
-    frame.next:SetPoint("TOPRIGHT", -PADDING, -PADDING - TITLE)
+    frame.next = arrowButton("right")
+    frame.next:SetPoint("TOPRIGHT", -INSET, -ROW2)
     frame.next:SetScript("OnClick", function() PlanWindow:Step(1) end)
 
-    -- The encounter's name fills most of the bar, so it also moves the window and opens the options
-    frame.encounter = CreateFrame("Button", nil, frame)
-    frame.encounter:SetPoint("TOPLEFT", frame.prev, "TOPRIGHT", 2, 0)
-    frame.encounter:SetPoint("BOTTOMRIGHT", frame.next, "BOTTOMLEFT", -2, 0)
-    frame.encounter:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+    frame.dropdown = arrowButton("down")
+    frame.dropdown:SetPoint("TOPRIGHT", frame.next, "TOPLEFT", -GAP, 0)
+    frame.dropdown:SetScript("OnClick", function() openEncounterMenu(frame.encounter) end)
+
+    -- The encounter box fills most of the bar, so it also moves the window and opens the options
+    frame.encounter = CreateFrame("Button", nil, frame, "BackdropTemplate")
+    frame.encounter:SetPoint("TOPLEFT", frame.prev, "TOPRIGHT", GAP, 0)
+    frame.encounter:SetPoint("BOTTOMRIGHT", frame.dropdown, "BOTTOMLEFT", -GAP, 0)
+    frame.encounter:SetBackdrop(SQUARE)
+    frame.encounter:SetBackdropColor(unpack(BOX_FILL))
+    frame.encounter:SetBackdropBorderColor(unpack(BOX_EDGE))
+    local boxHighlight = frame.encounter:CreateTexture(nil, "HIGHLIGHT")
+    boxHighlight:SetPoint("TOPLEFT", 1, -1)
+    boxHighlight:SetPoint("BOTTOMRIGHT", -1, 1)
+    boxHighlight:SetColorTexture(1, 1, 1, 0.08)
     frame.encounter:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     frame.encounter:RegisterForDrag("LeftButton")
     frame.encounter.text = frame.encounter:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    frame.encounter.text:SetAllPoints()
+    local font, size = frame.encounter.text:GetFont()
+    frame.encounter.text:SetFont(font, size, "OUTLINE")
+    frame.encounter.text:SetPoint("TOPLEFT", 3, 0)
+    frame.encounter.text:SetPoint("BOTTOMRIGHT", -3, 0)
     frame.encounter.text:SetWordWrap(false)
     frame.encounter:SetScript("OnClick", function(self, button)
         if button == "RightButton" then
@@ -217,16 +296,18 @@ local function create()
     frame.encounter:SetScript("OnEnter", showEncounterTooltip)
     frame.encounter:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-    frame.import = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    frame.import:SetSize(100, ROW)
-    frame.import:SetPoint("TOP", 0, -PADDING - TITLE)
-    frame.import:SetText(L["Import"])
+    frame.import = squareButton(100)
+    frame.import:SetPoint("TOP", 0, -ROW2)
+    frame.import.text = frame.import:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    frame.import.text:SetAllPoints()
+    frame.import.text:SetText(L["Import"])
     frame.import:SetScript("OnClick", function() UTRM.ImportWindow:Open() end)
 
     -- Row 3: the result of the last action
     frame.status = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    frame.status:SetPoint("BOTTOMLEFT", PADDING + 2, PADDING)
-    frame.status:SetPoint("BOTTOMRIGHT", -PADDING - 2, PADDING)
+    frame.status:SetPoint("TOPLEFT", INSET + 1, -ROW3)
+    frame.status:SetPoint("TOPRIGHT", -INSET - 3, -ROW3)
+    frame.status:SetHeight(BUTTON)
     frame.status:SetTextColor(0.75, 0.75, 0.75)
     frame.status:SetWordWrap(false)
 end
@@ -243,6 +324,7 @@ function PlanWindow:Refresh(status)
         frame.status:SetText(L["No raid plan imported yet."])
         frame.prev:Hide()
         frame.next:Hide()
+        frame.dropdown:Hide()
         frame.encounter:Hide()
         frame.import:Show()
         return
@@ -252,6 +334,7 @@ function PlanWindow:Refresh(status)
     frame.import:Hide()
     frame.prev:Show()
     frame.next:Show()
+    frame.dropdown:Show()
     frame.encounter:Show()
     local index, count = self:GetActiveIndex(plan), #plan.encounters
     if index then
@@ -259,8 +342,9 @@ function PlanWindow:Refresh(status)
     else
         frame.encounter.text:SetText(count > 0 and L["Choose the encounter"] or L["The plan has no encounters."])
     end
-    frame.prev:SetEnabled(index ~= nil and index > 1)
-    frame.next:SetEnabled(count > 0 and (index or 0) < count)
+    setEnabled(frame.prev, index ~= nil and index > 1)
+    setEnabled(frame.next, count > 0 and (index or 0) < count)
+    setEnabled(frame.dropdown, count > 0)
 end
 
 function PlanWindow:Show()
