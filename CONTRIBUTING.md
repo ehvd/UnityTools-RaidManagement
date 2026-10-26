@@ -52,7 +52,7 @@ optional scope, e.g. `feat(notes): post a note to Method Raid Tools`. PRs are sq
 3. Fast-forward `main` to the merged `develop` commit and tag `vx.y.z`; the Release workflow uploads the file to CurseForge and GitHub.
 4. Review `docs/curseforge.md` (the CurseForge project description) in the release PR. CurseForge has no API to edit a description, so it cannot be published automatically.
 5. For full releases the workflow attaches the description as `curseforge-description.md` to the GitHub release and prints it in the job summary. If `docs/curseforge.md` changed since the previous release it opens an issue assigned to the repository owner (older open reminders are closed as superseded).
-6. Paste it into the [project description editor on CurseForge](https://authors.curseforge.com/#/projects/CF_PROJECT_ID/description): run `make description` (clipboard) or copy it from the issue, then close the issue.
+6. Paste it into the [project description editor on CurseForge](https://authors.curseforge.com/#/projects/1766854/description): run `make description` (clipboard) or copy it from the issue, then close the issue.
 
 ## In-game testing
 

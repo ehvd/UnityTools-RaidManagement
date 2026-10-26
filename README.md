@@ -6,7 +6,7 @@ World of Warcraft **Classic Era** addon (Interface `11509`).
 
 ## Install
 
-Download it from the
+Download it from [CurseForge](https://www.curseforge.com/wow/addons/unity-tools-raid-management) or the
 [GitHub releases](https://github.com/ehvd/UnityTools-RaidManagement/releases).
 
 ## Development
