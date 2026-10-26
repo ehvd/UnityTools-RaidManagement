@@ -7,14 +7,19 @@ local L = UTRM.L
 local PlanWindow = UTRM:NewModule("PlanWindow", "AceEvent-3.0")
 UTRM.PlanWindow = PlanWindow
 
--- Sizes and positions come from the Figma wireframe (1 px = 1 UI pixel at 100% scale): three rows inside a 4 px
--- inset, 16 px square buttons with 2 px gaps. The look is Blizzard's own art and templates; the wireframe is not a
--- style reference.
-local WIDTH, HEIGHT = 180, 58
-local INSET = 4
+-- Sizes and positions follow the Figma wireframe (1 px = 1 UI pixel at 100% scale): three rows, 16 px buttons, 2 px
+-- gaps, 2 px between the border and the content. The look is Blizzard's own art and templates; where a native control
+-- needs more room than the wireframe (the dropdown is 26 px tall) the native size wins.
+local BORDER = 4                        -- the tooltip backdrop's border (its insets)
+local INSET = BORDER + 2
 local BUTTON = 16
 local GAP = 2
-local ROW1, ROW2, ROW3 = 4, 22, 39     -- top of the title row, the encounter row and the status line
+local DROPDOWN = 26                     -- the height AceGUI gives UIDropDownMenuTemplate without a label
+local ARROW_WIDTH = 18                  -- UIPanelScrollUp/DownButtonTemplate are 18×16
+local ROW1 = INSET                      -- title, settings, close
+local ROW2 = ROW1 + BUTTON + GAP        -- ◀ [encounter ▼] ▶
+local ROW3 = ROW2 + DROPDOWN + GAP      -- status line
+local WIDTH, HEIGHT = 172 + 2 * INSET, ROW3 + BUTTON + INSET
 
 local SCALES = { 0.8, 0.9, 1, 1.1, 1.25 }
 local TOOLTIP_NOTE_LINES = 12
@@ -122,16 +127,14 @@ local function artButton(path, highlight, crop)
     return button
 end
 
--- ◀ ▶: the spell book's page buttons
-local function pageButton(direction)
-    return artButton("Interface\\Buttons\\UI-SpellbookIcon-" .. direction .. "Page-",
-        "Interface\\Buttons\\UI-Common-MouseHilight", 0.1)
-end
-
--- ▼: the button of Blizzard's dropdowns
-local function dropdownButton()
-    return artButton("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-",
-        "Interface\\Buttons\\UI-Common-MouseHilight", 0)
+-- ◀ ▶: the buttons of Blizzard's scroll bars, turned a quarter (the up arrow points left, the down arrow right)
+local function scrollArrowButton(template)
+    local button = CreateFrame("Button", nil, frame, template)
+    for _, texture in ipairs({ button:GetNormalTexture(), button:GetPushedTexture(),
+            button:GetDisabledTexture(), button:GetHighlightTexture() }) do
+        texture:SetRotation(math.pi / 2)
+    end
+    return button
 end
 
 -- ×: the art of UIPanelCloseButton, cropped to the red square (the crop Details uses for the same texture)
@@ -161,27 +164,37 @@ local function settingsButton()
     return button
 end
 
--- The border of Blizzard's input boxes (InputBoxTemplate): two end caps and a stretched middle
-local INPUT_BORDER = "Interface\\Common\\Common-Input-Border"
-local function inputBorder(owner)
-    local capWidth = 6   -- 10×25 in InputBoxTemplate, scaled to the 16 px row
-    local left = owner:CreateTexture(nil, "BACKGROUND")
-    left:SetTexture(INPUT_BORDER)
-    left:SetTexCoord(0, 0.0625, 0, 0.625)
-    left:SetPoint("TOPLEFT")
-    left:SetPoint("BOTTOMLEFT")
-    left:SetWidth(capWidth)
-    local right = owner:CreateTexture(nil, "BACKGROUND")
-    right:SetTexture(INPUT_BORDER)
-    right:SetTexCoord(0.9375, 1, 0, 0.625)
-    right:SetPoint("TOPRIGHT")
-    right:SetPoint("BOTTOMRIGHT")
-    right:SetWidth(capWidth)
-    local middle = owner:CreateTexture(nil, "BACKGROUND")
-    middle:SetTexture(INPUT_BORDER)
-    middle:SetTexCoord(0.0625, 0.9375, 0, 0.625)
-    middle:SetPoint("TOPLEFT", left, "TOPRIGHT")
-    middle:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT")
+-- The encounter box: a Blizzard dropdown (UIDropDownMenuTemplate) set up the way AceGUI's Dropdown widget does it,
+-- so it looks like the dropdowns of AceGUI windows (Guild Recruitment Buddy's for example). `holder` is the visible
+-- box; the template's art has transparent margins, so the template frame reaches 15 px left and 17 px right of it.
+-- Only the look and the ▼ button are used: the list itself is our MenuUtil menu.
+local function encounterDropdown(holder)
+    local dropdown = CreateFrame("Frame", "UnityToolsRaidManagementEncounterDropDown", holder, "UIDropDownMenuTemplate")
+    dropdown:ClearAllPoints()
+    dropdown:SetPoint("TOPLEFT", holder, "TOPLEFT", -15, 0)
+    dropdown:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", 17, 0)
+    dropdown:SetScript("OnHide", nil)
+
+    local name = dropdown:GetName()
+    local left, middle, right = _G[name .. "Left"], _G[name .. "Middle"], _G[name .. "Right"]
+    middle:ClearAllPoints()
+    right:ClearAllPoints()
+    middle:SetPoint("LEFT", left, "RIGHT", 0, 0)
+    middle:SetPoint("RIGHT", right, "LEFT", 0, 0)
+    right:SetPoint("TOPRIGHT", dropdown, "TOPRIGHT", 0, 17)
+
+    local text = _G[name .. "Text"]
+    text:ClearAllPoints()
+    text:SetPoint("RIGHT", right, "RIGHT", -43, 2)
+    text:SetPoint("LEFT", left, "LEFT", 25, 2)
+
+    holder.text = text
+    holder.button = _G[name .. "Button"]
+    -- Blizzard's own menu must not open: clicks are handled by PlanWindow (OnClick is replaced there)
+    holder.button:SetScript("OnMouseDown", nil)
+    -- Clicking anywhere on the box works like its ▼, as in AceGUI
+    holder.cover = CreateFrame("Button", nil, holder)
+    holder.cover:SetAllPoints(holder)
 end
 
 local function savePosition()
@@ -264,51 +277,47 @@ local function create()
     frame.title:SetJustifyH("LEFT")
     frame.title:SetWordWrap(false)
 
-    -- Row 2: ◀ [encounter] ▼ ▶ (or Import when there is no plan)
-    frame.prev = pageButton("Prev")
-    frame.prev:SetPoint("TOPLEFT", INSET, -ROW2)
+    -- Row 2: ◀ [encounter ▼] ▶ (or Import when there is no plan); the arrows are centred on the dropdown
+    local rowMiddle = -(ROW2 + DROPDOWN / 2)
+    frame.prev = scrollArrowButton("UIPanelScrollUpButtonTemplate")
+    frame.prev:SetPoint("LEFT", frame, "TOPLEFT", INSET, rowMiddle)
     frame.prev:SetScript("OnClick", function() PlanWindow:Step(-1) end)
 
-    frame.next = pageButton("Next")
-    frame.next:SetPoint("TOPRIGHT", -INSET, -ROW2)
+    frame.next = scrollArrowButton("UIPanelScrollDownButtonTemplate")
+    frame.next:SetPoint("RIGHT", frame, "TOPRIGHT", -INSET, rowMiddle)
     frame.next:SetScript("OnClick", function() PlanWindow:Step(1) end)
 
-    frame.dropdown = dropdownButton()
-    frame.dropdown:SetPoint("TOPRIGHT", frame.next, "TOPLEFT", -GAP, 0)
-    frame.dropdown:SetScript("OnClick", function() openEncounterMenu(frame.encounter) end)
-
     -- The encounter box fills most of the bar, so it also moves the window and opens the options
-    frame.encounter = CreateFrame("Button", nil, frame)
-    frame.encounter:SetPoint("TOPLEFT", frame.prev, "TOPRIGHT", GAP, 0)
-    frame.encounter:SetPoint("BOTTOMRIGHT", frame.dropdown, "BOTTOMLEFT", -GAP, 0)
-    inputBorder(frame.encounter)
-    frame.encounter:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-    frame.encounter:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    frame.encounter:RegisterForDrag("LeftButton")
-    frame.encounter.text = frame.encounter:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    frame.encounter.text:SetPoint("TOPLEFT", 4, 0)
-    frame.encounter.text:SetPoint("BOTTOMRIGHT", -4, 0)
-    frame.encounter.text:SetWordWrap(false)
-    frame.encounter:SetScript("OnClick", function(self, button)
+    frame.encounter = CreateFrame("Frame", nil, frame)
+    frame.encounter:SetPoint("TOPLEFT", INSET + ARROW_WIDTH + GAP, -ROW2)
+    frame.encounter:SetPoint("TOPRIGHT", -INSET - ARROW_WIDTH - GAP, -ROW2)
+    frame.encounter:SetHeight(DROPDOWN)
+    encounterDropdown(frame.encounter)
+    local function onEncounterClick(self, button)
         if button == "RightButton" then
             openOptionsMenu(self)
         else
-            openEncounterMenu(self)
+            openEncounterMenu(frame.encounter)
         end
-    end)
-    frame.encounter:SetScript("OnDragStart", startMoving)
-    frame.encounter:SetScript("OnDragStop", stopMoving)
-    frame.encounter:SetScript("OnEnter", showEncounterTooltip)
-    frame.encounter:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end
+    for _, clickable in ipairs({ frame.encounter.cover, frame.encounter.button }) do
+        clickable:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        clickable:SetScript("OnClick", onEncounterClick)
+        clickable:SetScript("OnEnter", showEncounterTooltip)
+        clickable:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end
+    frame.encounter.cover:RegisterForDrag("LeftButton")
+    frame.encounter.cover:SetScript("OnDragStart", startMoving)
+    frame.encounter.cover:SetScript("OnDragStop", stopMoving)
 
     frame.import = panelButton(100, L["Import"])
-    frame.import:SetPoint("TOP", 0, -ROW2)
+    frame.import:SetPoint("CENTER", frame, "TOP", 0, rowMiddle)
     frame.import:SetScript("OnClick", function() UTRM.ImportWindow:Open() end)
 
     -- Row 3: the result of the last action
     frame.status = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    frame.status:SetPoint("TOPLEFT", INSET + 1, -ROW3)
-    frame.status:SetPoint("TOPRIGHT", -INSET - 3, -ROW3)
+    frame.status:SetPoint("TOPLEFT", INSET, -ROW3)
+    frame.status:SetPoint("TOPRIGHT", -INSET, -ROW3)
     frame.status:SetHeight(BUTTON)
     frame.status:SetTextColor(0.75, 0.75, 0.75)
     frame.status:SetWordWrap(false)
@@ -326,7 +335,6 @@ function PlanWindow:Refresh(status)
         frame.status:SetText(L["No raid plan imported yet."])
         frame.prev:Hide()
         frame.next:Hide()
-        frame.dropdown:Hide()
         frame.encounter:Hide()
         frame.import:Show()
         return
@@ -336,7 +344,6 @@ function PlanWindow:Refresh(status)
     frame.import:Hide()
     frame.prev:Show()
     frame.next:Show()
-    frame.dropdown:Show()
     frame.encounter:Show()
     local index, count = self:GetActiveIndex(plan), #plan.encounters
     if index then
@@ -346,7 +353,7 @@ function PlanWindow:Refresh(status)
     end
     frame.prev:SetEnabled(index ~= nil and index > 1)
     frame.next:SetEnabled(count > 0 and (index or 0) < count)
-    frame.dropdown:SetEnabled(count > 0)
+    frame.encounter.button:SetEnabled(count > 0)
 end
 
 function PlanWindow:Show()
