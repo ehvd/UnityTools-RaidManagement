@@ -166,6 +166,7 @@ function Sync:OnState(sender, msg, trusted)
             if encounter.key == theirs.a then
                 plan.active, plan.activeAt = theirs.a, theirs.at
                 report(format(L["%s chose %s"], Ambiguate(sender, "none"), encounter.label))
+                self:FollowNote(plan)
                 self:SendMessage("UTRM_ENCOUNTER_SYNCED", encounter)
                 break
             end
@@ -187,6 +188,18 @@ function Sync:Store(plan, sender)
     plan.syncedFrom = Ambiguate(sender, "none")
     UTRM:GetModule("PlanImport"):StoreSynced(plan)
     report(format(L["Raid plan %s synced from %s."], plan.event.title, plan.syncedFrom))
+    self:FollowNote(plan)
+end
+
+-- The note of the plan's active encounter as this client's own MRT note (not sent): whoever joins or reloads after
+-- the encounter was chosen missed MRT's note message, but gets the encounter through the sync
+function Sync:FollowNote(plan)
+    for _, encounter in ipairs(plan.encounters) do
+        if encounter.key == plan.active then
+            UTRM:GetModule("MRT"):SetLocalNote(encounter.note)
+            return
+        end
+    end
 end
 
 function Sync:OnPlan(sender, msg)

@@ -43,6 +43,9 @@ source (`Note.lua`):
 - `GMRT.F:GetNote()` strips colour codes (it passes `GMRT.F` as `removeColors`), so the editor reads
   `VMRT.Note.Text1` directly to keep the markup.
 - Receivers with "only from promoted players" enabled ignore notes from senders who are not raid leader / assistant.
+- A local note without sending: set `VMRT.Note.Text1`, then `GMRT.A.Note.frame:SetTo()` without a draft id keeps the
+  text, redraws MRT's note windows and options, and sends nothing. The sync uses it (`MRT:SetLocalNote`) when it
+  brings a plan or a newer active encounter, so somebody who joined after the note was sent still gets it.
 - Raid groups: `GMRT.A.RaidGroups:ApplyGroups(list)` (`RaidGroups.lua`) takes 40 names in raid-groups order (group 1
   slots 1-5, group 2 ...), the same order the UnityWiki export uses. It does nothing outside a raid, refuses (with
   its own chat error) while any raid member is in combat, matches names exactly (only a realm suffix is stripped),
