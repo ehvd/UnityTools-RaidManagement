@@ -22,8 +22,11 @@ local PREFIX = "UTRM"
 local STATE_DELAY = 2          -- seconds: several triggers in a row send one state
 local REQUEST_COOLDOWN = 60    -- seconds before the same plan is requested again
 local SEND_COOLDOWN = 30       -- seconds before the same requester gets the plan again
+local GREET_COOLDOWN = 30      -- seconds before a member who joined or was promoted is whispered our state again
 
 local wasPromoted = false
+local knownPromoted = {}       -- raid member -> promoted, as of the last roster update
+local greeted = {}             -- raid member -> GetTime() of the last state whispered to them
 local requested = {}           -- plan id .. chosen time -> GetTime() of the request
 local sentTo = {}              -- requester -> GetTime() of the last plan sent
 local declined = {}            -- plan id .. chosen time -> true: force syncs this client declined (this session)
@@ -87,14 +90,18 @@ end
 
 ------------------------------------------------------------------------------------------------ state ---
 
+local function stateMessage()
+    local plan = currentPlan()
+    local meta = Rules.Meta(plan, myName())
+    return meta and {
+        t = "state", id = meta.id, c = meta.c, g = meta.g, a = meta.a, at = meta.at, n = plan.event.title,
+    } or { t = "state" }
+end
+
 function Sync:SendState()
     self.stateTimer = nil
     if not self:CanSync() then return end
-    local plan = currentPlan()
-    local meta = Rules.Meta(plan, myName())
-    self:Transmit(meta and {
-        t = "state", id = meta.id, c = meta.c, g = meta.g, a = meta.a, at = meta.at, n = plan.event.title,
-    } or { t = "state" })
+    self:Transmit(stateMessage())
 end
 
 -- Several triggers in a row (roster updates, an import right after joining) send one state
@@ -236,10 +243,37 @@ function Sync:CheckPromotion()
     wasPromoted = promoted
 end
 
+-- Somebody joined the raid or was promoted: whisper our state to them, so they learn about our plan at once.
+-- Only promoted members take part, so a member who joins without assist gets it when they are promoted.
+function Sync:CheckRoster()
+    local syncingBefore = wasPromoted
+    self:CheckPromotion()
+
+    local now = {}
+    if IsInRaid() then
+        for i = 1, GetNumGroupMembers() do
+            local name, rank = GetRaidRosterInfo(i)
+            if name then now[name] = rank > 0 end
+        end
+    end
+    -- When we have just started syncing ourselves, CheckPromotion already told the whole raid
+    if syncingBefore and self:CanSync() and currentPlan() then
+        for name, promoted in pairs(now) do
+            local last = greeted[name]
+            if promoted and not knownPromoted[name] and Ambiguate(name, "none") ~= myName()
+                and not (last and GetTime() - last < GREET_COOLDOWN) then
+                greeted[name] = GetTime()
+                self:Transmit(stateMessage(), name)
+            end
+        end
+    end
+    knownPromoted = now
+end
+
 function Sync:OnEnable()
     self:RegisterComm(PREFIX, "OnComm")
     for _, event in ipairs({ "GROUP_ROSTER_UPDATE", "PARTY_LEADER_CHANGED", "PLAYER_ENTERING_WORLD" }) do
-        self:RegisterEvent(event, "CheckPromotion")
+        self:RegisterEvent(event, "CheckRoster")
     end
     -- A plan imported here or an encounter chosen here: tell the others
     self:RegisterMessage("UTRM_PLAN_IMPORTED", function(_, _, source)

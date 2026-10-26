@@ -88,8 +88,8 @@ Source: `UI/ImportWindow.lua`; the format of the export: UnityWiki `docs/addon-e
 
 ## 7. Raid plan sync
 
-`Modules/Sync.lua` talks over AceComm (prefix `UTRM`): small `state` messages to the raid, the plan itself only by
-whisper to a client that asked for it. Addon messages are throttled per prefix (section 3), so a full night's plan
+`Modules/Sync.lua` talks over AceComm (prefix `UTRM`): small `state` messages to the raid (and by whisper to a
+member who just joined promoted or was just promoted), the plan itself only by whisper to a client that asked for it. Addon messages are throttled per prefix (section 3), so a full night's plan
 (serialized, deflated with LibDeflate and encoded for the addon channel) takes a while to arrive; ChatThrottleLib
 queues it at BULK priority so it never delays other addons' traffic. Only the raid leader and assistants take part,
 checked on both ends for every message (`UnitIsGroupLeader` / `UnitIsGroupAssistant` on the sender's name), because
