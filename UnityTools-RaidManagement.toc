@@ -18,3 +18,7 @@ Locales\esES.lua
 Locales\itIT.lua
 
 Core.lua
+
+Modules\MRT.lua
+
+UI\NoteEditor.lua

@@ -12,8 +12,13 @@ exclude_files = {
 globals = {
     "UnityToolsRaidManagement",
     "UnityToolsRaidManagementDB",
+    "UnityToolsRaidManagementNoteFrame",
     "SlashCmdList",
     "StaticPopupDialogs",
+    "UISpecialFrames",
+
+    -- Method Raid Tools: the note text is written into its SavedVariable (Modules/MRT.lua)
+    "VMRT",
 }
 
 -- Globals only read by the addon (WoW API, Ace3 and shared libraries). Add what luacheck reports as
@@ -27,6 +32,9 @@ read_globals = {
     -- Libraries
     "LibStub", "CreateFrame",
 
+    -- Other addons
+    "GMRT",
+
     -- Language override written by `make install LOCALE=xxXX` (GameLocale.lua, not in the repo)
     "UTRM_LOCALE_OVERRIDE",
 
@@ -34,7 +42,8 @@ read_globals = {
     "UIParent", "GameTooltip", "PlaySound", "SOUNDKIT",
 
     -- Game API
-    "C_AddOns", "GetAddOnMetadata",
+    "C_AddOns", "GetAddOnMetadata", "IsAddOnLoaded",
+    "UnitIsGroupLeader", "UnitIsGroupAssistant",
     "C_Timer", "GetTime", "GetServerTime", "GetLocale", "geterrorhandler",
     "UnitName", "UnitGUID", "UnitExists", "UnitClass", "UnitLevel", "InCombatLockdown",
     "IsInGroup", "IsInRaid", "GetNumGroupMembers", "GetSpellInfo",

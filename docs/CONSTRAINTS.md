@@ -39,10 +39,13 @@ source (`Note.lua`):
 
 - The current note is `VMRT.Note.Text1`; `GMRT.A.Note.frame:Save()` stores it in the history and sends it to the
   group as `multiline` chunks of 220 characters on the `EXRTADD` addon prefix, followed by a `multiline_add` message.
+  Outside a group MRT whispers it to the player, which updates the note locally (useful for testing alone).
+- `GMRT.F:GetNote()` strips colour codes (it passes `GMRT.F` as `removeColors`), so the editor reads
+  `VMRT.Note.Text1` directly to keep the markup.
 - Receivers with "only from promoted players" enabled ignore notes from senders who are not raid leader / assistant.
 - Callbacks `Note_SendText`, `Note_ReceivedText` and `Note_UpdateText` fire through MRT's callback system.
 
-Treat these as internals that can change with an MRT update: keep every MRT access in one module, guard it with
-`type(...) == "function"` checks, and report a clear error instead of a Lua error when the shape is different.
+Treat these as internals that can change with an MRT update: every MRT access lives in `Modules/MRT.lua`, guarded with
+`type(...)` checks, and the user gets a clear message instead of a Lua error when the shape is different.
 
 Source: `Interface/AddOns/MRT/Note.lua` (MRT 5335)
