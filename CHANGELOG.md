@@ -13,6 +13,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - Raid note editor (`/utrm note`) that sends the note to Method Raid Tools, and `/utrm note <text>` for macros
 - Import the night's raid plan exported from the UnityWiki raid planner (`/utrm import`, protocol 1)
 - Raid plan window (`/utrm plan`): pick the active encounter (previous, next or from the list) to send its note to
-  Method Raid Tools; movable, lockable and scalable from its right-click menu
+  Method Raid Tools; movable, resizable in width, lockable and scalable from its options button
 
 [Unreleased]: https://github.com/ehvd/UnityTools-RaidManagement/commits/develop

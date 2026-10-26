@@ -65,7 +65,6 @@ L["Lock position"] = true
 L["Scale"] = true
 L["Choose the encounter"] = true
 L["Click: choose the encounter"] = true
-L["Right-click: options"] = true
 L["The plan has no encounters."] = true
 L["The night's groups"] = true
 L["Groups: %s"] = true

@@ -17,7 +17,7 @@ local defaults = {
     profile = {
         noteWindow = { width = 560, height = 440 },   -- AceGUI status table of the note editor (position, size)
         importWindow = { width = 520, height = 400 }, -- the same for the raid plan import window
-        planWindow = { shown = false, locked = false, scale = 1 },   -- plus point, relativePoint, x, y once moved
+        planWindow = { shown = false, locked = false, scale = 1 },   -- plus point, relativePoint, x, y, width once moved
     },
     global = {
         -- plan = the raid plan imported from UnityWiki (Modules/PlanImport.lua), absent until the first import

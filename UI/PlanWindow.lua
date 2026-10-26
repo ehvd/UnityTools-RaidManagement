@@ -21,7 +21,9 @@ local TEXT_ROW = 16
 local ROW1 = INSET                      -- title, settings, close
 local ROW2 = ROW1 + PANEL_BUTTON + GAP  -- ◀ [encounter ▼] ▶
 local ROW3 = ROW2 + DROPDOWN + GAP      -- status line
-local WIDTH, HEIGHT = 172 + 2 * INSET, ROW3 + TEXT_ROW + INSET
+local WIDTH, HEIGHT = 172 + 2 * INSET, ROW3 + TEXT_ROW + INSET   -- also the smallest size
+local MAX_WIDTH = 600
+local GRIP = 16                         -- the chat frame's size grabber
 
 local SCALES = { 0.8, 0.9, 1, 1.1, 1.25 }
 local TOOLTIP_NOTE_LINES = 12
@@ -95,7 +97,10 @@ local function openOptionsMenu(owner)
         root:CreateButton(L["Import raid plan..."], function() UTRM.ImportWindow:Open() end)
         root:CreateCheckbox(L["Lock position"],
             function() return settings().locked end,
-            function() settings().locked = not settings().locked end)
+            function()
+                settings().locked = not settings().locked
+                frame.grip:SetShown(not settings().locked)
+            end)
         local scale = root:CreateButton(L["Scale"])
         for _, value in ipairs(SCALES) do
             scale:CreateRadio(format("%d%%", value * 100),
@@ -163,6 +168,7 @@ local function encounterDropdown(holder)
     text:ClearAllPoints()
     text:SetPoint("RIGHT", right, "RIGHT", -43, 2)
     text:SetPoint("LEFT", left, "LEFT", 25, 2)
+    text:SetJustifyH("LEFT")   -- the template right-aligns it
 
     holder.text = text
     holder.button = _G[name .. "Button"]
@@ -201,7 +207,6 @@ local function showEncounterTooltip(self)
         end
     end
     GameTooltip:AddLine(L["Click: choose the encounter"], 0.5, 0.5, 0.5)
-    GameTooltip:AddLine(L["Right-click: options"], 0.5, 0.5, 0.5)
     GameTooltip:Show()
 end
 
@@ -229,13 +234,37 @@ local function create()
     end
     frame:SetScript("OnDragStart", startMoving)
     frame:SetScript("OnDragStop", stopMoving)
-    frame:SetScript("OnMouseUp", function(self, button)
-        if button == "RightButton" then openOptionsMenu(self) end
-    end)
 
     local s = settings()
     frame:SetPoint(s.point or "TOP", UIParent, s.relativePoint or "TOP", s.x or 0, s.y or -120)
     frame:SetScale(s.scale or 1)
+
+    -- Resizable in width only: the layout's size is the minimum, the height never changes
+    frame:SetResizable(true)
+    if frame.SetResizeBounds then
+        frame:SetResizeBounds(WIDTH, HEIGHT, MAX_WIDTH, HEIGHT)
+    else
+        frame:SetMinResize(WIDTH, HEIGHT)
+        frame:SetMaxResize(MAX_WIDTH, HEIGHT)
+    end
+    frame:SetWidth(math.max(WIDTH, math.min(MAX_WIDTH, s.width or WIDTH)))
+
+    -- The chat frame's size grabber in the bottom right corner, hidden while the window is locked
+    frame.grip = CreateFrame("Button", nil, frame)
+    frame.grip:SetSize(GRIP, GRIP)
+    frame.grip:SetPoint("BOTTOMRIGHT", -BORDER + 1, BORDER - 1)
+    frame.grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+    frame.grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+    frame.grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+    frame.grip:SetShown(not s.locked)
+    frame.grip:SetScript("OnMouseDown", function()
+        if not settings().locked then frame:StartSizing("RIGHT") end
+    end)
+    frame.grip:SetScript("OnMouseUp", function()
+        frame:StopMovingOrSizing()
+        settings().width = math.floor(frame:GetWidth() + 0.5)
+        savePosition()
+    end)
 
     -- Row 1: the event's title, settings and close. The close button's red square lines up with the content edge;
     -- its empty art around it may overlap the border, as in Blizzard's own windows.
@@ -264,22 +293,14 @@ local function create()
     frame.next:SetPoint("RIGHT", frame, "TOPRIGHT", -INSET, rowMiddle)
     frame.next:SetScript("OnClick", function() PlanWindow:Step(1) end)
 
-    -- The encounter box fills most of the bar, so it also moves the window and opens the options
+    -- The encounter box fills most of the bar (and grows with the window), so it also moves the window
     frame.encounter = CreateFrame("Frame", nil, frame)
     frame.encounter:SetPoint("TOPLEFT", INSET + ARROW_WIDTH + GAP, -ROW2)
     frame.encounter:SetPoint("TOPRIGHT", -INSET - ARROW_WIDTH - GAP, -ROW2)
     frame.encounter:SetHeight(DROPDOWN)
     encounterDropdown(frame.encounter)
-    local function onEncounterClick(self, button)
-        if button == "RightButton" then
-            openOptionsMenu(self)
-        else
-            openEncounterMenu(frame.encounter)
-        end
-    end
     for _, clickable in ipairs({ frame.encounter.cover, frame.encounter.button }) do
-        clickable:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        clickable:SetScript("OnClick", onEncounterClick)
+        clickable:SetScript("OnClick", function() openEncounterMenu(frame.encounter) end)
         clickable:SetScript("OnEnter", showEncounterTooltip)
         clickable:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end
@@ -294,7 +315,7 @@ local function create()
     -- Row 3: the result of the last action
     frame.status = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     frame.status:SetPoint("TOPLEFT", INSET, -ROW3)
-    frame.status:SetPoint("TOPRIGHT", -INSET, -ROW3)
+    frame.status:SetPoint("TOPRIGHT", -INSET - GRIP, -ROW3)   -- leave the size grabber free
     frame.status:SetHeight(TEXT_ROW)
     frame.status:SetTextColor(0.75, 0.75, 0.75)
     frame.status:SetWordWrap(false)
