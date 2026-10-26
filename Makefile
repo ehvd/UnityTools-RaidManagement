@@ -48,6 +48,11 @@ Libs/.fetched: Makefile
 	@git clone --quiet --depth 1 --branch 1.0.2-release https://github.com/SafeteeWoW/LibDeflate.git .libs-tmp/libdeflate 2>/dev/null
 	@mkdir -p Libs/LibDeflate
 	@cp .libs-tmp/libdeflate/LibDeflate.lua .libs-tmp/libdeflate/LICENSE.txt Libs/LibDeflate/
+	@git clone --quiet --depth 1 https://github.com/tekkub/libdatabroker-1-1.git .libs-tmp/ldb
+	@mkdir -p Libs/LibDataBroker-1.1
+	@cp .libs-tmp/ldb/LibDataBroker-1.1.lua Libs/LibDataBroker-1.1/
+	@git clone --quiet --depth 1 https://github.com/wowace-clone/LibDBIcon-1.0.git .libs-tmp/dbicon
+	@cp -r .libs-tmp/dbicon/LibDBIcon-1.0 Libs/LibDBIcon-1.0
 	@rm -rf .libs-tmp
 	@touch $@
 	@echo "Libraries written to Libs/"

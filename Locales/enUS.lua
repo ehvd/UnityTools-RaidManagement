@@ -137,3 +137,12 @@ L["Force sync sent: the others are asked to accept your raid plan."] = true
 L["%s wants to replace your raid plan with \"%s\" (Force sync). Accept?"] = true
 L["Force sync from %s declined: your raid plan is kept."] = true
 L["%s uses another version of the raid plan sync: update Unity Tools - Raid Management."] = true
+
+-- Minimap button
+L["Unity Tools - Raid Management"] = true
+L["show or hide the minimap button"] = true
+L["Left-click: show or hide the raid plan window"] = true
+L["Right-click: options"] = true
+L["Raid note editor..."] = true
+L["Hide minimap button"] = true
+L["Minimap button hidden: /utrm minimap shows it again."] = true

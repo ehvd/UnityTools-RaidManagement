@@ -24,5 +24,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - Raid plan sync from the raid leader and assistants: the most recently chosen plan and the active encounter
   reach everybody in the raid (only lead and assists are sources); Force sync (options) sends yours to all, each
   recipient confirms
+- Minimap button: left click shows or hides the raid plan window, right click opens the options (import, Gargul,
+  Force sync, note editor, hide the button); `/utrm minimap` shows or hides it
 
 [Unreleased]: https://github.com/ehvd/UnityTools-RaidManagement/commits/develop
