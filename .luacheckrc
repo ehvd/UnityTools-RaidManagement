@@ -48,6 +48,7 @@ read_globals = {
     -- Game API
     "C_AddOns", "GetAddOnMetadata", "IsAddOnLoaded",
     "UnitIsGroupLeader", "UnitIsGroupAssistant", "GetRaidRosterInfo", "UnitAffectingCombat",
+    "GetLootMethod", "C_PartyInfo",
     "C_Timer", "GetTime", "GetServerTime", "GetLocale", "geterrorhandler",
     "UnitName", "UnitGUID", "UnitExists", "UnitClass", "UnitLevel", "InCombatLockdown",
     "IsInGroup", "IsInRaid", "GetNumGroupMembers", "GetSpellInfo",

@@ -74,3 +74,13 @@ L["Loot priorities imported into Gargul."] = "Prioridades de botín importadas e
 L["The raid plan has no Gargul loot priorities."] = "El plan de banda no tiene prioridades de botín de Gargul."
 L["Gargul: loot priorities are up to date"] = "Gargul: prioridades de botín al día"
 L["Gargul: import the loot priorities"] = "Gargul: importar las prioridades de botín"
+
+L["Raid readiness"] = "Preparación de la banda"
+L["Checked in a raid only."] = "Solo se comprueba en banda."
+L["Loot method: Master Loot"] = "Método de botín: maestro despojador"
+L["Loot method is %s, not Master Loot"] = "El método de botín es %s, no maestro despojador"
+L["Method Raid Tools is loaded"] = "Method Raid Tools está cargado"
+L["Gargul has the plan's loot priorities"] = "Gargul tiene las prioridades de botín del plan"
+L["Gargul does not have the plan's loot priorities (import them from the options)"] = "Gargul no tiene las prioridades de botín del plan (impórtalas desde las opciones)"
+L["Everyone planned is in the raid"] = "Todos los previstos están en la banda"
+L["Raid differs from the plan: %d missing, %d not in the plan"] = "La banda difiere del plan: faltan %d, %d fuera del plan"

@@ -74,3 +74,13 @@ L["Loot priorities imported into Gargul."] = "Beuteprioritäten in Gargul import
 L["The raid plan has no Gargul loot priorities."] = "Der Raidplan enthält keine Gargul-Beuteprioritäten."
 L["Gargul: loot priorities are up to date"] = "Gargul: Beuteprioritäten sind aktuell"
 L["Gargul: import the loot priorities"] = "Gargul: Beuteprioritäten importieren"
+
+L["Raid readiness"] = "Schlachtzugsbereitschaft"
+L["Checked in a raid only."] = "Wird nur im Schlachtzug geprüft."
+L["Loot method: Master Loot"] = "Plündermethode: Plündermeister"
+L["Loot method is %s, not Master Loot"] = "Plündermethode ist %s, nicht Plündermeister"
+L["Method Raid Tools is loaded"] = "Method Raid Tools ist geladen"
+L["Gargul has the plan's loot priorities"] = "Gargul hat die Beuteprioritäten des Plans"
+L["Gargul does not have the plan's loot priorities (import them from the options)"] = "Gargul hat die Beuteprioritäten des Plans nicht (in den Optionen importieren)"
+L["Everyone planned is in the raid"] = "Alle Eingeplanten sind im Schlachtzug"
+L["Raid differs from the plan: %d missing, %d not in the plan"] = "Schlachtzug weicht vom Plan ab: %d fehlen, %d nicht im Plan"

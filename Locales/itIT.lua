@@ -74,3 +74,13 @@ L["Loot priorities imported into Gargul."] = "Priorità di bottino importate in 
 L["The raid plan has no Gargul loot priorities."] = "Il piano d'incursione non contiene priorità di bottino di Gargul."
 L["Gargul: loot priorities are up to date"] = "Gargul: priorità di bottino aggiornate"
 L["Gargul: import the loot priorities"] = "Gargul: importa le priorità di bottino"
+
+L["Raid readiness"] = "Preparazione dell'incursione"
+L["Checked in a raid only."] = "Controllato solo in incursione."
+L["Loot method: Master Loot"] = "Metodo di bottino: responsabile del bottino"
+L["Loot method is %s, not Master Loot"] = "Il metodo di bottino è %s, non responsabile del bottino"
+L["Method Raid Tools is loaded"] = "Method Raid Tools è caricato"
+L["Gargul has the plan's loot priorities"] = "Gargul ha le priorità di bottino del piano"
+L["Gargul does not have the plan's loot priorities (import them from the options)"] = "Gargul non ha le priorità di bottino del piano (importale dalle opzioni)"
+L["Everyone planned is in the raid"] = "Tutti i previsti sono nell'incursione"
+L["Raid differs from the plan: %d missing, %d not in the plan"] = "L'incursione differisce dal piano: %d mancanti, %d fuori dal piano"

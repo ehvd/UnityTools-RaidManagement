@@ -98,3 +98,14 @@ L["Loot priorities imported into Gargul."] = true
 L["The raid plan has no Gargul loot priorities."] = true
 L["Gargul: loot priorities are up to date"] = true
 L["Gargul: import the loot priorities"] = true
+
+-- Raid readiness
+L["Raid readiness"] = true
+L["Checked in a raid only."] = true
+L["Loot method: Master Loot"] = true
+L["Loot method is %s, not Master Loot"] = true
+L["Method Raid Tools is loaded"] = true
+L["Gargul has the plan's loot priorities"] = true
+L["Gargul does not have the plan's loot priorities (import them from the options)"] = true
+L["Everyone planned is in the raid"] = true
+L["Raid differs from the plan: %d missing, %d not in the plan"] = true
