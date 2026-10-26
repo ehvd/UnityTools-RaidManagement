@@ -74,6 +74,13 @@ function PlanWindow:Activate(index)
     self:SendMessage("UTRM_ENCOUNTER_ACTIVATED", encounter, plan.layouts[encounter.layout])
 end
 
+-- Hands the plan's loot priorities to Gargul; the result replaces the status line
+function PlanWindow:ImportGargul()
+    local ok, message = UTRM:GetModule("Gargul"):ImportPlan(currentPlan())
+    self:Refresh(ok and message or ("|cffff4040" .. message .. "|r"))
+    self.noteMessage = message   -- the whole text in the status tooltip
+end
+
 -- The raid groups' part of the status line (Modules/RaidGroups.lua), with tooltip lines naming the players
 function PlanWindow:SetGroupStatus(text, details)
     self.groupStatus, self.groupDetails = text, details
@@ -135,6 +142,13 @@ local function openOptionsMenu(owner)
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(plan and plan.event.title or L["Raid plan"])
         root:CreateButton(L["Import raid plan..."], function() UTRM.ImportWindow:Open() end)
+        -- Gargul: only when the plan carries loot priorities and Gargul can be used
+        local gargulState = UTRM:GetModule("Gargul"):GetState(plan)
+        if gargulState then
+            local label = gargulState == "current" and L["Gargul: loot priorities are up to date"]
+                or ("|cffffa040" .. L["Gargul: import the loot priorities"] .. "|r")
+            root:CreateButton(label, function() PlanWindow:ImportGargul() end)
+        end
         root:CreateCheckbox(L["Lock position"],
             function() return settings().locked end,
             function()

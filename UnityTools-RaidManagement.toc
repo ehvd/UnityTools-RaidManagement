@@ -7,7 +7,7 @@
 ## Category: Raid
 ## IconTexture: Interface\AddOns\UnityTools-RaidManagement\Media\icon
 ## X-Curse-Project-ID: 1766854
-## OptionalDeps: MRT
+## OptionalDeps: MRT, Gargul
 
 embeds.xml
 
@@ -24,6 +24,7 @@ Modules\PlanCodec.lua
 Modules\PlanImport.lua
 Modules\GroupPlan.lua
 Modules\RaidGroups.lua
+Modules\Gargul.lua
 
 UI\NoteEditor.lua
 UI\ImportWindow.lua

@@ -58,7 +58,25 @@ Treat these as internals that can change with an MRT update: every MRT access li
 
 Source: `Interface/AddOns/MRT/Note.lua` (MRT 5335)
 
-## 5. Pasting long strings
+## 5. Gargul loot priorities
+
+Gargul is an optional dependency (`## OptionalDeps: MRT, Gargul`) and opens itself up as `_G.Gargul`, but has no
+documented integration API; `Modules/Gargul.lua` uses its internals (Gargul 8.0.1) and type-checks every one:
+
+- `Gargul.TMB:import(text)` is what Gargul's own Import button (`Interface/TMB/Importer.lua`) calls. It writes its
+  errors into the importer window's status label, so the window must be open: the addon calls
+  `Gargul.Interface.TMB.Importer:draw()` first. On success the import returns `true`, closes that window and shows
+  Gargul's overview; on failure the window stays open with Gargul's message.
+- Text set on Gargul's edit box from code does not reach its import (AceGUI only fires `OnTextChanged` for user
+  input), so prefilling the box and letting the user press Import is not an option.
+- Gargul keeps no fingerprint of the imported data: `TMB.MetaData.hash` (read with `Gargul.DB:get`) is a new random
+  id per import. The addon stores that id and a checksum of its own string after importing; Gargul has the plan's
+  priorities while both still match (someone importing something else changes the id; a new plan with other
+  priorities changes the checksum).
+
+Source: `Interface/AddOns/Gargul/Classes/TMB.lua`, `Interface/TMB/Importer.lua` (Gargul 8.0.1)
+
+## 6. Pasting long strings
 
 A raid plan export is up to ~60,000 characters. A multi-line edit box that holds that much text freezes the client
 while it lays the text out. The import window caps the edit box with `SetMaxBytes(2500)` and collects the paste in

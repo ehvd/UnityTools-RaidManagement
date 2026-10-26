@@ -166,6 +166,16 @@ function PlanCodec.JSONDecode(text)
     return value
 end
 
+-- A short fingerprint of a string (djb2 over its bytes, as 8 hex digits): enough to tell whether two strings
+-- of the export are the same without keeping both in the SavedVariables
+function PlanCodec.Checksum(text)
+    local h = 5381.0   -- floats, and two 16 bit halves for the output: also right where integers are 32 bit
+    for i = 1, #text do
+        h = (h * 33 + byte(text, i)) % 4294967296.0
+    end
+    return string.format("%04x%04x", floor(h / 65536), floor(h % 65536))
+end
+
 ---------------------------------------------------------------------------------------------- the plan ---
 
 function PlanCodec.IsSupported(protocol)
