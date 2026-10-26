@@ -1,0 +1,12 @@
+{
+  "name": "unitytools-raidmanagement-tests",
+  "private": true,
+  "type": "module",
+  "description": "Runs the pure Lua modules of the addon in fengari (a Lua VM in JavaScript)",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "fengari": "0.1.5"
+  }
+}

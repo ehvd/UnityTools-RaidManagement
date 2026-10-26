@@ -25,7 +25,7 @@ PS_MAKE_LINK     = New-Item -ItemType Junction -Path $$env:T -Target (Resolve-Pa
 PS_REMOVE        = if (Test-Path -LiteralPath $$env:T) { $$i = Get-Item -LiteralPath $$env:T -Force; if ($$i.Attributes -band [IO.FileAttributes]::ReparsePoint) { [IO.Directory]::Delete($$i.FullName) } else { Remove-Item -LiteralPath $$i.FullName -Recurse -Force } }
 
 .DEFAULT_GOAL := help
-.PHONY: help libs lint locales install link uninstall description clean check-addon-dir
+.PHONY: help libs lint test locales install link uninstall description clean check-addon-dir
 
 help: ## Show this help
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  make %-12s %s\n", $$1, $$2}'
@@ -45,9 +45,15 @@ Libs/.fetched: Makefile
 	           AceLocale-3.0 AceGUI-3.0; do \
 	  cp -r ".libs-tmp/ace3/$$lib" "Libs/$$lib" || exit 1; \
 	done
+	@git clone --quiet --depth 1 --branch 1.0.2-release https://github.com/SafeteeWoW/LibDeflate.git .libs-tmp/libdeflate 2>/dev/null
+	@mkdir -p Libs/LibDeflate
+	@cp .libs-tmp/libdeflate/LibDeflate.lua .libs-tmp/libdeflate/LICENSE.txt Libs/LibDeflate/
 	@rm -rf .libs-tmp
 	@touch $@
 	@echo "Libraries written to Libs/"
+
+test: ## Run the tests of the pure Lua modules in a Lua VM for Node (needs Node 22+)
+	@cd tests && npm ci --no-audit --no-fund --silent && node --test
 
 lint: ## Run luacheck
 	$(LUACHECK) .

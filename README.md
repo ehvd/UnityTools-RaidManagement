@@ -16,6 +16,7 @@ Needs GNU make, git and [luacheck](https://github.com/lunarmodules/luacheck) (Gi
 ```bash
 make            # list the targets
 make lint       # luacheck
+make test       # tests of the pure Lua modules in a Lua VM for Node (needs Node 22+)
 make link       # junction the repo into the AddOns folder; /reload picks up edits
 make install    # copy the addon into the AddOns folder instead
 ```

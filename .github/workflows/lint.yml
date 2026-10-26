@@ -15,3 +15,8 @@ jobs:
         uses: lunarmodules/luacheck@v1
       - name: Check translations
         run: make locales
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run tests
+        run: make test
