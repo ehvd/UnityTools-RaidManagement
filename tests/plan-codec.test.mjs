@@ -53,6 +53,10 @@ local function canon(v)
     return "{" .. table.concat(out, ",") .. "}"
 end
 
+function checksum(text)
+    return Codec.Checksum(text)
+end
+
 function run(text)
     local data, code = Codec.Decode(text, LibDeflate)
     if not data then return "ERR:" .. code end
@@ -196,6 +200,25 @@ test('a plan without a Gargul string is fine', () => {
   const payload = night();
   delete payload.gargul;
   assertSame(run(encode(payload)), payload);
+});
+
+test('the checksum is djb2 over the bytes, as 8 hex digits', () => {
+  const djb2 = (text) => {
+    let h = 5381;
+    for (const b of Buffer.from(text, 'utf8')) h = (h * 33 + b) % 4294967296;
+    return h.toString(16).padStart(8, '0');
+  };
+  const luaChecksum = (text) => {
+    lua.lua_getglobal(L, to_luastring('checksum'));
+    lua.lua_pushstring(L, to_luastring(text));
+    if (lua.lua_pcall(L, 1, 1, 0) !== lua.LUA_OK) throw new Error(to_jsstring(lua.lua_tostring(L, -1)));
+    const out = to_jsstring(lua.lua_tostring(L, -1));
+    lua.lua_pop(L, 1);
+    return out;
+  };
+  const gargul = night().gargul.string;
+  for (const text of ['', 'a', 'Zoë 😀', gargul]) assert.equal(luaChecksum(text), djb2(text));
+  assert.notEqual(luaChecksum(gargul), luaChecksum(gargul.slice(0, -1) + 'A'));
 });
 
 test('the decoder is not accidentally quadratic', () => {

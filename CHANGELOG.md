@@ -16,5 +16,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   Method Raid Tools; movable, resizable in width, lockable and scalable from its options button
 - Activating an encounter also sorts the raid into its planned groups (with Method Raid Tools' sorter); the status
   line says when they match and its tooltip names who is missing or not in the plan
+- Import the plan's loot priorities into Gargul from the raid plan window's options; the menu shows whether Gargul
+  still has them
 
 [Unreleased]: https://github.com/ehvd/UnityTools-RaidManagement/commits/develop

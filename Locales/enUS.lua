@@ -88,3 +88,13 @@ L["%d missing"] = true
 L["%d not in the plan"] = true
 L["Missing from the raid:"] = true
 L["In the raid but not in the plan:"] = true
+
+-- Gargul
+L["Gargul is not loaded."] = true
+L["This version of Gargul is not supported (its import has changed)."] = true
+L["Gargul could not import the loot priorities."] = true
+L["Gargul did not accept the loot priorities: see its import window."] = true
+L["Loot priorities imported into Gargul."] = true
+L["The raid plan has no Gargul loot priorities."] = true
+L["Gargul: loot priorities are up to date"] = true
+L["Gargul: import the loot priorities"] = true
