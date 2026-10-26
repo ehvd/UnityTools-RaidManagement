@@ -46,6 +46,34 @@ function MRT:SendNote(text)
     return true
 end
 
+-- Returns MRT's raid groups module, or nil and the reason why it cannot be used.
+function MRT:GetRaidGroupsModule()
+    if not isAddOnLoaded("MRT") then
+        return nil, L["Method Raid Tools is not loaded."]
+    end
+    local groups = type(GMRT) == "table" and type(GMRT.A) == "table" and GMRT.A.RaidGroups
+    if type(groups) ~= "table" or type(groups.ApplyGroups) ~= "function" then
+        return nil, L["This version of Method Raid Tools is not supported (its raid groups have changed)."]
+    end
+    return groups
+end
+
+-- Sorts the raid into the given groups with MRT's own sorter: `list` is 40 names in MRT's raid-groups order, as the
+-- raid spells them ("" for an empty slot). MRT moves people over several roster updates. Returns true, or false and
+-- an error message.
+function MRT:ApplyGroups(list)
+    local groups, reason = self:GetRaidGroupsModule()
+    if not groups then
+        return false, reason
+    end
+    local ok, err = pcall(groups.ApplyGroups, groups, list)
+    if not ok then
+        geterrorhandler()(err)
+        return false, L["Method Raid Tools could not sort the raid groups."]
+    end
+    return true
+end
+
 -- Raid members who enabled "only from promoted players" in MRT ignore notes from everyone else.
 function MRT:CanSendToRaid()
     return not IsInRaid() or UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")

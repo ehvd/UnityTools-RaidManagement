@@ -69,3 +69,22 @@ L["The plan has no encounters."] = true
 L["The night's groups"] = true
 L["Groups: %s"] = true
 L["This encounter has no note: the MRT note was cleared."] = true
+L["Note sent"] = true
+L["Note cleared"] = true
+L["Note not sent"] = true
+L["Note sent, not as lead or assist"] = true
+
+-- Raid groups
+L["This version of Method Raid Tools is not supported (its raid groups have changed)."] = true
+L["Method Raid Tools could not sort the raid groups."] = true
+L["Sorting groups..."] = true
+L["Groups sorted"] = true
+L["Groups already match"] = true
+L["Groups: not in a raid"] = true
+L["Groups: you need lead or assist"] = true
+L["Groups: someone is in combat"] = true
+L["Groups not finished: %d still in the wrong group"] = true
+L["%d missing"] = true
+L["%d not in the plan"] = true
+L["Missing from the raid:"] = true
+L["In the raid but not in the plan:"] = true

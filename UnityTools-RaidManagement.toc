@@ -22,6 +22,8 @@ Core.lua
 Modules\MRT.lua
 Modules\PlanCodec.lua
 Modules\PlanImport.lua
+Modules\GroupPlan.lua
+Modules\RaidGroups.lua
 
 UI\NoteEditor.lua
 UI\ImportWindow.lua
