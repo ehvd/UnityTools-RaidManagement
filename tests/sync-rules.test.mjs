@@ -37,6 +37,24 @@ function meta(chosenAt, importedAt)
         importedAt = tonumber(importedAt), active = "x:1", activeAt = 7 }, "Me")
     return m.id .. "|" .. m.c .. "|" .. m.g .. "|" .. m.a .. "|" .. m.at .. "|" .. m.s
 end
+local function serialize(m)
+    return "id=" .. m.id .. ";c=" .. m.c .. ";g=" .. m.g .. ";s=" .. m.s
+end
+-- The meta of plan e1@100 held by \`holder\`, chosen at \`chosenAt\`, after the edits "by@at,by@at" (in order) the way
+-- PlanImport:Edit makes them
+function edited(holder, chosenAt, edits)
+    local plan = { event = { id = "e1" }, generatedAt = 100, chosenAt = tonumber(chosenAt) }
+    for by, at in edits:gmatch("([^@,]+)@(%d+)") do
+        at = tonumber(at)
+        plan.revision = R.Revise(plan.revision, by, at)
+        plan.chosenAt = R.EditChosenAt(plan.chosenAt, at)
+    end
+    return serialize(R.Meta(plan, holder))
+end
+function isRevision(n, by, at)
+    if n == "" then return tostring(R.IsRevision(nil)) end
+    return tostring(R.IsRevision({ n = tonumber(n), by = by ~= "" and by or nil, at = tonumber(at) }))
+end
 `;
 
 const L = lauxlib.luaL_newstate();
@@ -111,15 +129,89 @@ test('the meta of a plan falls back to the import time when nothing chose it', (
 });
 
 test('messages are validated, other versions recognised', () => {
-  assert.equal(call('validate', 't=state;v=1;id=e1@100;c=5;g=100'), 'ok');
-  assert.equal(call('validate', 't=state;v=1'), 'ok');               // a client without a plan
-  assert.equal(call('validate', 't=request;v=1;id=e1@100'), 'ok');
-  assert.equal(call('validate', 't=plan;v=1;p=abc'), 'ok');
-  assert.equal(call('validate', 't=force;v=1;p=abc'), 'ok');
-  assert.equal(call('validate', 't=state;v=2;id=e1@100'), 'version');
-  assert.equal(call('validate', 't=hello;v=1'), 'invalid');
-  assert.equal(call('validate', 't=request;v=1'), 'invalid');
-  assert.equal(call('validate', 't=plan;v=1'), 'invalid');
-  assert.equal(call('validate', 't=state;v=1;c=soon'), 'invalid');
+  assert.equal(call('validate', 't=state;v=2;id=e1@100;c=5;g=100'), 'ok');
+  assert.equal(call('validate', 't=state;v=2;id=e1@100/1:Lead:900;c=5;g=100'), 'ok');
+  assert.equal(call('validate', 't=state;v=2'), 'ok');               // a client without a plan
+  assert.equal(call('validate', 't=request;v=2;id=e1@100'), 'ok');
+  assert.equal(call('validate', 't=plan;v=2;p=abc'), 'ok');
+  assert.equal(call('validate', 't=force;v=2;p=abc'), 'ok');
+  assert.equal(call('validate', 't=state;v=1;id=e1@100'), 'version'); // 0.1.0: its identity has no revision
+  assert.equal(call('validate', 't=state;v=3;id=e1@100'), 'version');
+  assert.equal(call('validate', 't=hello;v=2'), 'invalid');
+  assert.equal(call('validate', 't=request;v=2'), 'invalid');
+  assert.equal(call('validate', 't=plan;v=2'), 'invalid');
+  assert.equal(call('validate', 't=state;v=2;c=soon'), 'invalid');
   assert.equal(call('validate', ''), 'invalid');
+});
+
+// Edits (PlanImport:Edit): a new revision and chosen now
+const ed = (holder, chosenAt, edits) => call('edited', holder, chosenAt, edits);
+const winsText = (theirs, mine) => call('planWins', theirs, mine) === 'true';
+
+test('the identity of an edited plan carries its revision', () => {
+  assert.equal(ed('Lead', 1000, ''), 'id=e1@100;c=1000;g=100;s=Lead');
+  assert.equal(ed('Lead', 1000, 'Lead@1200'), 'id=e1@100/1:Lead:1200;c=1200;g=100;s=Lead');
+  assert.equal(ed('Lead', 1000, 'Lead@1200,Assist@1300'), 'id=e1@100/2:Assist:1300;c=1300;g=100;s=Lead');
+});
+
+test('an edited copy beats the unedited one, whoever holds them', () => {
+  for (const [editor, other] of [['Lead', 'Aaron'], ['Aaron', 'Zed']]) {
+    const edit = ed(editor, 1000, `${editor}@1200`);
+    const plain = ed(other, 1000, '');
+    assert.equal(winsText(edit, plain), true, `${editor}'s edit vs ${other}`);
+    assert.equal(winsText(plain, edit), false, `${other} vs ${editor}'s edit`);
+  }
+});
+
+test('an edit in the same second as the import still beats the import', () => {
+  const edit = ed('Zed', 1000, 'Zed@1000');   // Zed sorts after Aaron: the name must not decide
+  const plain = ed('Aaron', 1000, '');
+  assert.equal(winsText(edit, plain), true);
+  assert.equal(winsText(plain, edit), false);
+  // ...and a second edit in that same second beats the first
+  const again = ed('Zed', 1000, 'Zed@1000,Zed@1000');
+  assert.equal(winsText(again, ed('Aaron', 1000, 'Zed@1000')), true);
+  assert.equal(winsText(ed('Aaron', 1000, 'Zed@1000'), again), false);
+});
+
+test('two edits of the same plan resolve to the newest', () => {
+  const byLead = ed('Lead', 1000, 'Lead@1200');
+  const byAssist = ed('Assist', 1000, 'Assist@1300');
+  assert.equal(winsText(byAssist, byLead), true);
+  assert.equal(winsText(byLead, byAssist), false);
+  // An edit of an edit beats the edit it was made from
+  const chained = ed('Lead', 1000, 'Assist@1300,Lead@1400');
+  assert.equal(winsText(chained, ed('Assist', 1000, 'Assist@1300')), true);
+  assert.equal(winsText(ed('Assist', 1000, 'Assist@1300'), chained), false);
+});
+
+test('the same revision never replaces itself', () => {
+  const mine = ed('Lead', 1000, 'Lead@1200');
+  // A synced copy keeps the editor's chosen time; even a later chosen time (a force sync) does not count
+  const theirs = ed('Aaron', 1000, 'Lead@1200');
+  const later = 'id=e1@100/1:Lead:1200;c=5000;g=100;s=Aaron';
+  assert.equal(winsText(theirs, mine), false);
+  assert.equal(winsText(mine, theirs), false);
+  assert.equal(winsText(later, mine), false);
+});
+
+test('edited and unedited copies never ping-pong: exactly one side wins', () => {
+  const copies = [
+    ed('Aaron', 1000, ''), ed('Zed', 1000, 'Zed@1000'), ed('Lead', 1000, 'Lead@1200'),
+    ed('Assist', 1000, 'Assist@1200'), ed('Bob', 1000, 'Lead@1200,Bob@1300'), 'id=e3@100;c=1300;g=100;s=Cid',
+    'id=e2@200;c=1300;g=200;s=Dan',
+  ];
+  for (const a of copies) {
+    for (const b of copies) {
+      if (a === b) continue;
+      assert.notEqual(winsText(a, b), winsText(b, a), `${a} vs ${b}`);
+    }
+  }
+});
+
+test('a revision received with a plan is checked', () => {
+  assert.equal(call('isRevision', '', '', ''), 'true');       // the plan as imported
+  assert.equal(call('isRevision', 1, 'Lead', 1200), 'true');
+  assert.equal(call('isRevision', 1, '', 1200), 'false');
+  assert.equal(call('isRevision', 'x', 'Lead', 1200), 'false');
 });

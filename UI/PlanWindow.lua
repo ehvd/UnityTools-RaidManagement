@@ -575,9 +575,11 @@ function PlanWindow:Toggle()
 end
 
 function PlanWindow:OnEnable()
-    self:RegisterMessage("UTRM_PLAN_IMPORTED", function()
-        self:Refresh("")
-    end)
+    for _, message in ipairs({ "UTRM_PLAN_IMPORTED", "UTRM_PLAN_EDITED" }) do
+        self:RegisterMessage(message, function()
+            self:Refresh("")
+        end)
+    end
     if settings().shown then
         self:Show()
     end

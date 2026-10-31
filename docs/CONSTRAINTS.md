@@ -112,4 +112,13 @@ Times are server time (`GetServerTime`, whole seconds) so every client compares 
 time is made at least a millisecond newer than the previous choice, so quick clicks within one second still count
 as newer. Which copy wins is `Modules/SyncRules.lua` (tested in `tests/sync-rules.test.mjs`).
 
+Edits (0.2.0): every in-game edit of the plan goes through `PlanImport:Edit`. It gives the plan a new revision (a
+counter, the editor's name and the server time; none for the plan as imported) and chooses it now, at least a
+millisecond after its previous choice. A plan's identity is its export (event id @ export time) plus its revision, so
+an edited copy is another plan that wins over the unedited ones like a newer import, and copies of the same revision
+never replace each other. An edit by the lead or an assist sends the state like an import; a member's edit stays on
+their client (nobody fetches a plan from a member), until a newer plan from a source replaces it. An edited plan
+travels as a whole plan, like an import. The meaning of the identity in `state` changed, so the sync version is 2:
+0.1.0 clients ignore 0.2.0 ones (and the other way round) and print the "update" line once per session.
+
 Source: <https://warcraft.wiki.gg/wiki/API_C_ChatInfo.SendAddonMessage>, AceComm-3.0

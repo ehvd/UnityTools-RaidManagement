@@ -65,6 +65,27 @@ function PlanImport:StoreSynced(plan)
     UTRM:SendMessage("UTRM_PLAN_IMPORTED", plan, "sync")
 end
 
+-- Every edit of the plan goes through here (note text, groups, assignments, the fallback note): `change(plan)`
+-- changes the stored plan in place and returns false to leave it unchanged. The edited plan gets a new revision and
+-- is chosen now (Modules/SyncRules.lua), so it is another plan that wins over the unedited copies like a newer
+-- import: the sync sends it to the raid when this client is a source; a member's edit stays on their client.
+-- Returns true, or false and a message.
+function PlanImport:Edit(change)
+    local plan = self:GetPlan()
+    if not plan then
+        return false, L["No raid plan imported yet."]
+    end
+    if change(plan) == false then
+        return false
+    end
+    local now = GetServerTime()
+    plan.revision = ns.SyncRules.Revise(plan.revision, UnitName("player"), now)
+    plan.chosenAt = ns.SyncRules.EditChosenAt(plan.chosenAt or plan.importedAt, now)
+    UTRM.db.global.plan = plan
+    UTRM:SendMessage("UTRM_PLAN_EDITED", plan)
+    return true
+end
+
 -- A few lines describing a plan for the import window
 function PlanImport:Summary(plan)
     if not plan then
@@ -82,6 +103,10 @@ function PlanImport:Summary(plan)
     }
     if plan.syncedFrom then
         lines[#lines + 1] = format(L["Synced from %s"], plan.syncedFrom)
+    end
+    if plan.revision then
+        lines[#lines + 1] = format(L["Edited by %s at %s"], Ambiguate(plan.revision.by, "none"),
+            date("%H:%M", plan.revision.at))
     end
     return table.concat(lines, "\n")
 end

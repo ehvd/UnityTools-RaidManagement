@@ -13,8 +13,8 @@ local Codec = ns.PlanCodec
 -- client can answer, and they may request a plan. A member's own plan is never taken by anybody.
 --
 --   state    (raid or whisper)  which plan this client has and its active encounter; sent when joining the raid,
---                               when promoted, after an import and after choosing an encounter (lead and assists),
---                               to a member who just joined, and in answer to somebody with an older plan
+--                               when promoted, after an import or an edit and after choosing an encounter (lead and
+--                               assists), to a member who just joined, and in answer to somebody with an older plan
 --   request  (whisper)          "send me your plan" to the lead or assist who sent a newer state
 --   plan     (whisper)          the plan, answering a request
 --   force    (raid)             Force sync: the sender's plan for everybody; each recipient confirms first
@@ -95,7 +95,8 @@ local function decodePlan(text)
     local serialized = compressed and LibDeflate:DecompressDeflate(compressed)
     if not serialized then return nil end
     local ok, plan = Serializer:Deserialize(serialized)
-    if not ok or type(plan) ~= "table" or not Codec.IsSupported(plan.protocol) or Codec.Check(plan) then
+    if not ok or type(plan) ~= "table" or not Codec.IsSupported(plan.protocol) or Codec.Check(plan)
+        or not Rules.IsRevision(plan.revision) then
         return nil
     end
     return plan
@@ -335,6 +336,11 @@ function Sync:OnEnable()
     -- A plan imported here (by a source): tell the raid
     self:RegisterMessage("UTRM_PLAN_IMPORTED", function(_, _, source)
         if source ~= "sync" and self:CanSync() then self:QueueState() end
+    end)
+    -- The plan edited here (by a source): an edited plan is another plan, chosen now, so tell the raid like after an
+    -- import. A member's edit stays on their client: members are not sources.
+    self:RegisterMessage("UTRM_PLAN_EDITED", function()
+        if self:CanSync() then self:QueueState() end
     end)
     -- An encounter chosen here (by a source): tell the raid at once, so their windows follow the note
     self:RegisterMessage("UTRM_ENCOUNTER_ACTIVATED", function()
