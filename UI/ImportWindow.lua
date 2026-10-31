@@ -53,7 +53,9 @@ end
 
 function ImportWindow:Refresh(status)
     if not self.frame then return end
-    self.summary:SetText(UTRM:GetModule("PlanImport"):Summary(UTRM:GetModule("PlanImport"):GetPlan()))
+    local plan = UTRM:GetModule("PlanImport"):GetPlan()
+    self.summary:SetText(UTRM:GetModule("PlanImport"):Summary(plan))
+    self.clear:SetDisabled(not plan)
     if status then
         self.frame:SetStatusText(status)
     end
@@ -105,7 +107,7 @@ function ImportWindow:Create()
     frame:SetCallback("OnClose", function(widget)
         unhookPaste(self.editBox)
         _G[FRAME_GLOBAL] = nil
-        self.frame, self.editBox, self.summary, self.pasted = nil, nil, nil, nil
+        self.frame, self.editBox, self.summary, self.clear, self.pasted = nil, nil, nil, nil, nil
         AceGUI:Release(widget)
     end)
 
@@ -126,13 +128,24 @@ function ImportWindow:Create()
     hookPaste(editBox)
     frame:AddChild(editBox)
 
+    local buttons = AceGUI:Create("SimpleGroup")
+    buttons:SetLayout("Flow")
+    buttons:SetFullWidth(true)
+    frame:AddChild(buttons)
+
     local import = AceGUI:Create("Button")
     import:SetText(L["Import"])
     import:SetWidth(140)
     import:SetCallback("OnClick", function() self:Import() end)
-    frame:AddChild(import)
+    buttons:AddChild(import)
 
-    self.frame, self.editBox, self.summary = frame, editBox, summary
+    local clear = AceGUI:Create("Button")
+    clear:SetText(L["Clear raid plan"])
+    clear:SetWidth(140)
+    clear:SetCallback("OnClick", function() UTRM.PlanWindow:ConfirmClear() end)
+    buttons:AddChild(clear)
+
+    self.frame, self.editBox, self.summary, self.clear = frame, editBox, summary, clear
 
     -- Close with Escape
     _G[FRAME_GLOBAL] = frame.frame

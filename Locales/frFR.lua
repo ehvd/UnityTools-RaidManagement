@@ -35,6 +35,10 @@ L["%d encounters, %d named group layouts"] = "%d rencontres, %d répartitions de
 L["Gargul loot priorities included"] = "Priorités de butin Gargul incluses"
 L["No Gargul loot priorities"] = "Pas de priorités de butin Gargul"
 L["Exported %s, imported %s"] = "Exporté %s, importé %s"
+L["Clear raid plan"] = "Effacer le plan de raid"
+L["Clear the raid plan \"%s\"?"] = "Effacer le plan de raid « %s » ?"
+L["Clear the raid plan \"%s\"? The raid leader or an assistant may sync their plan to you again."] = "Effacer le plan de raid « %s » ? Le chef de raid ou un assistant peut à nouveau vous synchroniser son plan."
+L["Raid plan %s cleared."] = "Plan de raid %s effacé."
 
 L["show or hide the raid plan window"] = "affiche ou masque la fenêtre du plan de raid"
 L["Raid plan"] = "Plan de raid"

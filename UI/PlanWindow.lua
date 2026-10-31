@@ -240,6 +240,30 @@ function PlanWindow:AddPlanActions(root)
             PlanWindow:ShowResult(UTRM:GetModule("Sync"):ForceSync())
         end)
     end
+    if plan then
+        root:CreateButton(L["Clear raid plan"], function() PlanWindow:ConfirmClear() end)
+    end
+end
+
+-- Clear raid plan (the ⚙ menu, the minimap menu and the import window): asks first, naming the plan. In a raid the
+-- popup also says that a lead or assist's plan may sync back (Modules/Sync.lua).
+StaticPopupDialogs["UNITYTOOLSRAIDMANAGEMENT_CLEAR_PLAN"] = {
+    button1 = YES,
+    button2 = NO,
+    OnAccept = function() UTRM:GetModule("PlanImport"):Clear() end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+function PlanWindow:ConfirmClear()
+    local plan = currentPlan()
+    if not plan then return end
+    StaticPopupDialogs["UNITYTOOLSRAIDMANAGEMENT_CLEAR_PLAN"].text = IsInRaid()
+        and L["Clear the raid plan \"%s\"? The raid leader or an assistant may sync their plan to you again."]
+        or L["Clear the raid plan \"%s\"?"]
+    StaticPopup_Show("UNITYTOOLSRAIDMANAGEMENT_CLEAR_PLAN", plan.event.title)
 end
 
 -- A result for the status line, or for the chat while the window is hidden (an action from the minimap button)
@@ -577,6 +601,19 @@ end
 function PlanWindow:OnEnable()
     self:RegisterMessage("UTRM_PLAN_IMPORTED", function()
         self:Refresh("")
+    end)
+    -- Cleared: the empty window (a note still waiting to be sent is dropped), the import window's summary
+    self:RegisterMessage("UTRM_PLAN_CLEARED", function(_, plan)
+        if self.commitTimer then
+            self:CancelTimer(self.commitTimer)
+            self.commitTimer = nil
+        end
+        self:Refresh("")
+        local message = format(L["Raid plan %s cleared."], plan.event.title)
+        UTRM.ImportWindow:Refresh(message)
+        if not (frame and frame:IsShown()) and not UTRM.ImportWindow.frame then
+            UTRM:Print(message)
+        end
     end)
     if settings().shown then
         self:Show()
