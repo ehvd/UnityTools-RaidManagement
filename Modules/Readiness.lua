@@ -201,8 +201,8 @@ function Readiness:OnEnable()
     for _, event in ipairs({ "PARTY_LOOT_METHOD_CHANGED", "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD" }) do
         self:RegisterEvent(event, "Changed")
     end
-    for _, message in ipairs({ "UTRM_PLAN_IMPORTED", "UTRM_PLAN_EDITED", "UTRM_ENCOUNTER_ACTIVATED",
-        "UTRM_GARGUL_IMPORTED" }) do
+    for _, message in ipairs({ "UTRM_PLAN_IMPORTED", "UTRM_PLAN_EDITED", "UTRM_PLAN_CLEARED",
+            "UTRM_ENCOUNTER_ACTIVATED", "UTRM_GARGUL_IMPORTED" }) do
         self:RegisterMessage(message, "Changed")
     end
 end

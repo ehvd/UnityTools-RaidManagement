@@ -56,6 +56,10 @@ L["%d encounters, %d named group layouts"] = true
 L["Gargul loot priorities included"] = true
 L["No Gargul loot priorities"] = true
 L["Exported %s, imported %s"] = true
+L["Clear raid plan"] = true
+L["Clear the raid plan \"%s\"?"] = true
+L["Clear the raid plan \"%s\"? The raid leader or an assistant may sync their plan to you again."] = true
+L["Raid plan %s cleared."] = true
 
 -- Raid plan window
 L["show or hide the raid plan window"] = true

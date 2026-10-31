@@ -59,6 +59,16 @@ function PlanImport:Store(plan)
     UTRM:SendMessage("UTRM_PLAN_IMPORTED", plan, "import")
 end
 
+-- Removes the plan from this client only (issue #23): the others keep theirs, and a lead or assist's next state may
+-- sync one back (Modules/Sync.lua). Returns the removed plan, or nil when there was none.
+function PlanImport:Clear()
+    local plan = UTRM.db.global.plan
+    if not plan then return nil end
+    UTRM.db.global.plan = nil
+    UTRM:SendMessage("UTRM_PLAN_CLEARED", plan)
+    return plan
+end
+
 -- A plan received from another client (Modules/Sync.lua): kept as it came, with its import, chosen and active times
 function PlanImport:StoreSynced(plan)
     UTRM.db.global.plan = plan
