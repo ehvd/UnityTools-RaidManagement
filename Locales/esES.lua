@@ -124,3 +124,10 @@ L["Right-click: options"] = "Clic derecho: opciones"
 L["Raid note editor..."] = "Editor de nota de banda..."
 L["Hide minimap button"] = "Ocultar el botón del minimapa"
 L["Minimap button hidden: /utrm minimap shows it again."] = "Botón del minimapa oculto: /utrm minimap lo vuelve a mostrar."
+
+-- Fallback note after a boss kill
+L["After a kill: %s"] = "Tras derrotar al jefe: %s"
+L["After a kill: switches to %s"] = "Tras derrotar al jefe: cambia a %s"
+L["After a kill: no switch"] = "Tras derrotar al jefe: sin cambio"
+L["%s killed: switched to %s"] = "%s derrotado: cambiado a %s"
+L["Only the raid leader's client switches: without this addon there, nothing switches."] = "Solo el cliente del líder de banda cambia la nota: sin este addon allí, nada cambia."

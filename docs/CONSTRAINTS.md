@@ -138,3 +138,19 @@ a line end would differ). The wiki only sends a template whose rendering gives t
 a template with a marker that names no slot ("damaged"), so rendering never meets an unknown slot.
 
 Source: UnityWiki `docs/addon-export.md` ("Templates and slots"), `src/lib/text-template.ts`
+
+## 9. Boss kills (fallback note)
+
+`ENCOUNTER_END` (`encounterID, encounterName, difficultyID, groupSize, success`) fires in Classic Era at the end of
+every boss encounter (MRT and DBM use it); `success` is 1 for a kill and 0 for a wipe. It is not restricted: an
+event handler may send the MRT note (section 4) and ask for the groups to be sorted, but moving players is blocked
+in combat, so the sorter waits until nobody is in combat (section 2), which is usually seconds after a kill.
+
+`Modules/Fallback.lua` acts on it only on the raid leader's client (`UnitIsGroupLeader("player")` in a raid), so the
+note is sent once; the others follow the active encounter through the sync (section 7). If the raid leader does not
+run the addon, nothing switches; the readiness tooltip says so to everybody else. `encounterID` is Blizzard's
+DungeonEncounter ID, which export protocol 2 carries as `encounterId` (Lucifron 663): such a plan switches only for
+its own bosses, a protocol 1 plan (no IDs) on any kill. The decision is `Modules/FallbackRules.lua` (tested in
+`tests/fallback-rules.test.mjs`).
+
+Source: <https://warcraft.wiki.gg/wiki/ENCOUNTER_END>, <https://warcraft.wiki.gg/wiki/DungeonEncounterID>

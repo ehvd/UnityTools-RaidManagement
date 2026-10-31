@@ -1,3 +1,4 @@
+local _, ns = ...
 local UTRM = UnityToolsRaidManagement
 local L = UTRM.L
 
@@ -55,10 +56,13 @@ function PlanWindow:GetActiveIndex(plan)
 end
 
 -- Makes an encounter active and sends its note. Selecting the active one again sends it again (somebody joined late).
-function PlanWindow:Activate(index)
+-- `reason` (optional) replaces "Note sent" on the status line, and goes to the chat while the window is hidden: the
+-- switch after a boss kill (Modules/Fallback.lua).
+function PlanWindow:Activate(index, reason)
     local plan = currentPlan()
     local encounter = plan and plan.encounters[index]
     if not encounter then return end
+    self.commitReason = reason
     -- The time lets the sync pick the newest choice. Server time counts whole seconds, so a quicker click must still
     -- be newer than the last one: otherwise the others would keep the previous encounter.
     plan.active, plan.activeAt = encounter.key, math.max(GetServerTime(), (plan.activeAt or 0) + 0.001)
@@ -92,6 +96,11 @@ function PlanWindow:Commit()
     else
         short = "|cffffa040" .. L["Note sent, not as lead or assist"] .. "|r"
     end
+    if ok and self.commitReason then
+        short = self.commitReason
+        if not (frame and frame:IsShown()) then UTRM:Print(short) end
+    end
+    self.commitReason = nil
     self.noteStatus, self.noteMessage = short, message
     self.groupStatus, self.groupDetails = nil, nil
     self:Refresh()
@@ -277,11 +286,39 @@ function PlanWindow:ShowResult(ok, message)
     end
 end
 
+-- The fallback note (issue #29): the encounter that becomes active after a boss kill, or none. Choosing it is an
+-- edit of the plan, so a lead or assist's choice syncs to the raid.
+function PlanWindow:SetFallback(encounter)
+    local key = encounter and encounter.key
+    local ok = UTRM:GetModule("PlanImport"):Edit(function(plan)
+        if plan.fallback == key then return false end
+        plan.fallback = key
+    end)
+    if ok then
+        self:ShowResult(true, encounter and format(L["After a kill: switches to %s"], encounter.label)
+            or L["After a kill: no switch"])
+    end
+end
+
+local function addFallbackMenu(root, plan)
+    local fallback = ns.FallbackRules.Encounter(plan)
+    local menu = root:CreateButton(format(L["After a kill: %s"], fallback and fallback.label or NONE))
+    menu:CreateRadio(NONE, function() return fallback == nil end, function() PlanWindow:SetFallback(nil) end)
+    for i, encounter in ipairs(plan.encounters) do
+        menu:CreateRadio(format("%d. %s", i, encounter.label),
+            function() return encounter == fallback end,
+            function() PlanWindow:SetFallback(encounter) end)
+    end
+end
+
 local function openOptionsMenu(owner)
     local plan = currentPlan()
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(plan and plan.event.title or L["Raid plan"])
         PlanWindow:AddPlanActions(root)
+        if plan and #plan.encounters > 0 then
+            addFallbackMenu(root, plan)
+        end
         root:CreateCheckbox(L["Lock position"],
             function() return settings().locked end,
             function()
