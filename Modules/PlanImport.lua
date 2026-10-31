@@ -96,6 +96,35 @@ function PlanImport:Edit(change)
     return true
 end
 
+-- The note an encounter sends and shows: its hand edit (issue #25) when it has one, else the plan's own note. The
+-- plan's note (and protocol 2's template and slots) is never overwritten by a hand edit.
+function PlanImport:NoteOf(encounter)
+    return encounter.customNote or encounter.note
+end
+
+-- Stores `text` as the hand-edited note of the encounter `key`; nil (Reset to the plan's note) or the plan's own note
+-- removes the hand edit. An edit (synced like one, see Edit). Returns true, or false and a message (none when the
+-- note is unchanged).
+function PlanImport:EditNote(key, text)
+    local found
+    local ok, message = self:Edit(function(plan)
+        for _, encounter in ipairs(plan.encounters) do
+            if encounter.key == key then
+                found = true
+                local custom = text ~= encounter.note and text or nil
+                if custom == encounter.customNote then return false end
+                encounter.customNote = custom
+                return true
+            end
+        end
+        return false
+    end)
+    if not ok and not message and not found then
+        message = L["This encounter is no longer in the raid plan."]
+    end
+    return ok, message
+end
+
 -- A few lines describing a plan for the import window
 function PlanImport:Summary(plan)
     if not plan then

@@ -121,6 +121,11 @@ their client (nobody fetches a plan from a member), until a newer plan from a so
 travels as a whole plan, like an import. The meaning of the identity in `state` changed, so the sync version is 2:
 0.1.0 clients ignore 0.2.0 ones (and the other way round) and print the "update" line once per session.
 
+A note edited in game is kept next to the plan's note as `encounter.customNote`; the plan's `note`, `template` and
+`slots` are never overwritten. `PlanImport:NoteOf(encounter)` is the note that is sent and shown (the hand edit when
+there is one), and Reset to the plan's note removes the hand edit. `PlanCodec.Check` checks `customNote` on synced
+plans; exports never carry it.
+
 Source: <https://warcraft.wiki.gg/wiki/API_C_ChatInfo.SendAddonMessage>, AceComm-3.0
 
 ## 8. Note templates (export protocol 2)
