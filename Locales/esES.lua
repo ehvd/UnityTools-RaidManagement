@@ -108,6 +108,7 @@ L["Invited %d players: %s"] = "%d jugadores invitados: %s"
 
 L["Force sync"] = "Forzar sincronización"
 L["Synced from %s"] = "Sincronizado desde %s"
+L["Edited by %s at %s"] = "Editado por %s a las %s"
 L["%s chose %s"] = "%s eligió %s"
 L["Raid plan %s synced from %s."] = "Plan de banda %s sincronizado desde %s."
 L["Only the raid leader or an assistant can sync, in a raid."] = "Solo el líder de banda o un ayudante puede sincronizar, en banda."

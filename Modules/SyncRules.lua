@@ -4,20 +4,48 @@ local _, ns = ...
 -- formed. Pure Lua, no WoW API, so tests/sync-rules can run it outside the game.
 --
 -- A copy of a plan is described by its meta:
---   id   the export it came from: the event id and the export time (two imports of one string share it)
---   c    when somebody chose this plan: their import, or a force sync they accepted (server time)
+--   id   the export it came from (the event id and the export time: two imports of one string share it) and its
+--        revision, so an edited copy is another plan
+--   c    when somebody chose this plan: their import, their edit, or a force sync they accepted (server time)
 --   g    the export time (UnityWiki's generatedAt)
 --   a    the active encounter's key, at when it was chosen (server time)
 --   s    who holds this copy (the sender's name; our own name for our copy)
 local SyncRules = {}
 ns.SyncRules = SyncRules
 
-SyncRules.VERSION = 1   -- goes up on every change of the messages; other versions are ignored
+SyncRules.VERSION = 2   -- goes up on every change of the messages; other versions are ignored (2: revisions)
 
 local TYPES = { state = true, request = true, plan = true, force = true }
 
+-- A plan's revision: nil for the plan as imported; every edit (PlanImport:Edit) makes a new one
+--   n    a counter, one more than the revision it was made from
+--   by   who edited (a character name)
+--   at   when (server time)
+function SyncRules.Revise(revision, by, at)
+    return { n = (revision and revision.n or 0) + 1, by = by, at = at }
+end
+
+-- Whether a revision received with a plan is well formed (nil is the plan as imported)
+function SyncRules.IsRevision(revision)
+    if revision == nil then return true end
+    return type(revision) == "table" and type(revision.n) == "number" and type(revision.by) == "string"
+        and type(revision.at) == "number"
+end
+
+-- The export (event id @ export time), then the revision: "e1@100" as imported, "e1@100/2:Name:1700000000" edited
 function SyncRules.Identity(plan)
-    return tostring(plan.event and plan.event.id or "?") .. "@" .. tostring(plan.generatedAt or 0)
+    local id = tostring(plan.event and plan.event.id or "?") .. "@" .. tostring(plan.generatedAt or 0)
+    local revision = plan.revision
+    if revision then
+        id = id .. "/" .. tostring(revision.n) .. ":" .. tostring(revision.by) .. ":" .. tostring(revision.at)
+    end
+    return id
+end
+
+-- The chosen time of an edit: now, and at least a millisecond newer than the plan's previous choice, so an edit
+-- right after the import (or another edit) in the same server second still wins over the copy it was made from
+function SyncRules.EditChosenAt(previous, now)
+    return math.max(now, (previous or 0) + 0.001)
 end
 
 -- The meta of a stored plan (nil when there is none)
@@ -33,9 +61,10 @@ function SyncRules.Meta(plan, holder)
     }
 end
 
--- Whether `theirs` should replace `mine` (either may be nil). Copies of the same export never replace each other:
--- they are the same plan. Otherwise the most recently chosen plan wins, then the newer export, then the holder whose
--- name sorts first, so every client picks the same one.
+-- Whether `theirs` should replace `mine` (either may be nil). Copies of the same export and revision never replace
+-- each other: they are the same plan. Otherwise the most recently chosen plan wins, then the newer export, then the
+-- holder whose name sorts first, so every client picks the same one. An edit is a choice (EditChosenAt), so it wins
+-- like a newer import.
 function SyncRules.PlanWins(theirs, mine)
     if not theirs then return false end
     if not mine then return true end

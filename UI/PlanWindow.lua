@@ -599,9 +599,11 @@ function PlanWindow:Toggle()
 end
 
 function PlanWindow:OnEnable()
-    self:RegisterMessage("UTRM_PLAN_IMPORTED", function()
-        self:Refresh("")
-    end)
+    for _, message in ipairs({ "UTRM_PLAN_IMPORTED", "UTRM_PLAN_EDITED" }) do
+        self:RegisterMessage(message, function()
+            self:Refresh("")
+        end)
+    end
     -- Cleared: the empty window (a note still waiting to be sent is dropped), the import window's summary
     self:RegisterMessage("UTRM_PLAN_CLEARED", function(_, plan)
         if self.commitTimer then

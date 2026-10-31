@@ -10,6 +10,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - Clear raid plan (the raid plan window's options, the minimap menu and the import window) removes the imported plan
   after a confirmation; it clears only your copy, and a raid leader's or assistant's plan may sync back
 
+### Changed
+
+- Raid plan edits are revisions: an edit by the raid leader or an assistant reaches the raid like a newer import,
+  a member's edit stays on their client; the import window shows who edited the plan and when. The sync version
+  goes to 2, so 0.1.0 and 0.2.0 clients ignore each other's sync (update everybody)
+
 ## [0.1.0] - 2026-10-26
 
 ### Added

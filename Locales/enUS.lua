@@ -134,6 +134,7 @@ L["Invited %d players: %s"] = true
 -- Sync
 L["Force sync"] = true
 L["Synced from %s"] = true
+L["Edited by %s at %s"] = true
 L["%s chose %s"] = true
 L["Raid plan %s synced from %s."] = true
 L["Only the raid leader or an assistant can sync, in a raid."] = true
