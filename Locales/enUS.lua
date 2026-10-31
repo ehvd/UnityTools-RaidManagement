@@ -151,3 +151,24 @@ L["Right-click: options"] = true
 L["Raid note editor..."] = true
 L["Hide minimap button"] = true
 L["Minimap button hidden: /utrm minimap shows it again."] = true
+
+-- Groups editor (#26)
+L["Edit groups..."] = true
+L["Edit groups"] = true
+L["Click a player, then a slot or another player, or drag. Right-click takes a player out."] = true
+L["Change for:"] = true
+L["Every fight on the night's groups"] = true
+L["Only %s"] = true
+L["Also changes the groups of: %s"] = true
+L["Group %d"] = true
+L["In the raid, not in groups (%d)"] = true
+L["Drop a player here to empty the slot"] = true
+L["not in raid"] = true
+L["Save"] = true
+L["Undo changes"] = true
+L["Planned but not in the raid: %s"] = true
+L["Not in a raid: no class colours, and the list is empty."] = true
+L["Groups of %s saved."] = true
+L["This encounter is no longer in the raid plan."] = true
+L["Choose the encounter first."] = true
+L["The raid plan changed, so the groups editor was closed."] = true

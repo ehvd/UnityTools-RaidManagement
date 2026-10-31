@@ -282,6 +282,10 @@ local function openOptionsMenu(owner)
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(plan and plan.event.title or L["Raid plan"])
         PlanWindow:AddPlanActions(root)
+        -- The active encounter's groups (UI/GroupEditor.lua)
+        if PlanWindow:GetActiveIndex(plan) then
+            root:CreateButton(L["Edit groups..."], function() UTRM.GroupEditor:Open() end)
+        end
         root:CreateCheckbox(L["Lock position"],
             function() return settings().locked end,
             function()

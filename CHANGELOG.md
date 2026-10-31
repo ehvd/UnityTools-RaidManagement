@@ -12,6 +12,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - The import reads export protocol 2 of the UnityWiki raid planner (note templates with assignment slots, the
   bosses' encounter IDs, the people's classes) next to protocol 1, and can rebuild a note from its template; a
   template with an unknown slot fails the import as damaged. Nothing in the game uses the assignments yet
+- Edit groups... (the raid plan window's options) edits the active encounter's groups: click a player, then a slot
+  or another player (or drag) to move or swap, fill slots from the raid members not in the groups; planned players
+  who are not in the raid are marked. On the night's groups it asks whether the change is for every fight on them
+  or only this one (a new named layout). Saving is a plan edit that syncs, and sorts the raid when the encounter is
+  active
 
 ### Changed
 
