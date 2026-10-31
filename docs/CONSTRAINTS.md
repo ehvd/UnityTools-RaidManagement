@@ -122,3 +122,19 @@ travels as a whole plan, like an import. The meaning of the identity in `state` 
 0.1.0 clients ignore 0.2.0 ones (and the other way round) and print the "update" line once per session.
 
 Source: <https://warcraft.wiki.gg/wiki/API_C_ChatInfo.SendAddonMessage>, AceComm-3.0
+
+## 8. Note templates (export protocol 2)
+
+Protocol 2 sends each note also as a template with `{{s:n}}` slot markers, its slots' holders and the people's
+classes, so the addon can put other names in without knowing the wiki's token language. The wiki's second pass
+(`fillTemplate` there) is the format: `Modules/NoteTemplate.lua` reimplements it step by step, and
+`tests/note-template.test.mjs` asserts that every encounter of the wiki's fixture (copied to `tests/fixtures/`)
+renders to its `note` exactly. When the wiki changes that pass it bumps the protocol and the fixture.
+
+WoW's Lua 5.1 counts bytes, the wiki's JavaScript counts UTF-16 code units: a `&pad=` width is the shown text (no
+`|cff…` / `|r`) in UTF-16 units, one per UTF-8 character and two for a four-byte one (`NoteTemplate.Width`). The
+trailing trim of a line is ASCII whitespace in Lua; JavaScript's `\s` also takes Unicode spaces (a no-break space at
+a line end would differ). The wiki only sends a template whose rendering gives the note, and `PlanCodec.Check` refuses
+a template with a marker that names no slot ("damaged"), so rendering never meets an unknown slot.
+
+Source: UnityWiki `docs/addon-export.md` ("Templates and slots"), `src/lib/text-template.ts`

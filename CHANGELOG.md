@@ -9,6 +9,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 - Clear raid plan (the raid plan window's options, the minimap menu and the import window) removes the imported plan
   after a confirmation; it clears only your copy, and a raid leader's or assistant's plan may sync back
+- The import reads export protocol 2 of the UnityWiki raid planner (note templates with assignment slots, the
+  bosses' encounter IDs, the people's classes) next to protocol 1, and can rebuild a note from its template; a
+  template with an unknown slot fails the import as damaged. Nothing in the game uses the assignments yet
 
 ### Changed
 
