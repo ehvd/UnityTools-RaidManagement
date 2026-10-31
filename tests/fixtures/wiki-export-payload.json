@@ -1,0 +1,453 @@
+{
+  "protocol": 2,
+  "generatedAt": 1790000100,
+  "url": "https://unity-pyrewood.eu/raiding/raid-plans/1234567890",
+  "event": {
+    "id": "1234567890",
+    "title": "MC and AQ",
+    "startsAt": 1790000000,
+    "raids": [
+      {
+        "slug": "molten-core",
+        "name": "Molten Core"
+      },
+      {
+        "slug": "ahn-qiraj",
+        "name": "Temple of Ahn'Qiraj"
+      }
+    ]
+  },
+  "layouts": {
+    "default": [
+      "Aldreth",
+      "Brunhild",
+      "Zoë",
+      "Fenlyn",
+      "Kael",
+      "Siggi",
+      "Ember",
+      "Pencil",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  "people": {
+    "Aldreth": {
+      "class": "WARRIOR",
+      "role": "tank"
+    },
+    "Brunhild": {
+      "class": "WARRIOR",
+      "role": "tank"
+    },
+    "Zoë": {
+      "class": "PRIEST",
+      "role": "healer"
+    },
+    "Fenlyn": {
+      "class": "PALADIN",
+      "role": "healer"
+    },
+    "Kael": {
+      "class": "ROGUE",
+      "role": "melee"
+    },
+    "Siggi": {
+      "class": "MAGE",
+      "role": "ranged"
+    },
+    "Ember": {
+      "class": "MAGE",
+      "role": "ranged"
+    },
+    "Pencil": {}
+  },
+  "encounters": [
+    {
+      "key": "x:1",
+      "label": "Welcome",
+      "note": "Welcome to MC and AQ, 8 coming!\nKicks: |cfffff569Kael|r > |cff69ccf0Siggi|r",
+      "layout": "default",
+      "template": "Welcome to MC and AQ , 8 coming!\n[[Leader: {{s:1}}]]\n[[Typo: {{s:2}}]]\nKicks: {{s:3}}",
+      "slots": [
+        {
+          "n": 1,
+          "token": "LEADER",
+          "key": "LEADER",
+          "kind": "none",
+          "multi": false,
+          "holders": [],
+          "candidates": []
+        },
+        {
+          "n": 2,
+          "token": "MAGO1",
+          "key": "MAGO1",
+          "kind": "none",
+          "multi": false,
+          "holders": [],
+          "candidates": []
+        },
+        {
+          "n": 3,
+          "token": "@Kicker",
+          "key": "@kicker",
+          "kind": "custom",
+          "multi": true,
+          "sep": " > ",
+          "holders": [
+            "Kael",
+            "Siggi"
+          ],
+          "candidates": [
+            "Aldreth",
+            "Brunhild",
+            "Zoë",
+            "Fenlyn",
+            "Kael",
+            "Siggi",
+            "Ember",
+            "Pencil"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "molten-core:trash",
+      "label": "Trash",
+      "raid": "molten-core",
+      "note": "{rt8} skull first || {rt7} cross second\n  pull slow",
+      "layout": "default",
+      "template": "{rt8} skull first || {rt7} cross second\n  pull slow",
+      "slots": []
+    },
+    {
+      "key": "molten-core:lucifron",
+      "label": "Lucifron",
+      "raid": "molten-core",
+      "encounterId": 663,
+      "note": "{rt1} |cffc79c6eAldreth|r on Lucifron, |cffc79c6eAldreth|r taunts\n{rt2} |cffc79c6eBrunhild|r  adds\nHeals: |cffffffffZoë|r   | |cfff58cbaFenlyn|r|\nDecurse: |cff69ccf0Siggi|r, |cff69ccf0Ember|r\n{rt4} |cffc79c6eBrunhild|r - |cfff58cbaFenlyn|r\n|cffc79c6eAldreth|r: pulls\n{spell:19702} |cfffff569Kael|r kicks, |cffc79c6eAldreth|r calls it",
+      "layout": "default",
+      "template": "{rt1} {{s:1}} on Lucifron, {{s:2}} taunts\n{rt2} {{s:3}}adds\n[[{rt3} {{s:4}} on the far add]]\nHeals: {{s:5}}| {{s:6}}|\n[[Decurse: {{s:7}}]] [[Banish: {{s:8}}]]\n[[{rt4} {{s:9}}[[ - {{s:10}}]]]]\n{{s:11}}: pulls\n{spell:19702} {{s:12}} kicks, {{s:1}} calls it",
+      "slots": [
+        {
+          "n": 1,
+          "token": "TANK1",
+          "key": "role=tank&order=1",
+          "kind": "one",
+          "multi": false,
+          "holders": [
+            "Aldreth"
+          ],
+          "candidates": [
+            "Aldreth",
+            "Brunhild",
+            "Fenlyn"
+          ]
+        },
+        {
+          "n": 2,
+          "token": "MT",
+          "key": "role=tank&order=1",
+          "kind": "one",
+          "multi": false,
+          "holders": [
+            "Aldreth"
+          ],
+          "candidates": [
+            "Aldreth",
+            "Brunhild",
+            "Fenlyn"
+          ]
+        },
+        {
+          "n": 3,
+          "token": "TANK2",
+          "key": "role=tank&order=2",
+          "kind": "one",
+          "multi": false,
+          "pad": 10,
+          "holders": [
+            "Brunhild"
+          ],
+          "candidates": [
+            "Aldreth",
+            "Brunhild",
+            "Fenlyn"
+          ]
+        },
+        {
+          "n": 4,
+          "token": "TANK3",
+          "key": "role=tank&order=3",
+          "kind": "one",
+          "multi": false,
+          "holders": [],
+          "candidates": [
+            "Aldreth",
+            "Brunhild",
+            "Fenlyn"
+          ]
+        },
+        {
+          "n": 5,
+          "token": "HEALER1",
+          "key": "role=healer&order=1",
+          "kind": "one",
+          "multi": false,
+          "pad": 6,
+          "holders": [
+            "Zoë"
+          ],
+          "candidates": [
+            "Zoë",
+            "Fenlyn"
+          ]
+        },
+        {
+          "n": 6,
+          "token": "HEALER2",
+          "key": "role=healer&order=2",
+          "kind": "one",
+          "multi": false,
+          "pad": 3,
+          "holders": [
+            "Fenlyn"
+          ],
+          "candidates": [
+            "Zoë",
+            "Fenlyn"
+          ]
+        },
+        {
+          "n": 7,
+          "token": "MAGES",
+          "key": "class=mage",
+          "kind": "list",
+          "multi": true,
+          "sep": ", ",
+          "holders": [
+            "Siggi",
+            "Ember"
+          ],
+          "candidates": [
+            "Siggi",
+            "Ember"
+          ]
+        },
+        {
+          "n": 8,
+          "token": "WARLOCKS",
+          "key": "class=warlock",
+          "kind": "list",
+          "multi": true,
+          "sep": ", ",
+          "holders": [],
+          "candidates": []
+        },
+        {
+          "n": 9,
+          "token": "TANK2",
+          "key": "role=tank&order=2",
+          "kind": "one",
+          "multi": false,
+          "holders": [
+            "Brunhild"
+          ],
+          "candidates": [
+            "Aldreth",
+            "Brunhild",
+            "Fenlyn"
+          ]
+        },
+        {
+          "n": 10,
+          "token": "HEALER_PALADIN1",
+          "key": "role=healer&class=paladin&order=1",
+          "kind": "one",
+          "multi": false,
+          "holders": [
+            "Fenlyn"
+          ],
+          "candidates": [
+            "Fenlyn"
+          ]
+        },
+        {
+          "n": 11,
+          "token": "TANK1",
+          "key": "role=tank&order=1",
+          "kind": "one",
+          "multi": false,
+          "pad": 12,
+          "holders": [
+            "Aldreth"
+          ],
+          "candidates": [
+            "Aldreth",
+            "Brunhild",
+            "Fenlyn"
+          ]
+        },
+        {
+          "n": 12,
+          "token": "@Kicker",
+          "key": "@kicker",
+          "kind": "custom",
+          "multi": true,
+          "sep": ", ",
+          "holders": [
+            "Kael"
+          ],
+          "candidates": [
+            "Aldreth",
+            "Brunhild",
+            "Zoë",
+            "Fenlyn",
+            "Kael",
+            "Siggi",
+            "Ember",
+            "Pencil"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "molten-core:magmadar",
+      "label": "Magmadar",
+      "raid": "molten-core",
+      "encounterId": 664,
+      "note": "Tranq: |cff69ccf0Ember|r\n|cff69ccf0Siggi|r\nPencil\nHealers: |cffffffffZoë|r, |cfff58cbaFenlyn|r",
+      "layout": "default",
+      "template": "Tranq: {{s:1}}\n[[Fear ward: {{s:2}}]]\nHealers: {{s:3}}",
+      "slots": [
+        {
+          "n": 1,
+          "token": "@Tranq",
+          "key": "@tranq",
+          "kind": "custom",
+          "multi": true,
+          "sep": "\n",
+          "holders": [
+            "Ember",
+            "Siggi",
+            "Pencil"
+          ],
+          "candidates": [
+            "Aldreth",
+            "Brunhild",
+            "Zoë",
+            "Fenlyn",
+            "Kael",
+            "Siggi",
+            "Ember",
+            "Pencil"
+          ]
+        },
+        {
+          "n": 2,
+          "token": "HEALER1",
+          "key": "role=healer&order=1",
+          "kind": "one",
+          "multi": false,
+          "holders": [],
+          "candidates": [
+            "Zoë",
+            "Fenlyn"
+          ]
+        },
+        {
+          "n": 3,
+          "token": "HEALERS",
+          "key": "role=healer",
+          "kind": "list",
+          "multi": true,
+          "sep": ", ",
+          "holders": [
+            "Zoë",
+            "Fenlyn"
+          ],
+          "candidates": [
+            "Zoë",
+            "Fenlyn"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ahn-qiraj:bug-trio",
+      "label": "The Bug Trio",
+      "raid": "ahn-qiraj",
+      "encounterId": 710,
+      "note": "|cffc79c6eAldreth|r on Vem, |cffc79c6eBrunhild|r on Yauj",
+      "layout": "default",
+      "template": "{{s:1}} on Vem, {{s:2}} on Yauj",
+      "slots": [
+        {
+          "n": 1,
+          "token": "MT",
+          "key": "role=tank&order=1",
+          "kind": "one",
+          "multi": false,
+          "holders": [
+            "Aldreth"
+          ],
+          "candidates": [
+            "Aldreth",
+            "Brunhild",
+            "Fenlyn"
+          ]
+        },
+        {
+          "n": 2,
+          "token": "OT",
+          "key": "role=tank&order=2",
+          "kind": "one",
+          "multi": false,
+          "holders": [
+            "Brunhild"
+          ],
+          "candidates": [
+            "Aldreth",
+            "Brunhild",
+            "Fenlyn"
+          ]
+        }
+      ]
+    }
+  ],
+  "gargul": {
+    "string": "GARGUL-STRING",
+    "generatedAt": 1790000100
+  }
+}

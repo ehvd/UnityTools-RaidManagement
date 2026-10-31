@@ -23,6 +23,7 @@ const DOC_EXAMPLE =
 // Lua side: decode a string and hand back the result as canonical JSON (sorted keys), or the error / check code
 const SHIM = `
 local ns = {}
+assert(loadfile(ROOT .. "/Modules/NoteTemplate.lua"))("UnityTools-RaidManagement", ns)
 assert(loadfile(ROOT .. "/Modules/PlanCodec.lua"))("UnityTools-RaidManagement", ns)
 local LibDeflate = { DecompressZlib = function(_, data) return node_inflate(data) end }
 local Codec = ns.PlanCodec
@@ -165,7 +166,7 @@ test('\\u escapes, surrogate pairs and other escapes decode to UTF-8', () => {
 });
 
 test('an unsupported protocol is reported before the shape is checked', () => {
-  assert.equal(run(encode({ protocol: 2, whatever: true })), 'PROTOCOL:2');
+  assert.equal(run(encode({ protocol: 3, whatever: true })), 'PROTOCOL:3');
 });
 
 test('broken strings give an error code, not a Lua error', () => {
@@ -200,6 +201,55 @@ test('a plan without a Gargul string is fine', () => {
   const payload = night();
   delete payload.gargul;
   assertSame(run(encode(payload)), payload);
+});
+
+// UnityWiki's protocol 2 fixture (src/lib/__fixtures__/addon-export/ there), copied into tests/fixtures
+const WIKI_PAYLOAD = JSON.parse(readFileSync(join(root, 'tests', 'fixtures', 'wiki-export-payload.json'), 'utf8'));
+const WIKI_EXPORT = readFileSync(join(root, 'tests', 'fixtures', 'wiki-export.txt'), 'utf8');
+const wikiPlan = () => structuredClone(WIKI_PAYLOAD);
+
+test('the wiki protocol 2 fixture decodes losslessly', () => {
+  assertSame(run(WIKI_EXPORT), WIKI_PAYLOAD);
+});
+
+test('protocol 2 keys are checked when they are there', () => {
+  const lucifron = 2;   // encounters[3] in the paths, Lua counts from 1
+  const broken = [
+    [(p) => { delete p.people; }, 'CHECK:people'],
+    [(p) => { p.people.Pencil = 'x'; }, 'CHECK:people.Pencil'],
+    [(p) => { p.people.Kael.class = 4; }, 'CHECK:people.Kael'],
+    [(p) => { p.encounters[lucifron].encounterId = '663'; }, 'CHECK:encounters[3].encounterId'],
+    [(p) => { delete p.encounters[lucifron].slots; }, 'CHECK:encounters[3].slots'],
+    [(p) => { delete p.encounters[lucifron].template; }, 'CHECK:encounters[3].template'],
+    [(p) => { p.encounters[lucifron].template += ' {{s:13}}'; }, 'CHECK:encounters[3].template'],
+    [(p) => { p.encounters[lucifron].template += ' {{s:01}}'; }, 'CHECK:encounters[3].template'],
+    [(p) => { p.encounters[lucifron].slots[1].n = 5; }, 'CHECK:encounters[3].slots[2]'],
+    [(p) => { p.encounters[lucifron].slots.splice(3, 1); }, 'CHECK:encounters[3].slots[4]'],
+    [(p) => { p.encounters[lucifron].slots[0].holders = ['Aldreth', 7]; }, 'CHECK:encounters[3].slots[1]'],
+    [(p) => { delete p.encounters[lucifron].slots[0].candidates; }, 'CHECK:encounters[3].slots[1]'],
+    [(p) => { p.encounters[lucifron].slots[0].multi = 'no'; }, 'CHECK:encounters[3].slots[1]'],
+    [(p) => { p.encounters[lucifron].slots[2].pad = '10'; }, 'CHECK:encounters[3].slots[3].pad'],
+    [(p) => { p.encounters[lucifron].slots[6].sep = 1; }, 'CHECK:encounters[3].slots[7].sep'],
+  ];
+  for (const [breakIt, expected] of broken) {
+    const plan = wikiPlan();
+    breakIt(plan);
+    assert.equal(run(encode(plan)), expected, breakIt.toString());
+  }
+});
+
+test('protocol 2 without the optional keys, and protocol 1 with people, are fine', () => {
+  const plain = wikiPlan();
+  for (const encounter of plain.encounters) {
+    delete encounter.encounterId;
+    delete encounter.template;
+    delete encounter.slots;
+  }
+  assertSame(run(encode(plain)), plain);
+
+  const one = night();
+  one.people = { Raider1: { class: 'MAGE' } };
+  assertSame(run(encode(one)), one);
 });
 
 test('the checksum is djb2 over the bytes, as 8 hex digits', () => {
@@ -238,4 +288,19 @@ test('the doc example matches UnityWiki when it is checked out next to this repo
     return;
   }
   if (!doc.includes(DOC_EXAMPLE)) t.diagnostic('docs/addon-export.md has a different example now: update DOC_EXAMPLE');
+});
+
+test('the protocol 2 fixture matches UnityWiki when it is checked out next to this repo', (t) => {
+  const fixtures = join(root, '..', '..', 'UnityWiki', 'src', 'lib', '__fixtures__', 'addon-export');
+  let payload;
+  let text;
+  try {
+    payload = readFileSync(join(fixtures, 'payload.json'), 'utf8');
+    text = readFileSync(join(fixtures, 'export.txt'), 'utf8');
+  } catch {
+    t.skip('UnityWiki not found next to this repo');
+    return;
+  }
+  assert.deepEqual(JSON.parse(payload), WIKI_PAYLOAD, 'payload.json changed in UnityWiki: copy it to tests/fixtures');
+  assert.equal(text.trim(), WIKI_EXPORT.trim(), 'export.txt changed in UnityWiki: copy it to tests/fixtures');
 });

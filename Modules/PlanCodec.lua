@@ -2,12 +2,13 @@ local _, ns = ...
 
 -- Decodes the raid plan export of the UnityWiki raid planner. UnityWiki owns the format
 -- (docs/addon-export.md there): base64(zlib(JSON)) with the version in the JSON's `protocol` key.
--- Pure Lua apart from LibDeflate, which the caller passes in, so tests/plan-codec can run it outside the game.
+-- Pure Lua apart from LibDeflate, which the caller passes in, and NoteTemplate (loaded first), so tests/plan-codec
+-- can run it outside the game.
 local PlanCodec = {}
 ns.PlanCodec = PlanCodec
 
 -- Protocol versions this addon can read
-PlanCodec.PROTOCOLS = { 1 }
+PlanCodec.PROTOCOLS = { 1, 2 }
 PlanCodec.SLOTS = 40   -- names per layout: 8 groups of 5, MRT's raid groups order
 
 local byte, char, sub, find, concat, floor = string.byte, string.char, string.sub, string.find, table.concat, math.floor
@@ -202,8 +203,50 @@ end
 
 local function isString(v) return type(v) == "string" end
 
--- Protocol 1: returns nil when the plan is usable, or the path of the first thing that is not.
--- Keys this addon does not know are ignored (the wiki may add some without a new protocol).
+local function isStrings(list)
+    if type(list) ~= "table" then return false end
+    for i = 1, #list do
+        if not isString(list[i]) then return false end
+    end
+    return true
+end
+
+-- Protocol 2's people: name -> { class?, role? }
+local function checkPeople(people)
+    if type(people) ~= "table" then return "people" end
+    for name, person in pairs(people) do
+        if not isString(name) or type(person) ~= "table" or (person.class ~= nil and not isString(person.class))
+            or (person.role ~= nil and not isString(person.role)) then
+            return "people." .. tostring(name)
+        end
+    end
+    return nil
+end
+
+-- Protocol 2's template and slots of one encounter: both or neither, slots numbered 1, 2, 3 ... and every marker
+-- of the template naming one of them
+local function checkTemplate(encounter, path)
+    local template, slots = encounter.template, encounter.slots
+    if template == nil and slots == nil then return nil end
+    if not isString(template) then return path .. ".template" end
+    if type(slots) ~= "table" then return path .. ".slots" end
+    for i, slot in ipairs(slots) do
+        local at = path .. ".slots[" .. i .. "]"
+        if type(slot) ~= "table" or slot.n ~= i or not isString(slot.token) or not isString(slot.key)
+            or not isString(slot.kind) or type(slot.multi) ~= "boolean" or not isStrings(slot.holders)
+            or not isStrings(slot.candidates) then
+            return at
+        end
+        if slot.pad ~= nil and type(slot.pad) ~= "number" then return at .. ".pad" end
+        if slot.sep ~= nil and not isString(slot.sep) then return at .. ".sep" end
+    end
+    if ns.NoteTemplate.UnknownMarker(template, slots) then return path .. ".template" end
+    return nil
+end
+
+-- Returns nil when the plan is usable, or the path of the first thing that is not.
+-- Keys this addon does not know are ignored (the wiki may add some without a new protocol). Protocol 2's keys
+-- (people; per encounter encounterId, template, slots) are checked when they are there; people must be.
 function PlanCodec.Check(data)
     if type(data.event) ~= "table" then return "event" end
     if not isString(data.event.title) then return "event.title" end
@@ -215,6 +258,10 @@ function PlanCodec.Check(data)
             if not isString(names[slot]) then return "layouts." .. tostring(key) .. "[" .. slot .. "]" end
         end
     end
+    if data.people ~= nil or data.protocol >= 2 then
+        local problem = checkPeople(data.people)
+        if problem then return problem end
+    end
     if type(data.encounters) ~= "table" then return "encounters" end
     for i, encounter in ipairs(data.encounters) do
         local path = "encounters[" .. i .. "]"
@@ -224,6 +271,11 @@ function PlanCodec.Check(data)
         end
         if not isString(encounter.layout) or not data.layouts[encounter.layout] then return path .. ".layout" end
         if encounter.raid ~= nil and not isString(encounter.raid) then return path .. ".raid" end
+        if encounter.encounterId ~= nil and type(encounter.encounterId) ~= "number" then
+            return path .. ".encounterId"
+        end
+        local problem = checkTemplate(encounter, path)
+        if problem then return problem end
     end
     if data.gargul ~= nil and (type(data.gargul) ~= "table" or not isString(data.gargul.string)) then
         return "gargul"
