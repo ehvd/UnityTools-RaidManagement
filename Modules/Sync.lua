@@ -336,6 +336,11 @@ function Sync:OnEnable()
     self:RegisterMessage("UTRM_PLAN_IMPORTED", function(_, _, source)
         if source ~= "sync" and self:CanSync() then self:QueueState() end
     end)
+    -- The plan cleared here: nothing is sent (the others keep theirs). Forget the requests made, so the next newer
+    -- state from a lead or assist brings a plan back at once instead of after REQUEST_COOLDOWN.
+    self:RegisterMessage("UTRM_PLAN_CLEARED", function()
+        wipe(requested)
+    end)
     -- An encounter chosen here (by a source): tell the raid at once, so their windows follow the note
     self:RegisterMessage("UTRM_ENCOUNTER_ACTIVATED", function()
         if self:CanSync() then self:SendState() end
