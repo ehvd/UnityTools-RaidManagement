@@ -11,7 +11,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   after a confirmation; it clears only your copy, and a raid leader's or assistant's plan may sync back
 - The import reads export protocol 2 of the UnityWiki raid planner (note templates with assignment slots, the
   bosses' encounter IDs, the people's classes) next to protocol 1, and can rebuild a note from its template; a
-  template with an unknown slot fails the import as damaged. Nothing in the game uses the assignments yet
+  template with an unknown slot fails the import as damaged
+- Assignments... (the raid plan window's options) changes who fills the active encounter's assignments: each slot's
+  menu lists the planner's candidates in class colours with their role and marks who is not in the raid; custom
+  assignments take several people. A preview shows the rebuilt note; Save is a plan edit that syncs, and the note
+  goes to Method Raid Tools when the encounter is active. Protocol 1 plans and hand-edited notes say what to do
+  instead
 
 ### Changed
 

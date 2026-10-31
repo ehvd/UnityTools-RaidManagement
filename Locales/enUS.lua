@@ -151,3 +151,26 @@ L["Right-click: options"] = true
 L["Raid note editor..."] = true
 L["Hide minimap button"] = true
 L["Minimap button hidden: /utrm minimap shows it again."] = true
+
+-- Assignments window
+L["Assignments"] = true
+L["Assignments..."] = true
+L["Choose the encounter first."] = true
+L["Export the plan again from the wiki to change assignments."] = true
+L["The note of this encounter was edited by hand. Reset it to the plan's note to change its assignments."] = true
+L["Reset to the plan's note"] = true
+L["This encounter's note has no assignments."] = true
+L["Note preview"] = true
+L["Save"] = true
+L["%d changes not saved."] = true
+L["%s cannot be saved like this: choose again."] = true
+L["The encounter changed in the meantime: check it again."] = true
+L["The raid plan changed: the assignments are shown as they are now."] = true
+L["Nobody"] = true
+L["nobody"] = true
+L["Nobody can fill this."] = true
+L["not in raid"] = true
+L["Tank"] = true
+L["Healer"] = true
+L["Melee"] = true
+L["Ranged"] = true

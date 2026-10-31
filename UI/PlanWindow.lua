@@ -282,6 +282,10 @@ local function openOptionsMenu(owner)
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(plan and plan.event.title or L["Raid plan"])
         PlanWindow:AddPlanActions(root)
+        -- Who fills the active encounter's assignments (UI/AssignmentsWindow.lua)
+        if plan and PlanWindow:GetActiveIndex(plan) then
+            root:CreateButton(L["Assignments..."], function() UTRM.AssignmentsWindow:Open() end)
+        end
         root:CreateCheckbox(L["Lock position"],
             function() return settings().locked end,
             function()

@@ -16,6 +16,7 @@ globals = {
     "UnityToolsRaidManagementNoteFrame",
     "UnityToolsRaidManagementImportFrame",
     "UnityToolsRaidManagementPlanFrame",
+    "UnityToolsRaidManagementAssignmentsFrame",
     "SlashCmdList",
     "StaticPopupDialogs",
     "UISpecialFrames",
@@ -43,7 +44,8 @@ read_globals = {
 
     -- Frames / UI
     "UIParent", "GameTooltip", "PlaySound", "SOUNDKIT",
-    "StaticPopup_Show", "YES", "NO", "CLOSE", "MenuUtil", "MenuResponse",
+    "StaticPopup_Show", "YES", "NO", "CLOSE", "CANCEL", "MenuUtil", "MenuResponse",
+    "GameFontHighlight", "GameFontHighlightSmall", "GameFontNormalSmall",
 
     -- Game API
     "C_AddOns", "GetAddOnMetadata", "IsAddOnLoaded",
