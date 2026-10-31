@@ -43,7 +43,7 @@ read_globals = {
 
     -- Frames / UI
     "UIParent", "GameTooltip", "PlaySound", "SOUNDKIT",
-    "StaticPopup_Show", "YES", "NO", "CLOSE", "MenuUtil", "MenuResponse",
+    "StaticPopup_Show", "YES", "NO", "CLOSE", "NONE", "MenuUtil", "MenuResponse",
 
     -- Game API
     "C_AddOns", "GetAddOnMetadata", "IsAddOnLoaded",

@@ -12,6 +12,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - The import reads export protocol 2 of the UnityWiki raid planner (note templates with assignment slots, the
   bosses' encounter IDs, the people's classes) next to protocol 1, and can rebuild a note from its template; a
   template with an unknown slot fails the import as damaged. Nothing in the game uses the assignments yet
+- Fallback note after a boss kill: choose an encounter in the raid plan window's options ("After a kill"), for
+  example the night's trash note. When a boss of the plan dies, the raid leader's client makes it active as if
+  chosen in the window (note sent, groups sorted after combat, the raid follows). Not after a wipe; with a
+  protocol 1 plan any kill switches. The choice is a plan edit and syncs to the raid
 
 ### Changed
 

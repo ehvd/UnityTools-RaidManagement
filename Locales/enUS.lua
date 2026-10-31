@@ -151,3 +151,10 @@ L["Right-click: options"] = true
 L["Raid note editor..."] = true
 L["Hide minimap button"] = true
 L["Minimap button hidden: /utrm minimap shows it again."] = true
+
+-- Fallback note after a boss kill
+L["After a kill: %s"] = true
+L["After a kill: switches to %s"] = true
+L["After a kill: no switch"] = true
+L["%s killed: switched to %s"] = true
+L["Only the raid leader's client switches: without this addon there, nothing switches."] = true

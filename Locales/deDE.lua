@@ -124,3 +124,10 @@ L["Right-click: options"] = "Rechtsklick: Optionen"
 L["Raid note editor..."] = "Raid-Notiz-Editor..."
 L["Hide minimap button"] = "Minikarten-Schaltfläche verbergen"
 L["Minimap button hidden: /utrm minimap shows it again."] = "Minikarten-Schaltfläche verborgen: /utrm minimap zeigt sie wieder."
+
+-- Fallback note after a boss kill
+L["After a kill: %s"] = "Nach einem Kill: %s"
+L["After a kill: switches to %s"] = "Nach einem Kill: wechselt zu %s"
+L["After a kill: no switch"] = "Nach einem Kill: kein Wechsel"
+L["%s killed: switched to %s"] = "%s getötet: zu %s gewechselt"
+L["Only the raid leader's client switches: without this addon there, nothing switches."] = "Nur der Client des Schlachtzugsleiters wechselt: ohne dieses Addon dort wechselt nichts."

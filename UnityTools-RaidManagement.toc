@@ -26,9 +26,11 @@ Modules\PlanImport.lua
 Modules\GroupPlan.lua
 Modules\RaidGroups.lua
 Modules\Gargul.lua
+Modules\FallbackRules.lua
 Modules\Readiness.lua
 Modules\SyncRules.lua
 Modules\Sync.lua
+Modules\Fallback.lua
 
 UI\NoteEditor.lua
 UI\ImportWindow.lua
