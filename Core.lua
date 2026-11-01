@@ -16,9 +16,8 @@ UTRM.version = (version and not version:find("@", 1, true)) and version or "dev"
 local defaults = {
     profile = {
         noteWindow = { width = 560, height = 440 },   -- AceGUI status table of the note editor (position, size)
-        importWindow = { width = 520, height = 400 }, -- the same for the raid plan import window
+        raidPlanWindow = {},                          -- the same for the Raid Plan window, and its last section
         planWindow = { shown = false, locked = false, scale = 1 },   -- plus point, relativePoint, x, y, width once moved
-        groupEditor = {},                             -- point, relativePoint, x, y once moved
         minimap = { hide = false },                   -- LibDBIcon adds minimapPos when the button is moved
     },
     global = {
@@ -42,6 +41,7 @@ function UTRM:PrintHelp()
     self:Print("  /utrm note <text> - " .. L["send <text> as the Method Raid Tools note (\\n starts a new line)"])
     self:Print("  /utrm plan - " .. L["show or hide the raid plan window"])
     self:Print("  /utrm import - " .. L["import a raid plan from the UnityWiki raid planner"])
+    self:Print("  /utrm edit - " .. L["open the Raid Plan window"])
     self:Print("  /utrm minimap - " .. L["show or hide the minimap button"])
     self:Print("  /utrm version - " .. L["show the addon version"])
 end
@@ -62,6 +62,8 @@ function UTRM:OnSlashCommand(input)
         self.PlanWindow:Toggle()
     elseif command == "import" then
         self.ImportWindow:Open()
+    elseif command == "edit" then
+        self.RaidPlanWindow:Open()
     elseif command == "version" then
         self:Print(format(L["Version %s"], self.version))
     else

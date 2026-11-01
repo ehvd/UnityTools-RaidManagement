@@ -30,12 +30,13 @@ Works with [Method Raid Tools](https://www.curseforge.com/wow/addons/method-raid
 
 - Import the night's raid plan from the guild's raid planner and switch the Method Raid Tools note with one click per
   encounter, from a small window (`/utrm plan`); the raid is sorted into the planned groups at the same time
-- Change an encounter's note during the raid without re-importing, and go back to the plan's note with one click
+- Change the plan in game in one Raid Plan window (`/utrm edit`): the groups, who fills the assignments, an
+  encounter's note (and back to the plan's note with one click), the note after a boss kill, Gargul and the import
 - Loads the guild's loot priorities into [Gargul](https://www.curseforge.com/wow/addons/gargul) with one click and shows
   whether Gargul has the current ones
 - A readiness icon: Master Loot on, the planned players in the raid, Method Raid Tools and Gargul ready
 - The raid leader and assistants share the plan and the active encounter with the whole raid automatically
-- A minimap button for the raid plan window and the tools
+- A minimap button for the Raid Plan window and the small plan window
 - Write the raid note and send it to [Method Raid Tools](https://www.curseforge.com/wow/addons/method-raid-tools)
   (`/utrm note`), or send a one-line note from a macro (`/utrm note {rt1} Tanks on the left\nHealers in the middle`)
 - Available in English, German, French, Spanish and Italian

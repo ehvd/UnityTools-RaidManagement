@@ -5,25 +5,20 @@ local L = UTRM.L
 local AceGUI = LibStub("AceGUI-3.0")
 local Assignments = ns.Assignments
 
--- Window for changing who fills the active encounter's assignments (export protocol 2): one row per job with a
--- dropdown of its candidates, a preview of the rebuilt note, Save. Saving is a plan edit (PlanImport:Edit), so it
--- syncs like one, and the note goes to Method Raid Tools when the encounter is the active one. Layout from the
--- Figma wireframe "Assignments": an AceGUI Frame like the note editor's, every control at its own size.
+-- The Assignments section of the Raid Plan window (UI/RaidPlanWindow.lua): who fills an encounter's assignments
+-- (export protocol 2). The encounter dropdown picks the encounter to change (it never changes the active one), then
+-- one row per job with a dropdown of its candidates, a preview of the rebuilt note, Save. Saving is a plan edit
+-- (PlanImport:Edit), so it syncs like one, and the note goes to Method Raid Tools when the encounter is the active one.
+-- Layout from the Figma wireframe "Assignments", every control at its own size.
 local AssignmentsWindow = UTRM:NewModule("AssignmentsWindow", "AceEvent-3.0")
 UTRM.AssignmentsWindow = AssignmentsWindow
 
-local FRAME_GLOBAL = "UnityToolsRaidManagementAssignmentsFrame"
-local WIDTH, HEIGHT = 440, 548        -- 18 of it for the line above Preview as (an AceGUI Heading)
-local SHORT_HEIGHT = 170                -- the window when there is nothing to change, only a message
 local ROWS_HEIGHT = 196                 -- seven rows of jobs (a 26 tall dropdown and the layout's gap), then scrolls
 local LABEL_WIDTH = 110
-local DROPDOWN_WIDTH = 270              -- the rest of the scroll frame's width next to the label
+local DROPDOWN_WIDTH = 400              -- wide enough that the next label starts a new row
 local PREVIEW_HEIGHT = 150
 local MENU_HEIGHT = 400                 -- a menu of a whole raid scrolls past this
 local GREY = "|cff808080"
-
-local status = { width = WIDTH, height = HEIGHT }   -- position and size for this session
-local specialFrameAdded = false
 
 local ROLES = { tank = L["Tank"], healer = L["Healer"], melee = L["Melee"], ranged = L["Ranged"] }
 
@@ -90,9 +85,9 @@ end
 ------------------------------------------------------------------------------------------------- menus ---
 
 -- A job's menu: its candidates in alphabetical order. Several holders: check boxes, the menu stays open;
--- one holder: radio buttons and Nobody last, the menu closes. The window is an AceGUI Frame (FULLSCREEN_DIALOG,
--- level 100, top level), above Blizzard's menus: the menu goes to the TOOLTIP strata so it shows over the window
--- and any other addon's.
+-- one holder: radio buttons and Nobody last, the menu closes. An AceGUI Frame is FULLSCREEN_DIALOG,
+-- level 100, top level) in other addons, above Blizzard's menus: the menu goes to the TOOLTIP strata so it shows
+-- over any window.
 function AssignmentsWindow:OpenMenu(job, owner)
     local menu = MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(table.concat(job.tokens, " · "))
@@ -225,31 +220,6 @@ end
 
 ------------------------------------------------------------------------------------------------ the frame ---
 
-function AssignmentsWindow:Create()
-    local frame = AceGUI:Create("Frame")
-    frame:SetTitle(L["Assignments"])
-    frame:SetStatusTable(status)
-    frame:SetLayout("Flow")
-    frame:EnableResize(false)
-    frame:SetCallback("OnClose", function(widget)
-        self:UnhookDropdowns()
-        self:DetachPreview()
-        _G[FRAME_GLOBAL] = nil
-        self.frame, self.jobs, self.rows, self.preview = nil, nil, nil, nil
-        self.viewer, self.viewerChosen, self.viewerDropdown = nil, nil, nil
-        AceGUI:Release(widget)
-    end)
-    self.frame = frame
-    self.hooked = {}
-
-    -- Close with Escape
-    _G[FRAME_GLOBAL] = frame.frame
-    if not specialFrameAdded then
-        tinsert(UISpecialFrames, FRAME_GLOBAL)
-        specialFrameAdded = true
-    end
-end
-
 local function addLabel(parent, text)
     local label = AceGUI:Create("Label")
     label:SetFullWidth(true)
@@ -321,42 +291,45 @@ end
 
 -- Fills the window for the encounter `self.key` of the current plan: the jobs, or why they cannot be changed
 function AssignmentsWindow:Build(message)
-    local frame = self.frame
+    local host = self.host
+    local frame = host.container
     self:UnhookDropdowns()
     self:DetachPreview()
     frame:ReleaseChildren()
     self.jobs, self.rows, self.preview = nil, nil, nil
 
     local plan = currentPlan()
-    local encounter, index = findEncounter(plan, self.key)
+    self.key = host:EncounterToEdit(self.key)
+    local encounter = findEncounter(plan, self.key)
     if not encounter then
-        frame:Hide()
+        addLabel(frame, L["The plan has no encounters."])
+        host:SetStatus(message or "")
+        host:UpdateTree()
         return
     end
     self.people, self.raid = plan.people, raidMembers()
 
-    local heading = AceGUI:Create("Heading")
-    heading:SetText(format("%s  |cff999999%d/%d|r", encounter.label, index, #plan.encounters))
-    heading:SetFullWidth(true)
-    frame:AddChild(heading)
+    host:AddEncounterDropdown(frame, self.key, function(key)
+        self.key = key
+        self:Build()
+    end, function() return self:IsChanged() end)
 
     if not Assignments.HasTemplate(encounter) then
-        frame:SetHeight(SHORT_HEIGHT)
         addLabel(frame, L["Export the plan again from the wiki to change assignments."])
-        frame:SetStatusText(message or "")
+        host:SetStatus(message or "")
+        host:UpdateTree()
         return
     end
     -- A note edited by hand (encounter.customNote) has no slots left: back to the plan's note first
     if encounter.customNote ~= nil then
-        frame:SetHeight(SHORT_HEIGHT)
         addLabel(frame,
             L["The note of this encounter was edited by hand. Reset it to the plan's note to change its assignments."])
         addButton(frame, L["Reset to the plan's note"], 200, function() self:ResetNote() end)
-        frame:SetStatusText(message or "")
+        host:SetStatus(message or "")
+        host:UpdateTree()
         return
     end
 
-    frame:SetHeight(HEIGHT)
     self.jobs = Assignments.GroupJobs(Assignments.Jobs(encounter))
     self.encounter = encounter
 
@@ -427,15 +400,15 @@ function AssignmentsWindow:Build(message)
     frame:AddChild(previewBox)
     self:AttachPreview(previewBox.content)
 
-    addButton(frame, L["Save"], 140, function() self:Save() end)
-    addButton(frame, CANCEL, 140, function() frame:Hide() end)
+    self.saveButton = addButton(frame, L["Save"], 140, function() self:Save() end)
+    self.undoButton = addButton(frame, L["Undo changes"], 140, function() self:Build() end)
 
     self:Update(message)
 end
 
 -- The rows' texts, the preview and the status line after a change
 function AssignmentsWindow:Update(message)
-    if not (self.frame and self.jobs) then return end
+    if not (self.host and self.jobs) then return end
     for i, job in ipairs(self.jobs) do
         self.rows[i]:SetText(self:JobText(job))
     end
@@ -443,14 +416,17 @@ function AssignmentsWindow:Update(message)
     local note = ns.NoteView.For(Assignments.Preview(self.encounter, self.jobs, self.people), self:Viewer())
     self.preview:SetText(UTRM:GetModule("MRT"):FormatNote(note))
     local changed = Assignments.Changed(self.encounter, self.jobs)
+    self.saveButton:SetDisabled(changed == 0)
+    self.undoButton:SetDisabled(changed == 0)
     if message then
-        self.frame:SetStatusText(message)
+        self.host:SetStatus(message)
     elseif changed > 0 then
-        self.frame:SetStatusText(format(L["%d changes not saved."], changed))
+        self.host:SetStatus(format(L["%d changes not saved."], changed))
     else
-        self.frame:SetStatusText("")
+        self.host:SetStatus("")
     end
-    self.frame:DoLayout()
+    self.host.container:DoLayout()
+    self.host:UpdateTree()
 end
 
 ------------------------------------------------------------------------------------------------ actions ---
@@ -480,7 +456,7 @@ end
 function AssignmentsWindow:Save()
     local invalid = Assignments.Validate(self.jobs)
     if invalid then
-        self.frame:SetStatusText("|cffff4040" .. format(L["%s cannot be saved like this: choose again."], invalid) .. "|r")
+        self.host:SetStatus("|cffff4040" .. format(L["%s cannot be saved like this: choose again."], invalid) .. "|r")
         return
     end
     local jobs = self.jobs
@@ -492,7 +468,7 @@ function AssignmentsWindow:Save()
         self:Build("|cffff4040" .. (message or L["The encounter changed in the meantime: check it again."]) .. "|r")
         return
     end
-    self.frame:Hide()
+    self:Build(UTRM.RaidPlanWindow:SavedMessage(L["Assignments saved."]))
 end
 
 -- Clears the hand-edited note (`customNote`), so the plan's note and its assignments are back
@@ -504,21 +480,27 @@ function AssignmentsWindow:ResetNote()
     self:Build(not ok and message and ("|cffff4040" .. message .. "|r") or nil)
 end
 
--- Opens the window for the active encounter, or says why it cannot
-function AssignmentsWindow:Open()
-    local plan = currentPlan()
-    local encounter = plan and plan.encounters[UTRM.PlanWindow:GetActiveIndex(plan) or 0]
-    if not plan then
-        UTRM.PlanWindow:ShowResult(false, L["No raid plan imported yet."])
-        return
-    end
-    if not encounter then
-        UTRM.PlanWindow:ShowResult(false, L["Choose the encounter first."])
-        return
-    end
-    self.key = encounter.key
-    if not self.frame then self:Create() end
+function AssignmentsWindow:IsChanged()
+    return self.jobs ~= nil and Assignments.Changed(self.encounter, self.jobs) > 0
+end
+
+-- Shows the section in the Raid Plan window (`host`, UI/RaidPlanWindow.lua) on the encounter it showed last
+function AssignmentsWindow:Attach(host)
+    self.host = host
+    self.hooked = self.hooked or {}
     self:Build()
+end
+
+-- Before the window's section is released: AceGUI widgets go back as they were
+function AssignmentsWindow:Detach()
+    self:UnhookDropdowns()
+    self:DetachPreview()
+    self.host, self.jobs, self.rows, self.viewerDropdown = nil, nil, nil, nil
+end
+
+-- Unsaved changes are dropped (the Raid Plan window asked first)
+function AssignmentsWindow:Discard()
+    if self.host then self:Build() end
 end
 
 function AssignmentsWindow:OnEnable()
@@ -526,7 +508,7 @@ function AssignmentsWindow:OnEnable()
     -- unsaved changes are dropped
     for _, event in ipairs({ "UTRM_PLAN_IMPORTED", "UTRM_PLAN_EDITED", "UTRM_PLAN_CLEARED" }) do
         self:RegisterMessage(event, function()
-            if self.frame and not self.editing then
+            if self.host and not self.editing then
                 self:Build(L["The raid plan changed: the assignments are shown as they are now."])
             end
         end)

@@ -3,7 +3,7 @@ local UTRM = UnityToolsRaidManagement
 local L = UTRM.L
 
 -- The minimap button (LibDataBroker launcher shown by LibDBIcon): left click shows or hides the raid plan window,
--- right click opens a menu with the plan actions of the window's ⚙ menu and the rest of the addon's tools.
+-- right click opens a menu: the Raid Plan window or the mini window.
 local Minimap = UTRM:NewModule("Minimap")
 
 local LDB = LibStub("LibDataBroker-1.1")
@@ -17,12 +17,8 @@ local function showMenu(owner)
     GameTooltip:Hide()
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(L["Unity Tools - Raid Management"])
-        UTRM.PlanWindow:AddPlanActions(root)
-        root:CreateButton(L["Raid note editor..."], function() UTRM.NoteEditor:Open() end)
-        root:CreateButton(L["Hide minimap button"], function()
-            Minimap:SetShown(false)
-            UTRM:Print(L["Minimap button hidden: /utrm minimap shows it again."])
-        end)
+        root:CreateButton(L["Open Raid Plan"], function() UTRM.RaidPlanWindow:Open() end)
+        root:CreateButton(L["Open mini window"], function() UTRM.PlanWindow:Show() end)
     end)
 end
 
@@ -63,6 +59,10 @@ function Minimap:SetShown(shown)
     else
         DBIcon:Hide(ADDON_NAME)
     end
+end
+
+function Minimap:IsShown()
+    return not settings().hide
 end
 
 function Minimap:Toggle()
