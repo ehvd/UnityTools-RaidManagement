@@ -152,16 +152,56 @@ L["Raid note editor..."] = true
 L["Hide minimap button"] = true
 L["Minimap button hidden: /utrm minimap shows it again."] = true
 
+-- Editing an encounter's note (issue #25)
+L["Edit note..."] = true
+L["Note: %s"] = true
+L["Reset to the plan's note"] = true
+L["Note edited in game"] = true
+L["Note saved in the raid plan."] = true
+L["The plan's note is back."] = true
+L["The note is unchanged."] = true
+L["Saved on your client only: you are not raid leader or assistant."] = true
+L["This encounter is no longer in the raid plan."] = true
+
+-- Groups editor (#26)
+L["Edit groups..."] = true
+L["Edit groups"] = true
+L["Click a player, then a slot, a player or a list, or drag. Right-click takes a player out."] = true
+L["Night's groups"] = true
+L["The night's groups, used by: %s"] = true
+L["The night's groups: no encounter uses them."] = true
+L["%s uses the night's groups. Create an override to give this fight its own groups."] = true
+L["%s has its own groups (%s)."] = true
+L["Also used by: %s"] = true
+L["Create override"] = true
+L["Delete override"] = true
+L["Group %d"] = true
+L["In the raid, not in groups (%d)"] = true
+L["Bench (%d)"] = true
+L["Not in a raid"] = true
+L["Drop a player here to take them out of the groups."] = true
+L["not in raid"] = true
+L["Save"] = true
+L["Undo changes"] = true
+L["Planned but not in the raid: %s"] = true
+L["Groups of %s saved."] = true
+L["The night's groups saved."] = true
+L["%s has its own groups now."] = true
+L["%s uses the night's groups again."] = true
+L["Use the night's groups for %s again? Its own groups (%s) are deleted."] = true
+L["Use the night's groups for %s again? Its groups stay for: %s"] = true
+L["Discard your changes to the groups?"] = true
+L["These groups are no longer in the raid plan."] = true
+L["The raid plan changed, so the groups editor was closed."] = true
+
 -- Assignments window
 L["Assignments"] = true
 L["Assignments..."] = true
 L["Choose the encounter first."] = true
 L["Export the plan again from the wiki to change assignments."] = true
 L["The note of this encounter was edited by hand. Reset it to the plan's note to change its assignments."] = true
-L["Reset to the plan's note"] = true
 L["This encounter's note has no assignments."] = true
 L["Note preview"] = true
-L["Save"] = true
 L["%d changes not saved."] = true
 L["%s cannot be saved like this: choose again."] = true
 L["The encounter changed in the meantime: check it again."] = true
@@ -169,7 +209,6 @@ L["The raid plan changed: the assignments are shown as they are now."] = true
 L["Nobody"] = true
 L["nobody"] = true
 L["Nobody can fill this."] = true
-L["not in raid"] = true
 L["Tank"] = true
 L["Healer"] = true
 L["Melee"] = true

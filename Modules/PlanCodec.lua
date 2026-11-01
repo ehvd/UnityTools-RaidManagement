@@ -274,6 +274,8 @@ function PlanCodec.Check(data)
         if encounter.encounterId ~= nil and type(encounter.encounterId) ~= "number" then
             return path .. ".encounterId"
         end
+        -- A note edited in game (issue #25): only in plans that come through the sync, never in an export
+        if encounter.customNote ~= nil and not isString(encounter.customNote) then return path .. ".customNote" end
         local problem = checkTemplate(encounter, path)
         if problem then return problem end
     end
