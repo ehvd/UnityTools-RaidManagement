@@ -216,3 +216,10 @@ L["Ranged"] = true
 L["Preview as"] = true
 L["Everyone"] = true
 L["only what everyone sees"] = true
+
+-- Fallback note after a boss kill
+L["After a kill: %s"] = true
+L["After a kill: switches to %s"] = true
+L["After a kill: no switch"] = true
+L["%s killed: switched to %s"] = true
+L["Only the raid leader's client switches: without this addon there, nothing switches."] = true

@@ -161,6 +161,17 @@ local CHECKS = {
         return { ok = false, text = format(L["%d players in the wrong group"], result.misplaced),
             fix = { label = L["Sort groups"], run = function() UTRM:GetModule("RaidGroups"):Apply(layout) end } }
     end,
+
+    -- The fallback note (Modules/Fallback.lua): only the raid leader's client switches, which nobody can see from here
+    function(context)
+        local fallback = ns.FallbackRules.Encounter(context.plan)
+        if not fallback then return nil end
+        local check = { ok = true, text = format(L["After a kill: switches to %s"], fallback.label) }
+        if not UnitIsGroupLeader("player") then
+            check.details = { L["Only the raid leader's client switches: without this addon there, nothing switches."] }
+        end
+        return check
+    end,
 }
 
 -- { inRaid = false } outside a raid; otherwise { inRaid = true, checks = { ... }, problems = n }

@@ -29,6 +29,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   sees; Save is a plan edit that syncs, and the note
   goes to Method Raid Tools when the encounter is active. Protocol 1 plans and hand-edited notes say what to do
   instead
+- Fallback note after a boss kill: choose an encounter in the raid plan window's options ("After a kill"), for
+  example the night's trash note. When a boss of the plan dies, the raid leader's client makes it active as if
+  chosen in the window (note sent, groups sorted after combat, the raid follows). Not after a wipe; with a
+  protocol 1 plan any kill switches. The choice is a plan edit and syncs to the raid
 
 ### Changed
 

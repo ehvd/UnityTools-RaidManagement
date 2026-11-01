@@ -187,3 +187,10 @@ L["Ranged"] = "A distancia"
 L["Preview as"] = "Vista previa como"
 L["Everyone"] = "Todos"
 L["only what everyone sees"] = "solo lo que ven todos"
+
+-- Fallback note after a boss kill
+L["After a kill: %s"] = "Tras derrotar al jefe: %s"
+L["After a kill: switches to %s"] = "Tras derrotar al jefe: cambia a %s"
+L["After a kill: no switch"] = "Tras derrotar al jefe: sin cambio"
+L["%s killed: switched to %s"] = "%s derrotado: cambiado a %s"
+L["Only the raid leader's client switches: without this addon there, nothing switches."] = "Solo el cliente del líder de banda cambia la nota: sin este addon allí, nada cambia."
