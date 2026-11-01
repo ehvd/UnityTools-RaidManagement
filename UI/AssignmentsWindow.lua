@@ -283,7 +283,7 @@ function AssignmentsWindow:Build(message)
     end
 
     frame:SetHeight(HEIGHT)
-    self.jobs = Assignments.Jobs(encounter)
+    self.jobs = Assignments.SortJobs(Assignments.Jobs(encounter))
     self.encounter = encounter
 
     -- The jobs: label and dropdown, in a scroll frame

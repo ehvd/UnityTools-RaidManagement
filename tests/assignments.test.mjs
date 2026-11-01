@@ -73,6 +73,14 @@ end
 function hasTemplate(encounterJson)
     return tostring(A.HasTemplate(Codec.JSONDecode(encounterJson)))
 end
+
+function sortTokens(tokensJson)
+    local jobs = {}
+    for i, token in ipairs(Codec.JSONDecode(tokensJson)) do jobs[i] = { tokens = { token } } end
+    local out = {}
+    for i, job in ipairs(A.SortJobs(jobs)) do out[i] = job.tokens[1] end
+    return encode(out)
+end
 `;
 
 const L = lauxlib.luaL_newstate();
@@ -171,6 +179,16 @@ test('only encounters with a template and slots can be rebuilt (protocol 1 has n
   assert.equal(hasTemplate(protocol1), false);
   assert.equal(hasTemplate({ ...protocol1, template }), false);
   assert.equal(hasTemplate(encounter('molten-core:trash')), true);   // a template with no slots
+});
+
+test('rows by token: alphabetical, numbers by value, custom tokens without the @', () => {
+  lua.lua_getglobal(L, to_luastring('sortTokens'));
+  const tokens = ['TANK1', 'HEALER1', 'TANK10', 'TANK2', '@Kicker', 'HEALER2', 'TANK9', 'MT', '@decurser'];
+  lua.lua_pushstring(L, to_luastring(JSON.stringify(tokens)));
+  if (lua.lua_pcall(L, 1, 1, 0) !== lua.LUA_OK) throw new Error(to_jsstring(lua.lua_tostring(L, -1)));
+  const sorted = JSON.parse(to_jsstring(lua.lua_tostring(L, -1)));
+  lua.lua_pop(L, 1);
+  assert.deepEqual(sorted, ['@decurser', 'HEALER1', 'HEALER2', '@Kicker', 'MT', 'TANK1', 'TANK2', 'TANK9', 'TANK10']);
 });
 
 test('candidates in alphabetical order, ignoring case and accents', () => {

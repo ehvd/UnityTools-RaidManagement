@@ -79,6 +79,36 @@ function Assignments.Jobs(encounter)
     return jobs
 end
 
+-- A token as it sorts: without the "@" of a custom assignment, lower case, numbers by value (TANK9 before TANK10)
+local function tokenParts(token)
+    local parts = {}
+    for text, number in Assignments.SortName((token:gsub("^@", ""))):gmatch("(%D*)(%d*)") do
+        if text ~= "" then parts[#parts + 1] = text end
+        if number ~= "" then parts[#parts + 1] = tonumber(number) end
+    end
+    return parts
+end
+
+local function byToken(a, b)
+    local pa, pb = tokenParts(a.tokens[1]), tokenParts(b.tokens[1])
+    for i = 1, math.min(#pa, #pb) do
+        local x, y = pa[i], pb[i]
+        if x ~= y then
+            if type(x) == type(y) then return x < y end
+            return type(x) == "number"          -- a number before letters, as "1" comes before "a"
+        end
+    end
+    if #pa ~= #pb then return #pa < #pb end
+    return a.tokens[1] < b.tokens[1]
+end
+
+-- The jobs in the order the window shows them: by their first token, alphabetically (HEALER1, HEALER2, @Kicker,
+-- TANK1 ... TANK10)
+function Assignments.SortJobs(jobs)
+    table.sort(jobs, byToken)
+    return jobs
+end
+
 function Assignments.Holds(job, name)
     for _, holder in ipairs(job.holders) do
         if holder == name then return true end
