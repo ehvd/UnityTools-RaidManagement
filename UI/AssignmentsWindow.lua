@@ -13,7 +13,7 @@ local AssignmentsWindow = UTRM:NewModule("AssignmentsWindow", "AceEvent-3.0")
 UTRM.AssignmentsWindow = AssignmentsWindow
 
 local FRAME_GLOBAL = "UnityToolsRaidManagementAssignmentsFrame"
-local WIDTH, HEIGHT = 440, 530
+local WIDTH, HEIGHT = 440, 548        -- 18 of it for the line above Preview as (an AceGUI Heading)
 local SHORT_HEIGHT = 170                -- the window when there is nothing to change, only a message
 local ROWS_HEIGHT = 196                 -- seven rows of jobs (a 26 tall dropdown and the layout's gap), then scrolls
 local LABEL_WIDTH = 110
@@ -402,6 +402,12 @@ function AssignmentsWindow:Build(message)
         end
         if not known then self.viewer = nil end
     end
+    -- The preview's own section: a line like the encounter's heading, below the rows' scroll frame
+    local divider = AceGUI:Create("Heading")
+    divider:SetText("")
+    divider:SetFullWidth(true)
+    frame:AddChild(divider)
+
     local viewerLabel = AceGUI:Create("Label")
     viewerLabel:SetFontObject(GameFontNormalSmall)
     viewerLabel:SetWidth(LABEL_WIDTH)
