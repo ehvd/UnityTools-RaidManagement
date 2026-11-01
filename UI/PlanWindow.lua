@@ -33,6 +33,8 @@ local GRIP = 16                         -- the chat frame's size grabber
 local SCALES = { 0.8, 0.9, 1, 1.1, 1.25 }
 local SETTLE_SECONDS = 0.3              -- after the last click, the note, groups and sync go out
 local TOOLTIP_NOTE_LINES = 12
+-- An encounter with a note edited in game: a note icon trimmed of its border (the game font has no ✎)
+local EDITED_MARK = " |TInterface\\Icons\\INV_Misc_Note_01:14:14:0:0:64:64:5:59:5:59|t"
 
 local frame
 
@@ -73,19 +75,23 @@ function PlanWindow:Activate(index)
     self.commitTimer = self:ScheduleTimer("Commit", SETTLE_SECONDS)
 end
 
--- Sends the active encounter's note, sorts its groups and tells the sync
-function PlanWindow:Commit()
-    self.commitTimer = nil
+function PlanWindow:IsActive(encounter)
+    local plan = currentPlan()
+    return encounter ~= nil and plan ~= nil and plan.active == encounter.key
+end
+
+-- Sends the active encounter's note (its hand edit when it has one) and shows the result on the status line: in
+-- short, its tooltip the whole message. Returns the encounter, or nil when none is active.
+function PlanWindow:SendNote()
     local plan = currentPlan()
     local encounter = plan and plan.encounters[self:GetActiveIndex(plan) or 0]
-    if not encounter then return end
-
-    -- The note, then the groups: the status line shows both in short, its tooltip the whole messages
-    local ok, message = UTRM:GetModule("MRT"):Post(encounter.note)
+    if not encounter then return nil end
+    local note = UTRM:GetModule("PlanImport"):NoteOf(encounter)
+    local ok, message = UTRM:GetModule("MRT"):Post(note)
     local short
     if not ok then
         short = "|cffff4040" .. L["Note not sent"] .. "|r"
-    elseif encounter.note == "" then
+    elseif note == "" then
         short, message = L["Note cleared"], L["This encounter has no note: the MRT note was cleared."]
     elseif UTRM:GetModule("MRT"):CanSendToRaid() then
         short = L["Note sent"]
@@ -93,8 +99,18 @@ function PlanWindow:Commit()
         short = "|cffffa040" .. L["Note sent, not as lead or assist"] .. "|r"
     end
     self.noteStatus, self.noteMessage = short, message
-    self.groupStatus, self.groupDetails = nil, nil
     self:Refresh()
+    return encounter
+end
+
+-- Sends the active encounter's note, sorts its groups and tells the sync
+function PlanWindow:Commit()
+    self.commitTimer = nil
+    -- The note, then the groups: the status line shows both
+    self.groupStatus, self.groupDetails = nil, nil
+    local encounter = self:SendNote()
+    if not encounter then return end
+    local plan = currentPlan()
     UTRM:GetModule("RaidGroups"):Apply(plan.layouts[encounter.layout])
     self:SendMessage("UTRM_ENCOUNTER_ACTIVATED", encounter, plan.layouts[encounter.layout])
 end
@@ -206,6 +222,14 @@ end
 
 ------------------------------------------------------------------------------------------------- menus ---
 
+-- Edit note... for the active encounter (the ⚙ menu and the encounter list), when one is active
+local function addEditNote(root, plan)
+    local encounter = plan and plan.encounters[PlanWindow:GetActiveIndex(plan) or 0]
+    if encounter then
+        root:CreateButton(L["Edit note..."], function() UTRM.NoteEditor:OpenEncounter(encounter) end)
+    end
+end
+
 local function openEncounterMenu(owner)
     local plan = currentPlan()
     if not plan then return end
@@ -213,12 +237,16 @@ local function openEncounterMenu(owner)
         root:CreateTitle(plan.event.title)
         local active = PlanWindow:GetActiveIndex(plan)
         for i, encounter in ipairs(plan.encounters) do
-            root:CreateRadio(format("%d. %s", i, encounter.label),
+            root:CreateRadio(format("%d. %s", i, encounter.label) .. (encounter.customNote and EDITED_MARK or ""),
                 function() return i == active end,
                 function()
                     PlanWindow:Activate(i)
                     return MenuResponse and MenuResponse.Close
                 end)
+        end
+        if active then
+            root:CreateDivider()
+            addEditNote(root, plan)
         end
     end)
 end
@@ -281,6 +309,7 @@ local function openOptionsMenu(owner)
     local plan = currentPlan()
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(plan and plan.event.title or L["Raid plan"])
+        addEditNote(root, plan)
         PlanWindow:AddPlanActions(root)
         root:CreateCheckbox(L["Lock position"],
             function() return settings().locked end,
@@ -383,8 +412,11 @@ local function showEncounterTooltip(self)
         GameTooltip:AddLine(encounter.label, 1, 1, 1)
         GameTooltip:AddLine(encounter.layout == "default" and L["The night's groups"]
             or format(L["Groups: %s"], encounter.layout), 0.6, 0.8, 1)
+        if encounter.customNote then
+            GameTooltip:AddLine(L["Note edited in game"] .. EDITED_MARK, 1, 0.82, 0)
+        end
         local shown = 0
-        for line in (encounter.note .. "\n"):gmatch("(.-)\n") do
+        for line in (UTRM:GetModule("PlanImport"):NoteOf(encounter) .. "\n"):gmatch("(.-)\n") do
             shown = shown + 1
             if shown > TOOLTIP_NOTE_LINES then
                 GameTooltip:AddLine("...", 1, 1, 1)
@@ -551,7 +583,9 @@ function PlanWindow:Refresh(status)
     frame.encounter:Show()
     local index, count = self:GetActiveIndex(plan), #plan.encounters
     if index then
-        frame.encounter.text:SetText(format("|cff999999%d/%d|r  %s", index, count, plan.encounters[index].label))
+        local encounter = plan.encounters[index]
+        frame.encounter.text:SetText(format("|cff999999%d/%d|r  %s", index, count, encounter.label)
+            .. (encounter.customNote and EDITED_MARK or ""))
     else
         frame.encounter.text:SetText(count > 0 and L["Choose the encounter"] or L["The plan has no encounters."])
     end

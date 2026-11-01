@@ -151,3 +151,14 @@ L["Right-click: options"] = true
 L["Raid note editor..."] = true
 L["Hide minimap button"] = true
 L["Minimap button hidden: /utrm minimap shows it again."] = true
+
+-- Editing an encounter's note (issue #25)
+L["Edit note..."] = true
+L["Note: %s"] = true
+L["Reset to the plan's note"] = true
+L["Note edited in game"] = true
+L["Note saved in the raid plan."] = true
+L["The plan's note is back."] = true
+L["The note is unchanged."] = true
+L["Saved on your client only: you are not raid leader or assistant."] = true
+L["This encounter is no longer in the raid plan."] = true

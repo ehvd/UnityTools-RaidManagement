@@ -49,7 +49,7 @@ read_globals = {
     "C_AddOns", "GetAddOnMetadata", "IsAddOnLoaded",
     "UnitIsGroupLeader", "UnitIsGroupAssistant", "GetRaidRosterInfo", "UnitAffectingCombat",
     "GetLootMethod", "SetLootMethod", "InviteUnit", "C_PartyInfo",
-    "Ambiguate", "ACCEPT", "DECLINE", "UnitInRaid",
+    "Ambiguate", "ACCEPT", "DECLINE", "SAVE", "UnitInRaid",
     "C_Timer", "GetTime", "GetServerTime", "GetLocale", "geterrorhandler",
     "UnitName", "UnitGUID", "UnitExists", "UnitClass", "UnitLevel", "InCombatLockdown",
     "IsInGroup", "IsInRaid", "GetNumGroupMembers", "GetSpellInfo",
