@@ -62,6 +62,57 @@ function MRT:SetLocalNote(text)
     return true
 end
 
+-- MRT's note icons: {rt1}..{rt8} and the raid targets' names in every language MRT knows ({star}, {skull}), the
+-- class and role icons ({Warrior}, {tank}). Built from MRT's own lists as its note window does (allIcons in
+-- Note.lua); nil when MRT cannot be used.
+local icons
+local function noteIcons(note)
+    if icons then return icons end
+    local db = note.db
+    if type(db) ~= "table" or type(db.iconsLocalizatedNames) ~= "table" or type(db.otherIconsList) ~= "table" then
+        return nil
+    end
+    icons = { ["{everyone}"] = "" }
+    for i = 1, 8 do
+        local icon = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_" .. i .. ":0|t"
+        icons["{rt" .. i .. "}"] = icon
+        for field, names in pairs(db) do
+            if (field == "iconsLocalizatedNames" or field:match("^icons%a+Names$")) and type(names) == "table"
+                and type(names[i]) == "string" then
+                icons[names[i]] = icon
+            end
+        end
+    end
+    for _, data in ipairs(db.otherIconsList) do
+        if type(data[1]) == "string" then
+            icons[data[1]] = "|T" .. (data.path or data[2]) .. (data.crop or ":16") .. "|t"
+        end
+    end
+    return icons
+end
+
+local function spellIcon(spellID, size)
+    size = tonumber(size) and math.min(tonumber(size), 40) or 16
+    local getTexture = (C_Spell and C_Spell.GetSpellTexture) or GetSpellTexture
+    return "|T" .. (getTexture(tonumber(spellID)) or "Interface\\Icons\\INV_MISC_QUESTIONMARK") .. ":" .. size .. "|t"
+end
+
+-- A note as MRT's note window shows it: icons for {rt1}, {star}, {Warrior}, {spell:id} and {icon:path}, the other
+-- {tags} left out (their text stays). Blocks for some players are kept as they are (ns.NoteView chooses them
+-- first); phases and timers are not applied. The text as it is when MRT cannot be used.
+function MRT:FormatNote(text)
+    local note = self:GetNoteModule()
+    local iconsOf = note and noteIcons(note)
+    if not iconsOf then return text end
+    return (text:gsub("{0}.-{/0}", "")
+        :gsub("{icon:([^}]+)}", "|T%1:16|t")
+        :gsub("{spell:(%d+):?(%d*)}", spellIcon)
+        :gsub("%b{}", iconsOf)
+        :gsub("||([cr])", "|%1")
+        :gsub("\n+$", "")
+        :gsub("%b{}", ""))
+end
+
 -- Returns MRT's raid groups module, or nil and the reason why it cannot be used.
 function MRT:GetRaidGroupsModule()
     if not isAddOnLoaded("MRT") then

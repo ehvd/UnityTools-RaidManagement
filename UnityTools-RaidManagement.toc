@@ -21,9 +21,12 @@ Core.lua
 
 Modules\MRT.lua
 Modules\NoteTemplate.lua
+Modules\Assignments.lua
+Modules\NoteView.lua
 Modules\PlanCodec.lua
 Modules\PlanImport.lua
 Modules\GroupPlan.lua
+Modules\GroupEdit.lua
 Modules\RaidGroups.lua
 Modules\Gargul.lua
 Modules\FallbackRules.lua
@@ -35,4 +38,6 @@ Modules\Fallback.lua
 UI\NoteEditor.lua
 UI\ImportWindow.lua
 UI\PlanWindow.lua
+UI\GroupEditor.lua
+UI\AssignmentsWindow.lua
 UI\Minimap.lua
