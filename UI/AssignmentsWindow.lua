@@ -13,12 +13,13 @@ local AssignmentsWindow = UTRM:NewModule("AssignmentsWindow", "AceEvent-3.0")
 UTRM.AssignmentsWindow = AssignmentsWindow
 
 local FRAME_GLOBAL = "UnityToolsRaidManagementAssignmentsFrame"
-local WIDTH, HEIGHT = 440, 500
+local WIDTH, HEIGHT = 440, 530
 local SHORT_HEIGHT = 170                -- the window when there is nothing to change, only a message
 local ROWS_HEIGHT = 196                 -- seven rows of jobs (a 26 tall dropdown and the layout's gap), then scrolls
 local LABEL_WIDTH = 110
 local DROPDOWN_WIDTH = 270              -- the rest of the scroll frame's width next to the label
 local PREVIEW_HEIGHT = 150
+local MENU_HEIGHT = 400                 -- a menu of a whole raid scrolls past this
 local GREY = "|cff808080"
 
 local status = { width = WIDTH, height = HEIGHT }   -- position and size for this session
@@ -124,16 +125,88 @@ function AssignmentsWindow:OpenMenu(job, owner)
     if menu then menu:SetFrameStrata("TOOLTIP") end
 end
 
+-- The people to preview the note as: the raid when in one, else the plan's people; { names (alphabetical),
+-- classes (name → class token) }
+local function viewers(people)
+    local names, classes = {}, {}
+    if IsInRaid() then
+        for i = 1, GetNumGroupMembers() do
+            local name, _, _, _, _, class = GetRaidRosterInfo(i)
+            if name then
+                names[#names + 1] = name
+                classes[name] = class
+            end
+        end
+    else
+        for name, person in pairs(people or {}) do
+            names[#names + 1] = name
+            classes[name] = type(person) == "table" and person.class or nil
+        end
+    end
+    return { names = Assignments.SortNames(names), classes = classes }
+end
+
+-- The game's class names (lower case) to class tokens, for {c:Krieger} in a German note
+local classNames
+local function gameClassNames()
+    if classNames then return classNames end
+    classNames = {}
+    for _, list in ipairs({ LOCALIZED_CLASS_NAMES_MALE or {}, LOCALIZED_CLASS_NAMES_FEMALE or {} }) do
+        for token, name in pairs(list) do classNames[name:lower()] = token end
+    end
+    return classNames
+end
+
+-- The viewer ns.NoteView takes for the person the preview is shown as (nil: everyone): their class, their group
+-- in this encounter's planned layout (not the raid's groups now) and the classes among the people
+function AssignmentsWindow:Viewer()
+    local name = self.viewer
+    if not name then return nil end
+    local present = {}
+    for _, class in pairs(self.viewers.classes) do present[class] = true end
+    local plan = currentPlan()
+    local layout = plan and plan.layouts and (plan.layouts[self.encounter.layout] or plan.layouts.default)
+    return {
+        name = name, class = self.viewers.classes[name], classes = present, classNames = gameClassNames(),
+        group = ns.NoteView.GroupIn(layout, name, ns.GroupPlan.Key),
+    }
+end
+
+function AssignmentsWindow:ViewerText(name)
+    if not name then return L["Everyone"] end
+    return ns.NoteTemplate.ColouredName(name, { [name] = { class = self.viewers.classes[name] } })
+end
+
+-- The menu of people to preview as: Everyone (every block shown), then the people in class colours
+function AssignmentsWindow:OpenViewerMenu(owner)
+    local menu = MenuUtil.CreateContextMenu(owner, function(_, root)
+        root:CreateTitle(L["Preview as"])
+        local function choose(name)
+            self.viewer = name
+            self:Update()
+            return MenuResponse and MenuResponse.Close
+        end
+        root:CreateRadio(L["Everyone"] .. "  " .. GREY .. L["every block"] .. "|r",
+            function() return self.viewer == nil end, function() return choose(nil) end)
+        for _, name in ipairs(self.viewers.names) do
+            root:CreateRadio(self:ViewerText(name), function() return self.viewer == name end,
+                function() return choose(name) end)
+        end
+        if root.SetScrollMode then root:SetScrollMode(MENU_HEIGHT) end
+    end)
+    if menu then menu:SetFrameStrata("TOOLTIP") end
+end
+
 -- The rows use AceGUI's Dropdown for its look (UIDropDownMenuTemplate, set up as the plan window's) with this menu
 -- instead of its own list. AceGUI widgets are shared with other addons: the clicks and the text's alignment go back
 -- before the widget is released.
-function AssignmentsWindow:HookDropdown(dropdown, job)
+function AssignmentsWindow:HookDropdown(dropdown, openMenu)
     local saved = {
         button = dropdown.button:GetScript("OnClick"),
         cover = dropdown.button_cover:GetScript("OnClick"),
         justify = dropdown.text:GetJustifyH(),
     }
-    local function open() self:OpenMenu(job, dropdown.frame) end
+    local function open() openMenu(dropdown.frame) end
     dropdown.button:SetScript("OnClick", open)
     dropdown.button_cover:SetScript("OnClick", open)
     dropdown.text:SetJustifyH("LEFT")
@@ -163,6 +236,7 @@ function AssignmentsWindow:Create()
         self:DetachPreview()
         _G[FRAME_GLOBAL] = nil
         self.frame, self.jobs, self.rows, self.preview = nil, nil, nil, nil
+        self.viewer, self.viewerChosen, self.viewerDropdown = nil, nil, nil
         AceGUI:Release(widget)
     end)
     self.frame = frame
@@ -307,10 +381,36 @@ function AssignmentsWindow:Build(message)
         rows:AddChild(label)
         local dropdown = AceGUI:Create("Dropdown")
         dropdown:SetWidth(DROPDOWN_WIDTH)
-        self:HookDropdown(dropdown, job)
+        self:HookDropdown(dropdown, function(owner) self:OpenMenu(job, owner) end)
         rows:AddChild(dropdown)
         self.rows[i] = dropdown
     end
+
+    -- Whom the preview shows the note as: yourself when you are among the people, else everyone, until the
+    -- window closes
+    self.viewers = viewers(self.people)
+    if not self.viewerChosen then
+        self.viewer, self.viewerChosen = nil, true
+        local me = UnitName("player")
+        for _, name in ipairs(self.viewers.names) do
+            if ns.GroupPlan.Key(name) == ns.GroupPlan.Key(me) then self.viewer = name end
+        end
+    elseif self.viewer then                 -- somebody who has left the raid: everyone
+        local known = false
+        for _, name in ipairs(self.viewers.names) do
+            if name == self.viewer then known = true end
+        end
+        if not known then self.viewer = nil end
+    end
+    local viewerLabel = AceGUI:Create("Label")
+    viewerLabel:SetFontObject(GameFontNormalSmall)
+    viewerLabel:SetWidth(LABEL_WIDTH)
+    viewerLabel:SetText(L["Preview as"])
+    frame:AddChild(viewerLabel)
+    self.viewerDropdown = AceGUI:Create("Dropdown")
+    self.viewerDropdown:SetWidth(DROPDOWN_WIDTH)
+    self:HookDropdown(self.viewerDropdown, function(owner) self:OpenViewerMenu(owner) end)
+    frame:AddChild(self.viewerDropdown)
 
     -- The rebuilt note, as Method Raid Tools shows it, in the window's own scroll frame
     local previewBox = AceGUI:Create("InlineGroup")
@@ -333,7 +433,9 @@ function AssignmentsWindow:Update(message)
     for i, job in ipairs(self.jobs) do
         self.rows[i]:SetText(self:JobText(job))
     end
-    self.preview:SetText(UTRM:GetModule("MRT"):FormatNote(Assignments.Preview(self.encounter, self.jobs, self.people)))
+    self.viewerDropdown:SetText(self:ViewerText(self.viewer))
+    local note = ns.NoteView.For(Assignments.Preview(self.encounter, self.jobs, self.people), self:Viewer())
+    self.preview:SetText(UTRM:GetModule("MRT"):FormatNote(note))
     local changed = Assignments.Changed(self.encounter, self.jobs)
     if message then
         self.frame:SetStatusText(message)

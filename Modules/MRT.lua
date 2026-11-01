@@ -98,8 +98,8 @@ local function spellIcon(spellID, size)
 end
 
 -- A note as MRT's note window shows it: icons for {rt1}, {star}, {Warrior}, {spell:id} and {icon:path}, the other
--- {tags} left out (their text stays). Conditions on the reader ({p:Name}, phases, timers) are not applied: a
--- preview shows every line. The text as it is when MRT cannot be used.
+-- {tags} left out (their text stays). Blocks for some players are kept as they are (ns.NoteView chooses them
+-- first); phases and timers are not applied. The text as it is when MRT cannot be used.
 function MRT:FormatNote(text)
     local note = self:GetNoteModule()
     local iconsOf = note and noteIcons(note)
@@ -109,6 +109,7 @@ function MRT:FormatNote(text)
         :gsub("{spell:(%d+):?(%d*)}", spellIcon)
         :gsub("%b{}", iconsOf)
         :gsub("||([cr])", "|%1")
+        :gsub("\n+$", "")
         :gsub("%b{}", ""))
 end
 

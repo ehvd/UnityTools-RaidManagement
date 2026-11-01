@@ -52,6 +52,12 @@ local function byName(a, b)
     return a < b
 end
 
+-- Sorts a list of names alphabetically (case and accents ignored) and returns it
+function Assignments.SortNames(names)
+    table.sort(names, byName)
+    return names
+end
+
 -- The encounter's jobs, in the order their first slot comes: { key, kind, multi, tokens, holders, candidates }.
 -- The holders are a copy of the first slot's (the slots of a job have the same), the candidates a copy in
 -- alphabetical order.

@@ -22,6 +22,7 @@ Core.lua
 Modules\MRT.lua
 Modules\NoteTemplate.lua
 Modules\Assignments.lua
+Modules\NoteView.lua
 Modules\PlanCodec.lua
 Modules\PlanImport.lua
 Modules\GroupPlan.lua
