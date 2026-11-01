@@ -23,6 +23,7 @@ local defaults = {
     },
     global = {
         -- plan = the raid plan imported from UnityWiki (Modules/PlanImport.lua), absent until the first import
+        classes = {},   -- GroupPlan.Key(name) -> class file name ("WARRIOR"), from the raids seen (UI/GroupEditor.lua)
     },
 }
 
