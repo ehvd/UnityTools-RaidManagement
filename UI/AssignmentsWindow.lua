@@ -177,7 +177,7 @@ function AssignmentsWindow:ViewerText(name)
     return ns.NoteTemplate.ColouredName(name, { [name] = { class = self.viewers.classes[name] } })
 end
 
--- The menu of people to preview as: Everyone (every block shown), then the people in class colours
+-- The menu of people to preview as: Everyone (only the text outside the blocks for some), then the people in class colours
 function AssignmentsWindow:OpenViewerMenu(owner)
     local menu = MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(L["Preview as"])
@@ -186,7 +186,7 @@ function AssignmentsWindow:OpenViewerMenu(owner)
             self:Update()
             return MenuResponse and MenuResponse.Close
         end
-        root:CreateRadio(L["Everyone"] .. "  " .. GREY .. L["every block"] .. "|r",
+        root:CreateRadio(L["Everyone"] .. "  " .. GREY .. L["only what everyone sees"] .. "|r",
             function() return self.viewer == nil end, function() return choose(nil) end)
         for _, name in ipairs(self.viewers.names) do
             root:CreateRadio(self:ViewerText(name), function() return self.viewer == name end,

@@ -12,6 +12,8 @@ local _, ns = ...
 --   {0}...{/0}                nobody
 -- Role blocks ({h}, {t}, {d}) are not used by MRT in Classic (no specializations); races, encounters, zones and
 -- phases do not depend on the player chosen, so they stay (their tags are left out with the other tags).
+-- For everyone (no player chosen) every one of these blocks goes, negated ones and role blocks too: what is left
+-- is what every raid member sees.
 local NoteView = {}
 ns.NoteView = NoteView
 
@@ -47,9 +49,14 @@ local function shown(found, anti, msg)
 end
 
 -- `viewer`: { name, class (WARRIOR...), group (1-8), classes (the class tokens in the raid, as a set),
--- classNames (the game's class names, lower case, to class tokens) }. nil: the note as it is, every block shown.
+-- classNames (the game's class names, lower case, to class tokens) }. nil: everyone, only the text outside the
+-- blocks.
 function NoteView.For(text, viewer)
-    if not viewer then return text end
+    local everyone = viewer == nil
+    viewer = viewer or {}
+    if everyone then
+        text = text:gsub("{[Hh]}.-{/[Hh]}", ""):gsub("{[Tt]}.-{/[Tt]}", ""):gsub("{[Dd]}.-{/[Dd]}", "")
+    end
     local myName = plain((viewer.name or ""):match("^[^%-]*"))
     local myClass = NoteView.CLASS_ID[viewer.class or ""]
     local myGroup = tostring(viewer.group or 1)
@@ -60,6 +67,7 @@ function NoteView.For(text, viewer)
     end
 
     local function player(anti, list, msg)
+        if everyone then return "" end
         local found = false
         for _, entry in ipairs(split(list)) do
             if plain(entry):match("^[^%-]*") == myName then found = true break end
@@ -68,6 +76,7 @@ function NoteView.For(text, viewer)
     end
 
     local function class(anti, list, msg)
+        if everyone then return "" end
         local found = false
         for _, entry in ipairs(split(list)) do
             if myClass and classOf(plain(entry)) == myClass then found = true break end
@@ -80,6 +89,7 @@ function NoteView.For(text, viewer)
         if NoteView.CLASS_ID[token] then present[NoteView.CLASS_ID[token]] = true end
     end
     local function classUnique(list, msg)
+        if everyone then return "" end
         for _, entry in ipairs(split(list)) do
             local id = classOf(plain(entry))
             if id and present[id] then
@@ -90,6 +100,7 @@ function NoteView.For(text, viewer)
     end
 
     local function group(anti, groups, msg)
+        if everyone then return "" end
         return shown(groups:find(myGroup, 1, true) ~= nil, anti, msg)
     end
 

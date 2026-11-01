@@ -176,4 +176,4 @@ L["Melee"] = true
 L["Ranged"] = true
 L["Preview as"] = true
 L["Everyone"] = true
-L["every block"] = true
+L["only what everyone sees"] = true

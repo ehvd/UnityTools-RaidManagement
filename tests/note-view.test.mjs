@@ -48,9 +48,11 @@ const view = (text, viewer) => call('view', text, JSON.stringify(viewer ?? false
 const KAEL = { name: 'Kael', class: 'ROGUE', group: 2, classes: { ROGUE: true, MAGE: true, PRIEST: true } };
 const SIGGI = { name: 'Siggi', class: 'MAGE', group: 5, classes: { ROGUE: true, MAGE: true, PRIEST: true } };
 
-test('everyone: the note as it is', () => {
-  const note = '{p:Kael}kick{/p}\n{g2}left{/g}';
-  assert.equal(view(note, null), note);
+test('everyone: only the text outside player, class, group and role blocks, negated ones too', () => {
+  const note = 'Skeram\n{p:Kael}kick{/p}{!p:Kael}watch{/p}\n{g25}\nLeft\n{/g}\n{!g1}\nRight\n{/g}\n'
+    + '{c:Mage}decurse{/c}{!c:Rogue}x{/c}{classunique:Mage}y{/classunique}{h}heal{/h}{T}taunt{/T}{d}dps{/d}'
+    + '{0}hidden{/0}{rt8} all';
+  assert.equal(view(note, null), 'Skeram\n\n\n\n{rt8} all');
 });
 
 test('player blocks: names without colours, realms or case; {!p} for the others', () => {

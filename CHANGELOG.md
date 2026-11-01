@@ -15,7 +15,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - Assignments... (the raid plan window's options) changes who fills the active encounter's assignments: the slots
   come in the note's order with the same kind together (all tanks, then all healers), and each slot's menu lists the planner's candidates alphabetically in class colours with their role and marks who is not in the
   raid; custom assignments take several people. A scrollable preview shows the rebuilt note with Method Raid Tools'
-  icons, for everyone or as one person sees it (their blocks for players, classes and their planned group); Save is a plan edit that syncs, and the note
+  icons, as one person sees it (their blocks for players, classes and their planned group) or only what everyone
+  sees; Save is a plan edit that syncs, and the note
   goes to Method Raid Tools when the encounter is active. Protocol 1 plans and hand-edited notes say what to do
   instead
 
