@@ -16,6 +16,7 @@ globals = {
     "UnityToolsRaidManagementNoteFrame",
     "UnityToolsRaidManagementImportFrame",
     "UnityToolsRaidManagementPlanFrame",
+    "UnityToolsRaidManagementAssignmentsFrame",
     "SlashCmdList",
     "StaticPopupDialogs",
     "UISpecialFrames",
@@ -43,8 +44,9 @@ read_globals = {
 
     -- Frames / UI
     "UIParent", "GameTooltip", "PlaySound", "SOUNDKIT",
-    "StaticPopup_Show", "YES", "NO", "CLOSE", "MenuUtil", "MenuResponse",
-    "CANCEL", "EMPTY", "RAID_CLASS_COLORS", "GetCursorPosition",
+    "StaticPopup_Show", "YES", "NO", "CLOSE", "CANCEL", "MenuUtil", "MenuResponse",
+    "EMPTY", "RAID_CLASS_COLORS", "GetCursorPosition",
+    "GameFontHighlight", "GameFontHighlightSmall", "GameFontNormalSmall",
 
     -- Game API
     "C_AddOns", "GetAddOnMetadata", "IsAddOnLoaded",
@@ -54,6 +56,7 @@ read_globals = {
     "C_Timer", "GetTime", "GetServerTime", "GetLocale", "geterrorhandler",
     "UnitName", "UnitGUID", "UnitExists", "UnitClass", "UnitLevel", "InCombatLockdown",
     "IsInGroup", "IsInRaid", "GetNumGroupMembers", "GetSpellInfo",
+    "C_Spell", "GetSpellTexture", "LOCALIZED_CLASS_NAMES_MALE", "LOCALIZED_CLASS_NAMES_FEMALE",
 }
 
 -- Translations keep one entry per line, however long

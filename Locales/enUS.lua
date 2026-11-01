@@ -193,3 +193,26 @@ L["Use the night's groups for %s again? Its groups stay for: %s"] = true
 L["Discard your changes to the groups?"] = true
 L["These groups are no longer in the raid plan."] = true
 L["The raid plan changed, so the groups editor was closed."] = true
+
+-- Assignments window
+L["Assignments"] = true
+L["Assignments..."] = true
+L["Choose the encounter first."] = true
+L["Export the plan again from the wiki to change assignments."] = true
+L["The note of this encounter was edited by hand. Reset it to the plan's note to change its assignments."] = true
+L["This encounter's note has no assignments."] = true
+L["Note preview"] = true
+L["%d changes not saved."] = true
+L["%s cannot be saved like this: choose again."] = true
+L["The encounter changed in the meantime: check it again."] = true
+L["The raid plan changed: the assignments are shown as they are now."] = true
+L["Nobody"] = true
+L["nobody"] = true
+L["Nobody can fill this."] = true
+L["Tank"] = true
+L["Healer"] = true
+L["Melee"] = true
+L["Ranged"] = true
+L["Preview as"] = true
+L["Everyone"] = true
+L["only what everyone sees"] = true

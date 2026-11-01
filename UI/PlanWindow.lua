@@ -315,6 +315,10 @@ local function openOptionsMenu(owner)
         if plan then
             root:CreateButton(L["Edit groups..."], function() UTRM.GroupEditor:Open() end)
         end
+        -- Who fills the active encounter's assignments (UI/AssignmentsWindow.lua)
+        if plan and PlanWindow:GetActiveIndex(plan) then
+            root:CreateButton(L["Assignments..."], function() UTRM.AssignmentsWindow:Open() end)
+        end
         root:CreateCheckbox(L["Lock position"],
             function() return settings().locked end,
             function()
