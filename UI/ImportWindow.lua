@@ -3,12 +3,10 @@ local L = UTRM.L
 
 local AceGUI = LibStub("AceGUI-3.0")
 
--- Window for pasting the raid plan export of the UnityWiki raid planner
+-- The Import section of the Raid Plan window (UI/RaidPlanWindow.lua): paste the raid plan export of the UnityWiki raid
+-- planner, see the current plan, clear it
 local ImportWindow = {}
 UTRM.ImportWindow = ImportWindow
-
-local FRAME_GLOBAL = "UnityToolsRaidManagementImportFrame"
-local specialFrameAdded = false
 
 -- A night's export is up to ~60,000 characters. Rendering that much text in a multi-line edit box freezes the
 -- client, so (like the import of WeakAuras) the edit box keeps only the first bytes while OnChar, which still fires
@@ -31,7 +29,7 @@ local function hookPaste(widget)
                 box:SetScript("OnUpdate", nil)
                 if count >= MIN_PASTE then
                     ImportWindow.pasted = table.concat(buffer)
-                    ImportWindow.frame:SetStatusText(format(L["%d characters pasted. Press Import."], #ImportWindow.pasted))
+                    ImportWindow:SetStatus(format(L["%d characters pasted. Press Import."], #ImportWindow.pasted))
                 else
                     ImportWindow.pasted = nil
                 end
@@ -51,22 +49,26 @@ local function unhookPaste(widget)
     editBox:SetMaxBytes(0)
 end
 
+function ImportWindow:SetStatus(text)
+    if self.host then self.host:SetStatus(text) end
+end
+
 function ImportWindow:Refresh(status)
-    if not self.frame then return end
+    if not self.host then return end
     local plan = UTRM:GetModule("PlanImport"):GetPlan()
     self.summary:SetText(UTRM:GetModule("PlanImport"):Summary(plan))
     self.clear:SetDisabled(not plan)
     if status then
-        self.frame:SetStatusText(status)
+        self:SetStatus(status)
     end
-    self.frame:DoLayout()
+    self.host.container:DoLayout()
 end
 
 function ImportWindow:Import()
     local PlanImport = UTRM:GetModule("PlanImport")
     local plan, message = PlanImport:Read(self.pasted or self.editBox:GetText())
     if not plan then
-        self.frame:SetStatusText("|cffff4040" .. message .. "|r")
+        self:SetStatus("|cffff4040" .. message .. "|r")
         return
     end
     local current = PlanImport:GetPlan()
@@ -98,68 +100,58 @@ StaticPopupDialogs["UNITYTOOLSRAIDMANAGEMENT_REPLACE_PLAN"] = {
     preferredIndex = 3,
 }
 
-function ImportWindow:Create()
-    local frame = AceGUI:Create("Frame")
-    frame:SetTitle(L["Import raid plan"])
-    frame:SetStatusTable(UTRM.db.profile.importWindow)
-    frame:SetLayout("List")
-    frame:EnableResize(false)
-    frame:SetCallback("OnClose", function(widget)
-        unhookPaste(self.editBox)
-        _G[FRAME_GLOBAL] = nil
-        self.frame, self.editBox, self.summary, self.clear, self.pasted = nil, nil, nil, nil, nil
-        AceGUI:Release(widget)
-    end)
-
-    local heading = AceGUI:Create("Heading")
-    heading:SetText(L["Current plan"])
-    heading:SetFullWidth(true)
-    frame:AddChild(heading)
-
-    local summary = AceGUI:Create("Label")
-    summary:SetFullWidth(true)
-    frame:AddChild(summary)
+-- Fills the section in the Raid Plan window (`host`)
+function ImportWindow:Attach(host)
+    self.host = host
+    local container = host.container
+    container:ReleaseChildren()
 
     local editBox = AceGUI:Create("MultiLineEditBox")
     editBox:SetLabel(L["Paste the string from Export for addon in the UnityWiki raid planner:"])
     editBox:DisableButton(true)
     editBox:SetFullWidth(true)
-    editBox:SetNumLines(8)
+    editBox:SetNumLines(12)
     hookPaste(editBox)
-    frame:AddChild(editBox)
-
-    local buttons = AceGUI:Create("SimpleGroup")
-    buttons:SetLayout("Flow")
-    buttons:SetFullWidth(true)
-    frame:AddChild(buttons)
+    container:AddChild(editBox)
 
     local import = AceGUI:Create("Button")
     import:SetText(L["Import"])
     import:SetWidth(140)
     import:SetCallback("OnClick", function() self:Import() end)
-    buttons:AddChild(import)
+    container:AddChild(import)
+
+    local heading = AceGUI:Create("Heading")
+    heading:SetText(L["Current plan"])
+    heading:SetFullWidth(true)
+    container:AddChild(heading)
+
+    local summary = AceGUI:Create("Label")
+    summary:SetFullWidth(true)
+    summary:SetFontObject(GameFontHighlight)
+    container:AddChild(summary)
 
     local clear = AceGUI:Create("Button")
     clear:SetText(L["Clear raid plan"])
     clear:SetWidth(140)
     clear:SetCallback("OnClick", function() UTRM.PlanWindow:ConfirmClear() end)
-    buttons:AddChild(clear)
+    container:AddChild(clear)
 
-    self.frame, self.editBox, self.summary, self.clear = frame, editBox, summary, clear
-
-    -- Close with Escape
-    _G[FRAME_GLOBAL] = frame.frame
-    if not specialFrameAdded then
-        tinsert(UISpecialFrames, FRAME_GLOBAL)
-        specialFrameAdded = true
-    end
-
+    self.editBox, self.summary, self.clear = editBox, summary, clear
+    host:SetStatus("")
     self:Refresh()
     editBox:SetFocus()
 end
 
+function ImportWindow:Detach()
+    if self.editBox then unhookPaste(self.editBox) end
+    self.host, self.editBox, self.summary, self.clear, self.pasted = nil, nil, nil, nil, nil
+end
+
+function ImportWindow:OnPlanChanged()
+    self:Refresh()
+end
+
+-- The plan window's Import button and `/utrm import`
 function ImportWindow:Open()
-    if not self.frame then
-        self:Create()
-    end
+    UTRM.RaidPlanWindow:Open("import")
 end

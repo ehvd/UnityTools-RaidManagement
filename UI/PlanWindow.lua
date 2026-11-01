@@ -32,6 +32,7 @@ local MAX_WIDTH = 600
 local GRIP = 16                         -- the chat frame's size grabber
 
 local SCALES = { 0.8, 0.9, 1, 1.1, 1.25 }
+PlanWindow.SCALES = SCALES              -- also offered by the Raid Plan window's Config section
 local SETTLE_SECONDS = 0.3              -- after the last click, the note, groups and sync go out
 local TOOLTIP_NOTE_LINES = 12
 -- An encounter with a note edited in game: a note icon trimmed of its border (the game font has no ✎)
@@ -122,11 +123,6 @@ function PlanWindow:Commit()
     local plan = currentPlan()
     UTRM:GetModule("RaidGroups"):Apply(plan.layouts[encounter.layout])
     self:SendMessage("UTRM_ENCOUNTER_ACTIVATED", encounter, plan.layouts[encounter.layout])
-end
-
--- Hands the plan's loot priorities to Gargul; the result replaces the status line
-function PlanWindow:ImportGargul()
-    self:ShowResult(UTRM:GetModule("Gargul"):ImportPlan(currentPlan()))
 end
 
 -- The raid groups' part of the status line (Modules/RaidGroups.lua), with tooltip lines naming the players
@@ -231,14 +227,6 @@ end
 
 ------------------------------------------------------------------------------------------------- menus ---
 
--- Edit note... for the active encounter (the ⚙ menu and the encounter list), when one is active
-local function addEditNote(root, plan)
-    local encounter = plan and plan.encounters[PlanWindow:GetActiveIndex(plan) or 0]
-    if encounter then
-        root:CreateButton(L["Edit note..."], function() UTRM.NoteEditor:OpenEncounter(encounter) end)
-    end
-end
-
 local function openEncounterMenu(owner)
     local plan = currentPlan()
     if not plan then return end
@@ -253,36 +241,10 @@ local function openEncounterMenu(owner)
                     return MenuResponse and MenuResponse.Close
                 end)
         end
-        if active then
-            root:CreateDivider()
-            addEditNote(root, plan)
-        end
     end)
 end
 
--- The plan actions both the ⚙ menu and the minimap button's menu offer (UI/Minimap.lua)
-function PlanWindow:AddPlanActions(root)
-    local plan = currentPlan()
-    root:CreateButton(L["Import raid plan..."], function() UTRM.ImportWindow:Open() end)
-    -- Gargul: only when the plan carries loot priorities and Gargul can be used
-    local gargulState = UTRM:GetModule("Gargul"):GetState(plan)
-    if gargulState then
-        local label = gargulState == "current" and L["Gargul: loot priorities are up to date"]
-            or ("|cffffa040" .. L["Gargul: import the loot priorities"] .. "|r")
-        root:CreateButton(label, function() PlanWindow:ImportGargul() end)
-    end
-    -- Force sync: this plan and its active encounter for the raid (they confirm)
-    if plan and UTRM:GetModule("Sync"):CanSync() then
-        root:CreateButton(L["Force sync"], function()
-            PlanWindow:ShowResult(UTRM:GetModule("Sync"):ForceSync())
-        end)
-    end
-    if plan then
-        root:CreateButton(L["Clear raid plan"], function() PlanWindow:ConfirmClear() end)
-    end
-end
-
--- Clear raid plan (the ⚙ menu, the minimap menu and the import window): asks first, naming the plan. In a raid the
+-- Clear raid plan (the Raid Plan window's Import section): asks first, naming the plan. In a raid the
 -- popup also says that a lead or assist's plan may sync back (Modules/Sync.lua).
 StaticPopupDialogs["UNITYTOOLSRAIDMANAGEMENT_CLEAR_PLAN"] = {
     button1 = YES,
@@ -303,73 +265,72 @@ function PlanWindow:ConfirmClear()
     StaticPopup_Show("UNITYTOOLSRAIDMANAGEMENT_CLEAR_PLAN", plan.event.title)
 end
 
--- A result for the status line, or for the chat while the window is hidden (an action from the minimap button)
-function PlanWindow:ShowResult(ok, message)
-    if not message then return end
-    if frame and frame:IsShown() then
-        self:Refresh(ok and message or ("|cffff4040" .. message .. "|r"))
-        self.noteMessage = message
-    else
-        UTRM:Print(ok and message or ("|cffff4040" .. message .. "|r"))
-    end
-end
-
--- The fallback note (issue #29): the encounter that becomes active after a boss kill, or none. Choosing it is an
--- edit of the plan, so a lead or assist's choice syncs to the raid.
+-- The fallback note (issue #29): the encounter that becomes active after a boss kill, or none (the Raid Plan
+-- window's Config section). Choosing it is an edit of the plan, so a lead or assist's choice syncs to the raid.
+-- Returns whether it changed.
 function PlanWindow:SetFallback(encounter)
     local key = encounter and encounter.key
-    local ok = UTRM:GetModule("PlanImport"):Edit(function(plan)
+    return UTRM:GetModule("PlanImport"):Edit(function(plan)
         if plan.fallback == key then return false end
         plan.fallback = key
     end)
-    if ok then
-        self:ShowResult(true, encounter and format(L["After a kill: switches to %s"], encounter.label)
-            or L["After a kill: no switch"])
-    end
 end
 
+-- Lock position and Scale: the ⚙ menu and the Raid Plan window's Config section
+function PlanWindow:IsLocked()
+    return settings().locked
+end
+
+function PlanWindow:SetLocked(locked)
+    settings().locked = locked
+    if frame then frame.grip:SetShown(not locked) end
+end
+
+function PlanWindow:GetScale()
+    return settings().scale or 1
+end
+
+function PlanWindow:SetScale(value)
+    settings().scale = value
+    if frame then frame:SetScale(value) end
+end
+
+-- After a kill ▸: the fallback note picked quickly, as in the Raid Plan window's Config section
 local function addFallbackMenu(root, plan)
     local fallback = ns.FallbackRules.Encounter(plan)
+    local function choose(encounter)
+        if PlanWindow:SetFallback(encounter) then
+            PlanWindow:Refresh(encounter and format(L["After a kill: switches to %s"], encounter.label)
+                or L["After a kill: no switch"])
+        end
+    end
     local menu = root:CreateButton(format(L["After a kill: %s"], fallback and fallback.label or NONE))
-    menu:CreateRadio(NONE, function() return fallback == nil end, function() PlanWindow:SetFallback(nil) end)
+    menu:CreateRadio(NONE, function() return fallback == nil end, function() choose(nil) end)
     for i, encounter in ipairs(plan.encounters) do
         menu:CreateRadio(format("%d. %s", i, encounter.label),
             function() return encounter == fallback end,
-            function() PlanWindow:SetFallback(encounter) end)
+            function() choose(encounter) end)
     end
 end
 
+-- ⚙: the Raid Plan window, the switch after a kill, and the window's own settings
 local function openOptionsMenu(owner)
     local plan = currentPlan()
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(plan and plan.event.title or L["Raid plan"])
-        addEditNote(root, plan)
-        PlanWindow:AddPlanActions(root)
-        -- The night's and the encounters' groups (UI/GroupEditor.lua)
-        if plan then
-            root:CreateButton(L["Edit groups..."], function() UTRM.GroupEditor:Open() end)
-        end
-        -- Who fills the active encounter's assignments (UI/AssignmentsWindow.lua)
-        if plan and PlanWindow:GetActiveIndex(plan) then
-            root:CreateButton(L["Assignments..."], function() UTRM.AssignmentsWindow:Open() end)
-        end
+        root:CreateButton(L["Open Raid Plan"], function() UTRM.RaidPlanWindow:Open() end)
         if plan and #plan.encounters > 0 then
             addFallbackMenu(root, plan)
         end
+        root:CreateDivider()
         root:CreateCheckbox(L["Lock position"],
-            function() return settings().locked end,
-            function()
-                settings().locked = not settings().locked
-                frame.grip:SetShown(not settings().locked)
-            end)
+            function() return PlanWindow:IsLocked() end,
+            function() PlanWindow:SetLocked(not PlanWindow:IsLocked()) end)
         local scale = root:CreateButton(L["Scale"])
         for _, value in ipairs(SCALES) do
             scale:CreateRadio(format("%d%%", value * 100),
-                function() return settings().scale == value end,
-                function()
-                    settings().scale = value
-                    frame:SetScale(value)
-                end)
+                function() return PlanWindow:GetScale() == value end,
+                function() PlanWindow:SetScale(value) end)
         end
         root:CreateButton(CLOSE, function() PlanWindow:Hide() end)
     end)
@@ -584,7 +545,7 @@ local function create()
 
     frame.import = panelButton(100, L["Import"])
     frame.import:SetPoint("CENTER", frame, "TOP", 0, rowMiddle)
-    frame.import:SetScript("OnClick", function() UTRM.ImportWindow:Open() end)
+    frame.import:SetScript("OnClick", function() UTRM.RaidPlanWindow:Open("import") end)
 
     -- Row 3: the result of the last action
     frame.status = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -683,7 +644,7 @@ function PlanWindow:OnEnable()
             self:Refresh("")
         end)
     end
-    -- Cleared: the empty window (a note still waiting to be sent is dropped), the import window's summary
+    -- Cleared: the empty window (a note still waiting to be sent is dropped), the Import section's summary
     self:RegisterMessage("UTRM_PLAN_CLEARED", function(_, plan)
         if self.commitTimer then
             self:CancelTimer(self.commitTimer)
@@ -692,7 +653,7 @@ function PlanWindow:OnEnable()
         self:Refresh("")
         local message = format(L["Raid plan %s cleared."], plan.event.title)
         UTRM.ImportWindow:Refresh(message)
-        if not (frame and frame:IsShown()) and not UTRM.ImportWindow.frame then
+        if not (frame and frame:IsShown()) and not UTRM.ImportWindow.host then
             UTRM:Print(message)
         end
     end)

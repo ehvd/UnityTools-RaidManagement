@@ -7,37 +7,48 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ### Added
 
-- Clear raid plan (the raid plan window's options, the minimap menu and the import window) removes the imported plan
+- The Raid Plan window edits everything about the raid plan in one place: a list of sections on the left (Groups,
+  Assignments, Notes, Gargul, Config, Import) and the section on the right. Groups, Assignments and Notes have their
+  own encounter dropdown, which only picks what is edited: the active encounter changes in the plan window alone.
+  Each section saves on its own; leaving a section or its encounter with unsaved changes asks first, the list marks
+  such a section with *, and closing the window keeps them. Open it from the plan window's ⚙ menu (Open Raid Plan),
+  the minimap button's menu or `/utrm edit`; the plan window's Import button and `/utrm import` open its Import
+  section
+- Clear raid plan (the Raid Plan window's Import section) removes the imported plan
   after a confirmation; it clears only your copy, and a raid leader's or assistant's plan may sync back
 - The import reads export protocol 2 of the UnityWiki raid planner (note templates with assignment slots, the
   bosses' encounter IDs, the people's classes) next to protocol 1, and can rebuild a note from its template; a
   template with an unknown slot fails the import as damaged
-- Edit note... (the raid plan window's options and its encounter list) changes the active encounter's note in game:
+- Notes (the Raid Plan window) changes an encounter's note in game:
   Save keeps it in the plan (and sends it to Method Raid Tools when the encounter is active), Reset to the plan's note
   brings back the imported one. Edited notes sync like other plan edits and are marked with a note icon
-- Edit groups... (the raid plan window's options) edits the night's groups or an encounter's (a dropdown, opening on
-  the active encounter): click a player, then a slot, another player or a list (or drag) to move, swap or take them
+- Groups (the Raid Plan window) edits the night's groups or an encounter's (a dropdown, opening on the active
+  encounter): click a player, then a slot, another player or a list (or drag) to move, swap or take them
   out; fill slots from the raid members not in the groups or from the bench (the plan's people who are neither in
   the groups nor in the raid). Names are in class colours, also outside a raid; planned players who are not in the
   raid are marked. An encounter on the night's groups shows them read-only until Create override gives it its own
   groups; Delete override (after a confirmation) puts it back on the night's groups. Every change is a plan edit
   that syncs, and saving the active encounter's groups sorts the raid
-- Assignments... (the raid plan window's options) changes who fills the active encounter's assignments: the slots
-  come in the note's order with the same kind together (all tanks, then all healers), and each slot's menu lists the planner's candidates alphabetically in class colours with their role and marks who is not in the
-  raid; custom assignments take several people. A scrollable preview shows the rebuilt note with Method Raid Tools'
+- Assignments (the Raid Plan window) changes who fills an encounter's assignments: the slots come in the note's
+  order with the same kind together (all tanks, then all healers), and each slot's menu lists the planner's
+  candidates alphabetically in class colours with their role and marks who is not in the raid; custom assignments take several people. A scrollable preview shows the rebuilt note with Method Raid Tools'
   icons, as one person sees it (their blocks for players, classes and their planned group) or only what everyone
   sees; Save is a plan edit that syncs, and the note
   goes to Method Raid Tools when the encounter is active. Protocol 1 plans and hand-edited notes say what to do
   instead
-- Fallback note after a boss kill: choose an encounter in the raid plan window's options ("After a kill"), for
-  example the night's trash note. When a boss of the plan dies, the raid leader's client makes it active as if
+- Fallback note after a boss kill: choose an encounter in the plan window's ⚙ menu (After a kill ▸) or the Raid Plan
+  window's Config section, for example the night's trash note. When a boss of the plan dies, the raid leader's client makes it active as if
   chosen in the window (note sent, groups sorted after combat, the raid follows). Not after a wipe; with a
   protocol 1 plan any kill switches. The choice is a plan edit and syncs to the raid
 
 ### Changed
 
+- The plan window's ⚙ menu is short again: Open Raid Plan, After a kill ▸, Lock position, Scale, Close (they are
+  also in Config). The minimap button's menu has Open Raid Plan and Open mini window; hiding the button moved to
+  Config, the free raid note editor stays on `/utrm note`. The import window, Gargul and Force sync moved into the
+  Raid Plan window
 - Raid plan edits are revisions: an edit by the raid leader or an assistant reaches the raid like a newer import,
-  a member's edit stays on their client; the import window shows who edited the plan and when. The sync version
+  a member's edit stays on their client; the Import section shows who edited the plan and when. The sync version
   goes to 2, so 0.1.0 and 0.2.0 clients ignore each other's sync (update everybody)
 
 ## [0.1.0] - 2026-10-26

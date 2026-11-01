@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan Editor Mockup</title>
+<style>
+/* 1:1 pixel wireframe of the Raid Plan window (issue #37), version 2: sections in a list on the left.
+   Sizes follow Blizzard's templates at their defaults: UIDropDownMenuTemplate 26 tall, UIPanelButtonTemplate 24 tall,
+   UIPanelCloseButton 32x32, the Interface Options category list (18 tall buttons, blue highlight), the dialog box
+   border of AceGUI's Frame. Fonts approximate GameFontNormal / GameFontHighlight / GameFontNormalSmall. */
+:root { --gold:#ffd100; --grey:#808080; }
+body { background:#3b4a3a; margin:0; padding:24px; font:12px/1.25 "Friz Quadrata TT","Palatino Linotype",Georgia,serif; color:#fff; }
+h2 { font:600 15px system-ui,sans-serif; color:#eee; margin:28px 0 8px; }
+p.cap { font:13px system-ui,sans-serif; color:#ddd; max-width:820px; margin:0 0 18px; }
+.win { position:relative; width:820px; height:560px; background:rgba(0,0,0,.82); border:4px solid #9a9a9a; border-radius:8px;
+  box-shadow:inset 0 0 0 2px #444, 0 0 0 2px #222; margin-bottom:20px; box-sizing:border-box; }
+.title { position:absolute; left:50%; top:-14px; transform:translateX(-50%); background:#5a4630; border:2px solid #b89a60;
+  border-radius:4px; padding:4px 22px; color:var(--gold); white-space:nowrap; }
+.close { position:absolute; right:2px; top:2px; width:26px; height:26px; border-radius:4px; background:#8a1010;
+  border:2px solid #c9a65a; text-align:center; line-height:24px; font:bold 14px sans-serif; }
+.gold { color:var(--gold); } .grey { color:var(--grey); } .small { font-size:10px; } .warn { color:#ffa040; }
+.abs { position:absolute; }
+.dd { position:absolute; height:26px; display:flex; align-items:center; }
+.dd .box { height:22px; background:#111; border:2px solid #6c5a3c; border-radius:3px; padding:0 30px 0 10px; line-height:22px;
+  box-sizing:border-box; white-space:nowrap; overflow:hidden; position:relative; }
+.dd .box::after { content:"▼"; position:absolute; right:3px; top:1px; width:20px; height:18px; background:#7a1a12;
+  color:#ffd; font-size:10px; text-align:center; line-height:18px; border-radius:3px; }
+.btn { position:absolute; height:24px; background:linear-gradient(#a01c10,#5c0c06); border:2px solid #c9a65a; border-radius:4px;
+  color:var(--gold); text-align:center; line-height:20px; box-sizing:border-box; white-space:nowrap; }
+.btn.off { filter:grayscale(1); color:#999; }
+.pane { position:absolute; border:1px solid #666; background:rgba(20,20,20,.9); border-radius:4px; box-sizing:border-box; }
+.side { left:16px; top:30px; width:170px; height:510px; padding:8px 6px; }
+.cat { height:18px; line-height:18px; padding-left:8px; color:var(--gold); margin-bottom:2px; }
+.cat.sel { background:linear-gradient(90deg,rgba(80,130,220,.75),rgba(80,130,220,.15)); color:#fff; }
+.cat.dirty::after { content:" *"; color:#ffa040; }
+.slot { height:14px; line-height:14px; padding-left:4px; font-size:11px; }
+.gbox { position:absolute; width:166px; }
+.gbox .lbl { height:16px; color:var(--gold); font-size:11px; }
+.gbox .pane { position:relative; height:78px; padding:3px; }
+.rule { position:absolute; height:1px; background:#777; }
+.lab { position:absolute; line-height:26px; }
+.check { position:absolute; line-height:20px; }
+.check::before { content:"✓"; display:inline-block; width:18px; height:18px; margin-right:6px; border:1px solid #888; background:#111;
+  color:#ffd100; text-align:center; line-height:18px; vertical-align:middle; }
+.check.no::before { content:""; }
+.menu { background:rgba(0,0,0,.92); border:2px solid #777; border-radius:6px; padding:8px 14px; width:230px; line-height:20px; }
+.menu .t { color:var(--gold); }
+.sep { height:1px; background:#555; margin:4px 0; }
+.row { display:flex; gap:30px; flex-wrap:wrap; align-items:flex-start; }
+.ann { font:12px system-ui,sans-serif; color:#cde; background:#223; border-left:3px solid #6af; padding:6px 10px; max-width:380px; }
+</style>
+</head>
+<body>
+
+<p class="cap">820×560 window. Left: the sections in an Interface Options style list (170 wide), with the plan's title above
+and an orange * on a section with unsaved changes. Right: the section, 606 wide from x=200. Every section with an encounter
+has its own <b>Encounter</b> dropdown; it only picks what you edit and never changes the active encounter (that stays the plan
+window's job). "(active)" marks the encounter the plan window has on. Save / Revert per section at the bottom right.</p>
+
+<div id="out"></div>
+
+<h2>Mini window and its menus after the change</h2>
+<p class="cap">The mini window itself is unchanged (the encounter dropdown is still the only place that changes the active
+encounter). Its ⚙ button still opens a menu, now short: Open Raid Plan, Lock position, Scale, Close.</p>
+<div class="row">
+  <div style="position:relative;width:210px;height:78px;background:rgba(0,0,0,.85);border:2px solid #888;border-radius:4px;box-sizing:border-box">
+    <div class="abs gold" style="left:6px;top:6px;line-height:22px">AQ40</div>
+    <div class="abs" style="left:150px;top:8px;width:18px;height:18px;border:1px solid #c9a65a;border-radius:3px;background:#5c0c06;text-align:center;line-height:16px;color:#ffd100" title="Opens the ⚙ menu">⚙</div>
+    <div class="abs" style="left:176px;top:6px;width:22px;height:22px;background:#8a1010;border:2px solid #c9a65a;border-radius:3px;box-sizing:border-box;text-align:center;line-height:18px;font:bold 11px sans-serif">✕</div>
+    <div class="abs" style="left:6px;top:32px;width:18px;height:22px;color:#ffd100;line-height:22px">◀</div>
+    <div class="dd" style="left:24px;top:30px"><div class="box" style="width:140px;font-size:11px">4/9 Battleguard Sa…</div></div>
+    <div class="abs" style="left:168px;top:32px;color:#ffd100;line-height:22px">▶</div>
+    <div class="abs" style="left:188px;top:34px;width:16px;height:16px;border-radius:8px;background:#2a8a2a;text-align:center;font:bold 11px sans-serif;line-height:16px">✓</div>
+    <div class="abs small grey" style="left:6px;top:58px;white-space:nowrap">Note sent · Groups sorted</div>
+  </div>
+  <div class="menu" style="width:200px"><div class="t">AQ40</div>
+    <span class="grey small">Encounter dropdown (unchanged)</span><br>
+    ○ 1. The Prophet Skeram<br>○ 2. Bug Trio<br>○ 3. Fankriss<br>◉ 4. Battleguard Sartura<br>○ 5. Viscidus<br>○ … 9. C'Thun<br>○ 10. Trash</div>
+  <div class="menu" style="width:200px"><div class="t">Raid readiness</div>
+    <span class="grey small">Ready icon (unchanged)</span><br>
+    <span style="color:#ffa040">Gargul: import the loot priorities</span><br>Everyone has MRT</div>
+  <div class="menu" style="width:180px"><div class="t">AQ40</div>
+    <span class="grey small">⚙ menu</span><br>
+    Open Raid Plan<br><div class="sep"></div>✓ Lock position<br>Scale ▸<br>Close</div></div>
+
+<h2>Minimap button menu after the change</h2>
+<div class="row">
+  <div class="menu"><div class="t">Unity Tools - Raid Management</div>Open Raid Plan<br>Open mini window</div>
+  <div class="ann">The mini window's ⚙ menu: 11 → 4 entries. Open Raid Plan opens the window (on Import when there is
+  no plan; the other sections are then greyed out). Lock position and Scale are also in Config.
+  The readiness icon's fixes open the matching section (e.g. Gargul).<br><br>
+  Minimap right-click: Open Raid Plan opens the same window, Open mini window shows the plan window. Hiding the minimap
+  button moves to Config ("Show the minimap button"); the free raid note editor stays on /utrm note.</div>
+</div>
+
+<script>
+const SECTIONS = ["Groups", "Assignments", "Notes", "Gargul", "Config", "Import"];
+const C = { war:"#c79c6e", pal:"#f58cba", rog:"#fff569", dru:"#ff7d0a", mag:"#69ccf0", hun:"#abd473", pri:"#ffffff", loc:"#9482c9" };
+const X = 200, W = 604;   // the section's area
+
+function shell(sel, body, opts = {}) {
+  const cats = SECTIONS.map(s => `<div class="cat${s === sel ? " sel" : ""}${(opts.dirty || []).includes(s) ? " dirty" : ""}">${s}</div>`).join("");
+  return `<h2>${opts.h}</h2>${opts.cap ? `<p class="cap">${opts.cap}</p>` : ""}
+  <div class="win"><div class="title">Raid Plan</div><div class="close">✕</div>
+    <div class="pane side"><div class="gold" style="padding:0 0 4px 8px">AQ40</div><div class="small grey" style="padding:0 0 8px 8px">Thu 19:30 · 9 encounters</div>${cats}
+      <div class="small grey abs" style="left:14px;bottom:8px;width:150px">Edited by Ehvd at 20:14</div></div>
+    ${body}</div>`;
+}
+function enc(label, extra = "", left = X, top = 30) {
+  return `<div class="lab gold" style="left:${left}px;top:${top}px">Encounter</div>
+  <div class="dd" style="left:${left + 76}px;top:${top}px"><div class="box" style="width:260px">${label}</div></div>
+  ${extra ? `<div class="abs small grey" style="left:${left + 352}px;top:${top + 7}px">${extra}</div>` : ""}`;
+}
+function saveRow(dirty = true, left = "") {
+  return `${left}<div class="btn${dirty ? "" : " off"}" style="left:${X + W - 284}px;top:510px;width:140px">Revert</div>
+  <div class="btn${dirty ? "" : " off"}" style="left:${X + W - 140}px;top:510px;width:140px">Save</div>`;
+}
+
+let html = "";
+
+// ---------------------------------------------------------------- Groups
+const names = [["Aldreth",C.war],["Brumm",C.pal],["Cyra",C.war],["Dremor",C.rog],["Eluna",C.dru]];
+let groups = "";
+for (let g = 0; g < 8; g++) {
+  const col = g % 2, row = Math.floor(g / 2);
+  groups += `<div class="gbox" style="left:${X + col * 182}px;top:${68 + row * 104}px"><div class="lbl">Group ${g + 1}</div><div class="pane">`;
+  for (let i = 0; i < 5; i++) {
+    const [n, c] = names[(g + i) % 5];
+    groups += g < 6 ? `<div class="slot" style="color:${c}">${n}</div>` : `<div class="slot grey">Empty</div>`;
+  }
+  groups += `</div></div>`;
+}
+html += shell("Groups", enc("Night's groups", "Every encounter without its own groups") + groups + `
+  <div class="abs gold small" style="left:${X + 380}px;top:68px">In the raid, not in a group</div>
+  <div class="pane" style="left:${X + 380}px;top:84px;width:224px;height:176px;padding:3px"><div class="slot" style="color:${C.mag}">Frostmage</div><div class="slot" style="color:${C.hun}">Huntard</div></div>
+  <div class="abs gold small" style="left:${X + 380}px;top:272px">Bench</div>
+  <div class="pane" style="left:${X + 380}px;top:288px;width:224px;height:174px;padding:3px"><div class="slot">Priestly</div></div>
+  <div class="btn" style="left:${X}px;top:476px;width:150px">Create override</div>
+  <div class="abs small grey" style="left:${X + 160}px;top:482px">Drag names between groups and the lists.</div>` + saveRow(true),
+  { h:"Groups — the groups editor (#26), dropdown: Night's groups, then each encounter", dirty:["Groups"] });
+
+// ---------------------------------------------------------------- Assignments
+const row = (y, slot, holders) => `<div class="lab" style="left:${X + 8}px;top:${y}px;width:110px">${slot}</div>
+  <div class="dd" style="left:${X + 122}px;top:${y}px"><div class="box" style="width:270px">${holders}</div></div>`;
+html += shell("Assignments", enc("Battleguard Sartura", "") + `
+  <div class="pane" style="left:${X}px;top:64px;width:${W}px;height:212px">
+    <div class="abs small gold" style="left:8px;top:4px">Tanks</div><div class="abs small gold" style="left:8px;top:86px">Kicks</div></div>
+  ${row(88, "TANK1", `<span style="color:${C.war}">Aldreth</span>`)}
+  ${row(116, "TANK2", `<span style="color:${C.pal}">Brumm</span>`)}
+  ${row(170, "@Kicker", `<span style="color:${C.rog}">Dremor</span>, <span style="color:${C.war}">Cyra</span>`)}
+  ${row(198, "@Kicker2", `<span style="color:${C.dru}">Eluna</span>`)}
+  <div class="abs small grey" style="left:${X + 8}px;top:240px">… scrolls past seven rows</div>
+  <div class="rule" style="left:${X}px;width:${W}px;top:288px"></div>
+  <div class="lab" style="left:${X + 8}px;top:298px;width:110px">Preview as</div>
+  <div class="dd" style="left:${X + 122}px;top:298px"><div class="box" style="width:270px">Everyone</div></div>
+  <div class="pane" style="left:${X}px;top:330px;width:${W}px;height:168px;padding:6px;line-height:15px">
+    <span class="gold">Sartura</span><br>Tanks: <span style="color:${C.war}">Aldreth</span> (boss) · <span style="color:${C.pal}">Brumm</span>, <span style="color:${C.war}">Cyra</span> (adds)<br>
+    Kick whirlwind: <span style="color:${C.rog}">Dremor</span> <span style="color:${C.dru}">Eluna</span></div>` + saveRow(false),
+  { h:"Assignments — the assignments editor (#28) for any encounter, not only the active one" });
+
+// ---------------------------------------------------------------- Notes
+html += shell("Notes", enc("Twin Emperors (active)", "On in the plan window: Save also sends it to MRT") + `
+  <div class="pane" style="left:${X}px;top:64px;width:${W}px;height:384px;padding:6px 26px 6px 6px;line-height:15px">
+    <span class="gold">Twin Emperors</span><br>|cff00ff00Tanks:|r Aldreth (Vek'lor) · Brumm (Vek'nilash)<br>
+    Teleport: tanks swap, warlock tank picks up ...<br><br><span class="grey small">(UIPanelScrollFrameTemplate + multi-line EditBox)</span>
+    <div class="abs" style="right:2px;top:2px;width:16px;bottom:2px;background:#222;border-left:1px solid #555"></div></div>
+  <div class="abs small warn" style="left:${X}px;top:454px">Edited by hand: assignments no longer rebuild this note.</div>
+  <div class="btn" style="left:${X}px;top:476px;width:180px">Reset to the plan's note</div>` + saveRow(true),
+  { h:"Notes — the note editor (#25)", dirty:["Notes"],
+    cap:"Saving an edit to the active encounter's note re-sends that note to MRT (the content changed, the active encounter didn't). Another encounter's note is only stored; it is sent when the plan window switches to it." });
+
+// ---------------------------------------------------------------- Gargul
+html += shell("Gargul", `
+  <div class="abs gold" style="left:${X}px;top:34px">Loot priorities</div>
+  <div class="abs" style="left:${X}px;top:56px;line-height:16px">The raid plan carries Gargul loot priorities for 214 items.<br>
+    <span style="color:#40ff40">Gargul has the plan's priorities.</span></div>
+  <div class="btn" style="left:${X}px;top:100px;width:180px">Import into Gargul</div>
+  <div class="abs small grey" style="left:${X + 190}px;top:106px">Replaces Gargul's TMB / priority list with the plan's.</div>
+  <div class="rule" style="left:${X}px;width:${W}px;top:142px"></div>
+  <div class="abs small grey" style="left:${X}px;top:152px;width:${W}px">Without Gargul loaded, or a plan without priorities, this section says so and the button is greyed out.</div>`,
+  { h:"Gargul — what the ⚙ menu's Gargul entry did, with its state spelled out" });
+
+// ---------------------------------------------------------------- Config
+html += shell("Config", `
+  <div class="abs gold" style="left:${X}px;top:34px">After a kill</div>
+  <div class="lab" style="left:${X}px;top:54px;width:170px">Switch the note to</div>
+  <div class="dd" style="left:${X + 170}px;top:54px"><div class="box" style="width:260px">Trash</div></div>
+  <div class="abs small grey" style="left:${X}px;top:84px">Posted to MRT when a boss dies, until the next encounter is chosen.</div>
+  <div class="rule" style="left:${X}px;width:${W}px;top:108px"></div>
+  <div class="abs gold" style="left:${X}px;top:120px">Plan window</div>
+  <div class="check" style="left:${X}px;top:142px">Lock position</div>
+  <div class="lab" style="left:${X}px;top:168px;width:170px">Scale</div>
+  <div class="dd" style="left:${X + 170}px;top:168px"><div class="box" style="width:120px">100%</div></div>
+  <div class="check" style="left:${X}px;top:200px">Show the minimap button</div>
+  <div class="rule" style="left:${X}px;width:${W}px;top:234px"></div>
+  <div class="abs gold" style="left:${X}px;top:246px">Sync</div>
+  <div class="abs" style="left:${X}px;top:268px">You are an assistant: your edits sync to the raid.</div>
+  <div class="btn" style="left:${X}px;top:290px;width:150px">Force sync</div>
+  <div class="abs small grey" style="left:${X + 160}px;top:296px">Sends this plan and its active encounter to the raid.</div>` + saveRow(true),
+  { h:"Config — plan-wide settings (After a kill is a plan edit and syncs) and the window's own settings", dirty:["Config"] });
+
+// ---------------------------------------------------------------- Import
+html += shell("Import", `
+  <div class="abs gold" style="left:${X}px;top:34px">Paste the export from the wiki's raid planner</div>
+  <div class="pane" style="left:${X}px;top:54px;width:${W}px;height:230px;padding:6px"><span class="grey">UTRM2:eNrtWm1v2zgS/iuG…</span></div>
+  <div class="btn" style="left:${X + W - 140}px;top:292px;width:140px">Import</div>
+  <div class="rule" style="left:${X}px;width:${W}px;top:330px"></div>
+  <div class="abs gold" style="left:${X}px;top:342px">Current plan</div>
+  <div class="abs" style="left:${X}px;top:362px;line-height:16px"><span class="gold">AQ40</span>  2026-11-05 19:30<br>9 encounters, 3 named group layouts<br>
+    Gargul loot priorities included<br>Exported 2026-11-01 18:02, imported 2026-11-01 18:10<br>Edited by Ehvd at 20:14</div>
+  <div class="btn" style="left:${X}px;top:510px;width:150px">Clear raid plan</div>`,
+  { h:"Import — the import window (paste box, summary) and Clear raid plan" });
+
+document.getElementById("out").innerHTML = html;
+</script>
+</body>
+</html>

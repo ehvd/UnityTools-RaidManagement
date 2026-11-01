@@ -14,9 +14,8 @@ globals = {
     "UnityToolsRaidManagement",
     "UnityToolsRaidManagementDB",
     "UnityToolsRaidManagementNoteFrame",
-    "UnityToolsRaidManagementImportFrame",
     "UnityToolsRaidManagementPlanFrame",
-    "UnityToolsRaidManagementAssignmentsFrame",
+    "UnityToolsRaidManagementRaidPlanFrame",
     "SlashCmdList",
     "StaticPopupDialogs",
     "UISpecialFrames",
@@ -46,7 +45,7 @@ read_globals = {
     "UIParent", "GameTooltip", "PlaySound", "SOUNDKIT",
     "StaticPopup_Show", "YES", "NO", "CLOSE", "CANCEL", "NONE", "MenuUtil", "MenuResponse",
     "EMPTY", "RAID_CLASS_COLORS", "GetCursorPosition",
-    "GameFontHighlight", "GameFontHighlightSmall", "GameFontNormalSmall",
+    "GameFontHighlight", "GameFontHighlightSmall", "GameFontNormal", "GameFontNormalSmall",
 
     -- Game API
     "C_AddOns", "GetAddOnMetadata", "IsAddOnLoaded",

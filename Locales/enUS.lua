@@ -40,7 +40,6 @@ L["Reload from MRT"] = true
 
 -- Raid plan import
 L["import a raid plan from the UnityWiki raid planner"] = true
-L["Import raid plan"] = true
 L["Current plan"] = true
 L["Paste the string from Export for addon in the UnityWiki raid planner:"] = true
 L["Import"] = true
@@ -64,7 +63,6 @@ L["Raid plan %s cleared."] = true
 -- Raid plan window
 L["show or hide the raid plan window"] = true
 L["Raid plan"] = true
-L["Import raid plan..."] = true
 L["Lock position"] = true
 L["Scale"] = true
 L["Choose the encounter"] = true
@@ -148,13 +146,8 @@ L["Unity Tools - Raid Management"] = true
 L["show or hide the minimap button"] = true
 L["Left-click: show or hide the raid plan window"] = true
 L["Right-click: options"] = true
-L["Raid note editor..."] = true
-L["Hide minimap button"] = true
-L["Minimap button hidden: /utrm minimap shows it again."] = true
 
 -- Editing an encounter's note (issue #25)
-L["Edit note..."] = true
-L["Note: %s"] = true
 L["Reset to the plan's note"] = true
 L["Note edited in game"] = true
 L["Note saved in the raid plan."] = true
@@ -164,8 +157,6 @@ L["Saved on your client only: you are not raid leader or assistant."] = true
 L["This encounter is no longer in the raid plan."] = true
 
 -- Groups editor (#26)
-L["Edit groups..."] = true
-L["Edit groups"] = true
 L["Click a player, then a slot, a player or a list, or drag. Right-click takes a player out."] = true
 L["Night's groups"] = true
 L["The night's groups, used by: %s"] = true
@@ -190,14 +181,10 @@ L["%s has its own groups now."] = true
 L["%s uses the night's groups again."] = true
 L["Use the night's groups for %s again? Its own groups (%s) are deleted."] = true
 L["Use the night's groups for %s again? Its groups stay for: %s"] = true
-L["Discard your changes to the groups?"] = true
 L["These groups are no longer in the raid plan."] = true
-L["The raid plan changed, so the groups editor was closed."] = true
 
 -- Assignments window
 L["Assignments"] = true
-L["Assignments..."] = true
-L["Choose the encounter first."] = true
 L["Export the plan again from the wiki to change assignments."] = true
 L["The note of this encounter was edited by hand. Reset it to the plan's note to change its assignments."] = true
 L["This encounter's note has no assignments."] = true
@@ -223,3 +210,29 @@ L["After a kill: switches to %s"] = true
 L["After a kill: no switch"] = true
 L["%s killed: switched to %s"] = true
 L["Only the raid leader's client switches: without this addon there, nothing switches."] = true
+
+-- Raid Plan window (issue #37)
+L["Raid Plan"] = true
+L["open the Raid Plan window"] = true
+L["Open Raid Plan"] = true
+L["Open mini window"] = true
+L["Groups"] = true
+L["Notes"] = true
+L["Gargul"] = true
+L["Config"] = true
+L["Encounter"] = true
+L["(active)"] = true
+L["Discard your changes to %s?"] = true
+L["Assignments saved."] = true
+L["Edited by hand: assignments no longer rebuild this note."] = true
+L["The raid plan changed: your changes to these groups were dropped."] = true
+L["Loot priorities"] = true
+L["Import into Gargul"] = true
+L["After a kill"] = true
+L["Switch the note to"] = true
+L["Mini window"] = true
+L["Show the minimap button"] = true
+L["Sync"] = true
+L["Not in a raid: your edits stay on your client until you lead a raid or assist in one."] = true
+L["You are raid leader or assistant: your edits sync to the raid."] = true
+L["You are not raid leader or assistant: your edits stay on your client, and the leader's plan may replace them."] = true

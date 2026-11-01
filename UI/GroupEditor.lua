@@ -3,20 +3,19 @@ local UTRM = UnityToolsRaidManagement
 local L = UTRM.L
 local GroupEdit, GroupPlan = ns.GroupEdit, ns.GroupPlan
 
--- Groups editor (issue #26): one layout of the plan as 8 groups of 5, next to the raid members and the bench who are
--- not in it. The dropdown picks the night's groups or an encounter: an encounter on the night's groups shows them
--- read-only until it gets its own groups (Create override); its own groups can be edited or deleted. Click a player,
--- then a slot, another player or a list (or drag) to move, swap or take out. Every change is a plan edit
+-- Groups editor (issue #26), the Groups section of the Raid Plan window (UI/RaidPlanWindow.lua): one layout of the
+-- plan as 8 groups of 5, next to the raid members and the bench who are not in it. The dropdown picks the night's
+-- groups or an encounter (it never changes the active one): an encounter on the night's groups shows them read-only
+-- until it gets its own groups (Create override); its own groups can be edited or deleted. Click a player, then a
+-- slot, another player or a list (or drag) to move, swap or take out. Every change is a plan edit
 -- (Modules/PlanImport.lua) that syncs, and saving the active encounter's groups sorts the raid. The layout changes go
 -- through Modules/GroupEdit.lua.
 local GroupEditor = UTRM:NewModule("GroupEditor", "AceEvent-3.0")
 UTRM.GroupEditor = GroupEditor
 
--- Layout (1 px = 1 UI pixel at 100% scale): the note editor's dialog (AceGUI's Frame: dialog border, header, status
--- bar with the button beside it), its content 17 px in and 27 px from the top. Under the dropdown row an info line
--- (two lines) and the hint, then the groups like Blizzard's raid panel (two columns of four, the label above each
--- box), the two lists on the right, and Save / Undo under the groups.
-local LEFT, TOP = 17, 27
+-- Layout (1 px = 1 UI pixel at 100% scale), inside the Raid Plan window's section: under the dropdown row an info
+-- line (two lines) and the hint, then the groups like Blizzard's raid panel (two columns of four, the label above
+-- each box), the two lists on the right, and Save / Undo under the groups. The window's status bar shows the messages.
 local SLOT_WIDTH, SLOT_HEIGHT = 158, 14       -- the raid panel's name buttons
 local BOX_PAD = 5                             -- the tooltip border is 4 px wide
 local BOX_WIDTH, BOX_HEIGHT = SLOT_WIDTH + 2 * BOX_PAD, 5 * SLOT_HEIGHT + 2 * BOX_PAD
@@ -34,10 +33,9 @@ local PANE_INSET = 8                          -- keeps the scroll bar's arrows o
 local SCROLLBAR = 22                          -- UIPanelScrollFrameTemplate's bar sits 6 px right of the frame, 16 wide
 local BUTTON_WIDTH, BUTTON_HEIGHT = 140, 24   -- the note editor's buttons (AceGUI Button: UIPanelButtonTemplate)
 local BUTTONS_TOP = GROUPS_TOP + GROUPS_HEIGHT + 10
-local STATUS = 15 + 24                        -- the status bar's bottom inset and height
 local CONTENT_WIDTH = LIST_LEFT + LIST_WIDTH
-local WIDTH = CONTENT_WIDTH + 2 * LEFT
-local HEIGHT = TOP + BUTTONS_TOP + BUTTON_HEIGHT + 8 + STATUS
+local CONTENT_HEIGHT = BUTTONS_TOP + BUTTON_HEIGHT
+GroupEditor.WIDTH, GroupEditor.HEIGHT = CONTENT_WIDTH, CONTENT_HEIGHT   -- what the Raid Plan window must fit
 local SLOTS, GROUP_SIZE = 40, 5
 
 local FRAME_NAME = "UnityToolsRaidManagementGroupFrame"
@@ -270,8 +268,8 @@ function GroupEditor:Choose(encounterKey)
     if encounterKey == self.encounterKey then return end
     if self:IsChanged() then
         self.pending = encounterKey
-        StaticPopupDialogs[DISCARD_POPUP].text = L["Discard your changes to the groups?"]
-        StaticPopup_Show(DISCARD_POPUP)
+        StaticPopupDialogs[DISCARD_POPUP].text = L["Discard your changes to %s?"]
+        StaticPopup_Show(DISCARD_POPUP, L["Groups"])
         return
     end
     self:Load(encounterKey)
@@ -394,32 +392,6 @@ local function label(parent, x, y, width)
     return text
 end
 
--- The note editor's title: Blizzard's dialog header, as wide as the title
-local function header(text)
-    local titlebg = frame:CreateTexture(nil, "OVERLAY")
-    titlebg:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Header")
-    titlebg:SetTexCoord(0.31, 0.67, 0, 0.63)
-    titlebg:SetPoint("TOP", 0, 12)
-    titlebg:SetHeight(40)
-
-    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    title:SetPoint("TOP", titlebg, "TOP", 0, -14)
-    title:SetText(text)
-    titlebg:SetWidth(title:GetStringWidth() + 10)
-
-    local left = frame:CreateTexture(nil, "OVERLAY")
-    left:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Header")
-    left:SetTexCoord(0.21, 0.31, 0, 0.63)
-    left:SetPoint("RIGHT", titlebg, "LEFT")
-    left:SetSize(30, 40)
-
-    local right = frame:CreateTexture(nil, "OVERLAY")
-    right:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Header")
-    right:SetTexCoord(0.67, 0.77, 0, 0.63)
-    right:SetPoint("LEFT", titlebg, "RIGHT")
-    right:SetSize(30, 40)
-end
-
 -- The encounter box, set up like the plan window's (UI/PlanWindow.lua): Blizzard's UIDropDownMenuTemplate art around
 -- `holder` (it reaches 15 px left and 17 px right of it), with our MenuUtil menu instead of Blizzard's list
 local function dropdown(holder, onClick)
@@ -478,12 +450,6 @@ local function openMenu(owner)
     end)
 end
 
-local function savePosition()
-    local point, _, relativePoint, x, y = frame:GetPoint()
-    local s = UTRM.db.profile.groupEditor
-    s.point, s.relativePoint, s.x, s.y = point, relativePoint, x, y
-end
-
 -- One of the two lists: a label, and a pane with a scroll list that is also a drop target
 local function listPane(content, list, y)
     local box = pane(content, LIST_LEFT, y + LABEL, LIST_WIDTH, PANE_HEIGHT)
@@ -509,39 +475,10 @@ local function listPane(content, list, y)
 end
 
 local function create()
-    frame = CreateFrame("Frame", FRAME_NAME, UIParent, "BackdropTemplate")
-    frame:SetSize(WIDTH, HEIGHT)
-    frame:SetFrameStrata("DIALOG")
-    frame:SetToplevel(true)
-    frame:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true, tileSize = 32, edgeSize = 32,
-        insets = { left = 8, right = 8, top = 8, bottom = 8 },
-    })
-    frame:SetBackdropColor(0, 0, 0, 1)
-    frame:SetClampedToScreen(true)
-    frame:SetMovable(true)
-    frame:EnableMouse(true)
-    frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart", frame.StartMoving)
-    frame:SetScript("OnDragStop", function()
-        frame:StopMovingOrSizing()
-        savePosition()
-    end)
-    frame:SetScript("OnHide", function()
-        frame.ghost:Hide()
-        GroupEditor.layout = nil
-    end)
-    local s = UTRM.db.profile.groupEditor
-    frame:SetPoint(s.point or "CENTER", UIParent, s.relativePoint or "CENTER", s.x or 0, s.y or 0)
-    tinsert(UISpecialFrames, FRAME_NAME)   -- Escape closes it, as Cancel
-
-    header(L["Edit groups"])
-
-    local content = CreateFrame("Frame", nil, frame)
-    content:SetPoint("TOPLEFT", LEFT, -TOP)
-    content:SetSize(CONTENT_WIDTH, HEIGHT - TOP - STATUS)
+    frame = CreateFrame("Frame", FRAME_NAME, UIParent)
+    frame:SetSize(CONTENT_WIDTH, CONTENT_HEIGHT)
+    frame:SetScript("OnHide", function() frame.ghost:Hide() end)
+    local content = frame
 
     -- The dropdown (the night's groups or an encounter), and Create / Delete override beside it
     frame.choice = CreateFrame("Frame", nil, content)
@@ -592,30 +529,13 @@ local function create()
     frame.bench = listPane(content, "bench", GROUPS_TOP + LABEL + PANE_HEIGHT + LIST_GAP)
     frame.panes = { frame.raid, frame.bench }
 
-    -- Save and Undo under the groups; Cancel where the note editor has Close
+    -- Save and Undo under the groups
     frame.save = panelButton(content, BUTTON_WIDTH, BUTTON_HEIGHT, L["Save"])
     frame.save:SetPoint("TOPLEFT", 0, -BUTTONS_TOP)
     frame.save:SetScript("OnClick", function() GroupEditor:Save() end)
     frame.undo = panelButton(content, BUTTON_WIDTH, BUTTON_HEIGHT, L["Undo changes"])
     frame.undo:SetPoint("LEFT", frame.save, "RIGHT", 4, 0)
     frame.undo:SetScript("OnClick", function() GroupEditor:Undo() end)
-
-    local cancel = panelButton(frame, 100, 20, CANCEL)
-    cancel:SetPoint("BOTTOMRIGHT", -27, 17)
-    cancel:SetScript("OnClick", function() GroupEditor:Hide() end)
-
-    local statusbg = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-    statusbg:SetPoint("BOTTOMLEFT", 15, 15)
-    statusbg:SetPoint("BOTTOMRIGHT", -132, 15)
-    statusbg:SetHeight(24)
-    statusbg:SetBackdrop(PANE_BACKDROP)
-    statusbg:SetBackdropColor(0.1, 0.1, 0.1)
-    statusbg:SetBackdropBorderColor(0.4, 0.4, 0.4)
-    frame.status = statusbg:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    frame.status:SetPoint("TOPLEFT", 7, -2)
-    frame.status:SetPoint("BOTTOMRIGHT", -7, 2)
-    frame.status:SetJustifyH("LEFT")
-    frame.status:SetWordWrap(false)
 
     -- The name under the cursor while dragging
     frame.ghost = CreateFrame("Frame", nil, UIParent)
@@ -745,12 +665,13 @@ function GroupEditor:Render()
     frame.save:SetEnabled(changed)
     frame.undo:SetEnabled(changed)
     if self.message then
-        frame.status:SetText(self.message)
+        self.host:SetStatus(self.message)
     elseif #missing > 0 then
-        frame.status:SetText(format(L["Planned but not in the raid: %s"], table.concat(missing, ", ")))
+        self.host:SetStatus(format(L["Planned but not in the raid: %s"], table.concat(missing, ", ")))
     else
-        frame.status:SetText("")
+        self.host:SetStatus("")
     end
+    self.host:UpdateTree()
 end
 
 -- Shows the night's groups (`encounterKey` nil, or an encounter no longer in the plan) or an encounter's groups
@@ -765,49 +686,66 @@ function GroupEditor:Load(encounterKey)
     self.selected, self.message, self.pending = nil, nil, nil
 end
 
--- Opens the editor on the active encounter's groups (the night's groups when no encounter is active)
-function GroupEditor:Open()
+-- Shows the section in the Raid Plan window (`host`, UI/RaidPlanWindow.lua), on the groups it showed last, else
+-- the active encounter's (the night's groups when no encounter is active)
+function GroupEditor:Attach(host)
     local plan = currentPlan()
-    if not plan then
-        UTRM:Print(L["No raid plan imported yet."])
-        return
-    end
+    if not plan then return end
     if not frame then create() end
-    self:Load(plan.active)
+    self.host = host
+    local parent = host.content
+    frame:SetParent(parent)
+    frame:SetFrameStrata(parent:GetFrameStrata())
+    frame:SetFrameLevel(parent:GetFrameLevel() + 1)
+    frame:ClearAllPoints()
+    frame:SetPoint("TOPLEFT", parent, "TOPLEFT")
+    if not self.layout then
+        self:Load(plan.active)
+    elseif self.encounterKey and not findEncounter(plan, self.encounterKey) then
+        self:Load(nil)
+    end
     frame:Show()
     self:Render()
 end
 
-function GroupEditor:Hide()
-    if frame then frame:Hide() end
+function GroupEditor:Detach()
+    if not frame then return end
+    frame:Hide()
+    frame:ClearAllPoints()
+    frame:SetParent(UIParent)
 end
 
 function GroupEditor:IsShown()
     return frame ~= nil and frame:IsShown()
 end
 
+-- Unsaved changes are dropped (the Raid Plan window asked first)
+function GroupEditor:Discard()
+    if self.layout then self:Undo() end
+end
+
 function GroupEditor:OnEnable()
     self:RegisterEvent("GROUP_ROSTER_UPDATE", function()
         if self:IsShown() then self:Render() end
     end)
-    -- Somebody else's plan or edit arrived: show it, but close when it changed the groups being edited under unsaved
-    -- changes
+    -- Somebody else's plan or edit arrived: show it; changes to groups that it changed are dropped
     self:RegisterMessage("UTRM_PLAN_IMPORTED", function()
-        if not self:IsShown() then return end
+        if not self.layout then return end
         local plan = currentPlan()
         local encounter = findEncounter(plan, self.encounterKey)
         local layoutKey = encounter and encounter.layout or "default"
         local same = layoutKey == self.layoutKey and (self.encounterKey == nil or encounter ~= nil)
             and GroupEdit.Equal(plan.layouts[layoutKey], self.original)
         if same then
-            self:Render()
-        elseif self:IsChanged() then
-            self:Hide()
-            UTRM:Print(L["The raid plan changed, so the groups editor was closed."])
-        else
-            self:Load(self.encounterKey)
-            self:Render()
+            if self:IsShown() then self:Render() end
+            return
         end
+        local dropped = self:IsChanged()
+        self:Load(encounter and encounter.key)
+        if dropped then
+            self.message = "|cffffa040" .. L["The raid plan changed: your changes to these groups were dropped."] .. "|r"
+        end
+        if self:IsShown() then self:Render() end
     end)
-    self:RegisterMessage("UTRM_PLAN_CLEARED", function() self:Hide() end)
+    self:RegisterMessage("UTRM_PLAN_CLEARED", function() self.layout = nil end)
 end
