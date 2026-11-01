@@ -15,6 +15,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - Edit note... (the raid plan window's options and its encounter list) changes the active encounter's note in game:
   Save keeps it in the plan (and sends it to Method Raid Tools when the encounter is active), Reset to the plan's note
   brings back the imported one. Edited notes sync like other plan edits and are marked with a note icon
+- Edit groups... (the raid plan window's options) edits the night's groups or an encounter's (a dropdown, opening on
+  the active encounter): click a player, then a slot, another player or a list (or drag) to move, swap or take them
+  out; fill slots from the raid members not in the groups or from the bench (the plan's people who are neither in
+  the groups nor in the raid). Names are in class colours, also outside a raid; planned players who are not in the
+  raid are marked. An encounter on the night's groups shows them read-only until Create override gives it its own
+  groups; Delete override (after a confirmation) puts it back on the night's groups. Every change is a plan edit
+  that syncs, and saving the active encounter's groups sorts the raid
 
 ### Changed
 

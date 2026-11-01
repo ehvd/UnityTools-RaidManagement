@@ -24,6 +24,7 @@ Modules\NoteTemplate.lua
 Modules\PlanCodec.lua
 Modules\PlanImport.lua
 Modules\GroupPlan.lua
+Modules\GroupEdit.lua
 Modules\RaidGroups.lua
 Modules\Gargul.lua
 Modules\Readiness.lua
@@ -33,4 +34,5 @@ Modules\Sync.lua
 UI\NoteEditor.lua
 UI\ImportWindow.lua
 UI\PlanWindow.lua
+UI\GroupEditor.lua
 UI\Minimap.lua

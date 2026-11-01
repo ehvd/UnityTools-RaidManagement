@@ -311,6 +311,10 @@ local function openOptionsMenu(owner)
         root:CreateTitle(plan and plan.event.title or L["Raid plan"])
         addEditNote(root, plan)
         PlanWindow:AddPlanActions(root)
+        -- The night's and the encounters' groups (UI/GroupEditor.lua)
+        if plan then
+            root:CreateButton(L["Edit groups..."], function() UTRM.GroupEditor:Open() end)
+        end
         root:CreateCheckbox(L["Lock position"],
             function() return settings().locked end,
             function()

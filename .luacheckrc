@@ -44,6 +44,7 @@ read_globals = {
     -- Frames / UI
     "UIParent", "GameTooltip", "PlaySound", "SOUNDKIT",
     "StaticPopup_Show", "YES", "NO", "CLOSE", "MenuUtil", "MenuResponse",
+    "CANCEL", "EMPTY", "RAID_CLASS_COLORS", "GetCursorPosition",
 
     -- Game API
     "C_AddOns", "GetAddOnMetadata", "IsAddOnLoaded",

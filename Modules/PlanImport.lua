@@ -40,6 +40,7 @@ function PlanImport:Read(text)
             raids = data.event.raids,
         },
         layouts = data.layouts,
+        people = data.people,
         encounters = data.encounters,
         gargul = data.gargul and { string = data.gargul.string, generatedAt = data.gargul.generatedAt },
     }
