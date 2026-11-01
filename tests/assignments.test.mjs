@@ -74,11 +74,11 @@ function hasTemplate(encounterJson)
     return tostring(A.HasTemplate(Codec.JSONDecode(encounterJson)))
 end
 
-function sortTokens(tokensJson)
+function groupTokens(tokensJson)
     local jobs = {}
     for i, token in ipairs(Codec.JSONDecode(tokensJson)) do jobs[i] = { tokens = { token } } end
     local out = {}
-    for i, job in ipairs(A.SortJobs(jobs)) do out[i] = job.tokens[1] end
+    for i, job in ipairs(A.GroupJobs(jobs)) do out[i] = job.tokens[1] end
     return encode(out)
 end
 `;
@@ -181,14 +181,20 @@ test('only encounters with a template and slots can be rebuilt (protocol 1 has n
   assert.equal(hasTemplate(encounter('molten-core:trash')), true);   // a template with no slots
 });
 
-test('rows by token: alphabetical, numbers by value, custom tokens without the @', () => {
-  lua.lua_getglobal(L, to_luastring('sortTokens'));
-  const tokens = ['TANK1', 'HEALER1', 'TANK10', 'TANK2', '@Kicker', 'HEALER2', 'TANK9', 'MT', '@decurser'];
+function groupTokens(tokens) {
+  lua.lua_getglobal(L, to_luastring('groupTokens'));
   lua.lua_pushstring(L, to_luastring(JSON.stringify(tokens)));
   if (lua.lua_pcall(L, 1, 1, 0) !== lua.LUA_OK) throw new Error(to_jsstring(lua.lua_tostring(L, -1)));
-  const sorted = JSON.parse(to_jsstring(lua.lua_tostring(L, -1)));
+  const grouped = JSON.parse(to_jsstring(lua.lua_tostring(L, -1)));
   lua.lua_pop(L, 1);
-  assert.deepEqual(sorted, ['@decurser', 'HEALER1', 'HEALER2', '@Kicker', 'MT', 'TANK1', 'TANK2', 'TANK9', 'TANK10']);
+  return grouped;
+}
+
+test('rows grouped by token without its number, groups and slots in the note order', () => {
+  assert.deepEqual(groupTokens(['TANK1', 'HEALER1', 'TANK2', 'HEALER2', 'TANK3', 'HEALER3', 'TANK4']),
+    ['TANK1', 'TANK2', 'TANK3', 'TANK4', 'HEALER1', 'HEALER2', 'HEALER3']);
+  assert.deepEqual(groupTokens(['HEALER2', '@Kicker', 'TANK10', 'MT', 'HEALER1', '@Decurser', 'TANK9']),
+    ['HEALER2', 'HEALER1', '@Kicker', 'TANK10', 'TANK9', 'MT', '@Decurser']);
 });
 
 test('candidates in alphabetical order, ignoring case and accents', () => {
