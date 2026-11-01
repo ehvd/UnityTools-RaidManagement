@@ -172,3 +172,11 @@ test('only encounters with a template and slots can be rebuilt (protocol 1 has n
   assert.equal(hasTemplate({ ...protocol1, template }), false);
   assert.equal(hasTemplate(encounter('molten-core:trash')), true);   // a template with no slots
 });
+
+test('candidates in alphabetical order, ignoring case and accents', () => {
+  const lucifron = encounter('molten-core:lucifron');
+  const names = ['Rigwar', 'jasmine', 'Tracedeneïge', 'Durance', 'Jmdruid', 'Tracedeneige', 'Ämber', 'Jugildina'];
+  for (const slot of lucifron.slots.filter((s) => s.token === 'TANK1' || s.token === 'MT')) slot.candidates = names;
+  assert.deepEqual(run(lucifron).jobs[0].candidates,
+    ['Ämber', 'Durance', 'jasmine', 'Jmdruid', 'Jugildina', 'Rigwar', 'Tracedeneige', 'Tracedeneïge']);
+});

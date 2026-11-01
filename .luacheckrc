@@ -55,6 +55,7 @@ read_globals = {
     "C_Timer", "GetTime", "GetServerTime", "GetLocale", "geterrorhandler",
     "UnitName", "UnitGUID", "UnitExists", "UnitClass", "UnitLevel", "InCombatLockdown",
     "IsInGroup", "IsInRaid", "GetNumGroupMembers", "GetSpellInfo",
+    "C_Spell", "GetSpellTexture",
 }
 
 -- Translations keep one entry per line, however long

@@ -30,8 +30,31 @@ local function offered(slot)
     return slot.kind ~= "none" and slot.kind ~= "list"
 end
 
+-- The accented letters of Latin-1 (UTF-8 "\195" and one byte) as their base letter, so names sort as people read
+-- them: "Tracedeneïge" next to "Tracedeneige"
+local FOLD = {}
+for letter, codes in pairs({
+    a = "\128\129\130\131\132\133\160\161\162\163\164\165", c = "\135\167", e = "\136\137\138\139\168\169\170\171",
+    i = "\140\141\142\143\172\173\174\175", n = "\145\177", o = "\146\147\148\149\150\152\178\179\180\181\182\184",
+    u = "\153\154\155\156\185\186\187\188", y = "\157\189\191",
+}) do
+    for i = 1, #codes do FOLD["\195" .. codes:sub(i, i)] = letter end
+end
+
+-- A name as it sorts: lower case, without accents
+function Assignments.SortName(name)
+    return (name:gsub("\195[\128-\191]", FOLD):lower())
+end
+
+local function byName(a, b)
+    local sa, sb = Assignments.SortName(a), Assignments.SortName(b)
+    if sa ~= sb then return sa < sb end
+    return a < b
+end
+
 -- The encounter's jobs, in the order their first slot comes: { key, kind, multi, tokens, holders, candidates }.
--- The holders and candidates are copies of the first slot's (the slots of a job have the same).
+-- The holders are a copy of the first slot's (the slots of a job have the same), the candidates a copy in
+-- alphabetical order.
 function Assignments.Jobs(encounter)
     local jobs, byKey = {}, {}
     for _, slot in ipairs(encounter.slots or {}) do
@@ -42,6 +65,7 @@ function Assignments.Jobs(encounter)
                     key = slot.key, kind = slot.kind, multi = slot.multi and true or false, tokens = {},
                     holders = copy(slot.holders), candidates = copy(slot.candidates),
                 }
+                table.sort(job.candidates, byName)
                 byKey[slot.key] = job
                 jobs[#jobs + 1] = job
             end

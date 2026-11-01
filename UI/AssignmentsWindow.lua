@@ -88,10 +88,12 @@ end
 
 ------------------------------------------------------------------------------------------------- menus ---
 
--- A job's menu: its candidates as the export lists them. Several holders: check boxes, the menu stays open;
--- one holder: radio buttons and Nobody, the menu closes.
+-- A job's menu: its candidates in alphabetical order. Several holders: check boxes, the menu stays open;
+-- one holder: radio buttons and Nobody last, the menu closes. The window is an AceGUI Frame (FULLSCREEN_DIALOG,
+-- level 100, top level), above Blizzard's menus: the menu goes to the TOOLTIP strata so it shows over the window
+-- and any other addon's.
 function AssignmentsWindow:OpenMenu(job, owner)
-    MenuUtil.CreateContextMenu(owner, function(_, root)
+    local menu = MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(table.concat(job.tokens, " · "))
         local function holds(name) return Assignments.Holds(job, name) end
         for _, name in ipairs(job.candidates) do
@@ -119,6 +121,7 @@ function AssignmentsWindow:OpenMenu(job, owner)
             root:CreateTitle(L["Nobody can fill this."])
         end
     end)
+    if menu then menu:SetFrameStrata("TOOLTIP") end
 end
 
 -- The rows use AceGUI's Dropdown for its look (UIDropDownMenuTemplate, set up as the plan window's) with this menu
@@ -157,6 +160,7 @@ function AssignmentsWindow:Create()
     frame:EnableResize(false)
     frame:SetCallback("OnClose", function(widget)
         self:UnhookDropdowns()
+        self:DetachPreview()
         _G[FRAME_GLOBAL] = nil
         self.frame, self.jobs, self.rows, self.preview = nil, nil, nil, nil
         AceGUI:Release(widget)
@@ -190,10 +194,62 @@ local function addButton(parent, text, width, onClick)
     return button
 end
 
+-- The preview: a UIPanelScrollFrameTemplate with the note in a font string, made once and lent to the window's
+-- InlineGroup (AceGUI widgets are pooled: it goes back to nobody before the group is released)
+local function createPreview()
+    local scroll = CreateFrame("ScrollFrame", nil, UIParent, "UIPanelScrollFrameTemplate")
+    local child = CreateFrame("Frame", nil, scroll)
+    child:SetSize(1, 1)
+    scroll:SetScrollChild(child)
+    local text = child:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    text:SetPoint("TOPLEFT")
+    text:SetJustifyH("LEFT")
+    text:SetJustifyV("TOP")
+    scroll.child, scroll.text = child, text
+    function scroll:Fit()
+        local width = self:GetWidth()
+        self.child:SetWidth(width)
+        self.text:SetWidth(width)
+        self.child:SetHeight(math.max(self.text:GetStringHeight(), 1))
+        self:UpdateScrollChildRect()
+    end
+    function scroll:SetText(note)
+        self.text:SetText(note)
+        self:Fit()
+    end
+    scroll:SetScript("OnSizeChanged", scroll.Fit)
+    scroll:Hide()
+    return scroll
+end
+
+function AssignmentsWindow:AttachPreview(content)
+    self.previewScroll = self.previewScroll or createPreview()
+    local scroll = self.previewScroll
+    scroll:SetParent(content)
+    scroll:SetFrameStrata(content:GetFrameStrata())
+    scroll:SetFrameLevel(content:GetFrameLevel() + 1)
+    scroll:ClearAllPoints()
+    scroll:SetPoint("TOPLEFT", content, "TOPLEFT", 0, 0)
+    scroll:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -24, 0)   -- room for the scroll bar
+    scroll:SetVerticalScroll(0)
+    scroll:Show()
+    self.preview = scroll
+end
+
+function AssignmentsWindow:DetachPreview()
+    local scroll = self.previewScroll
+    if not scroll then return end
+    scroll:Hide()
+    scroll:ClearAllPoints()
+    scroll:SetParent(UIParent)
+    self.preview = nil
+end
+
 -- Fills the window for the encounter `self.key` of the current plan: the jobs, or why they cannot be changed
 function AssignmentsWindow:Build(message)
     local frame = self.frame
     self:UnhookDropdowns()
+    self:DetachPreview()
     frame:ReleaseChildren()
     self.jobs, self.rows, self.preview = nil, nil, nil
 
@@ -256,20 +312,14 @@ function AssignmentsWindow:Build(message)
         self.rows[i] = dropdown
     end
 
-    -- The rebuilt note
+    -- The rebuilt note, as Method Raid Tools shows it, in the window's own scroll frame
     local previewBox = AceGUI:Create("InlineGroup")
     previewBox:SetTitle(L["Note preview"])
     previewBox:SetFullWidth(true)
+    previewBox:SetAutoAdjustHeight(false)
     previewBox:SetHeight(PREVIEW_HEIGHT)
-    previewBox:SetLayout("Fill")
     frame:AddChild(previewBox)
-    local previewScroll = AceGUI:Create("ScrollFrame")
-    previewScroll:SetLayout("List")
-    previewBox:AddChild(previewScroll)
-    self.preview = AceGUI:Create("Label")
-    self.preview:SetFullWidth(true)
-    self.preview:SetFontObject(GameFontHighlightSmall)
-    previewScroll:AddChild(self.preview)
+    self:AttachPreview(previewBox.content)
 
     addButton(frame, L["Save"], 140, function() self:Save() end)
     addButton(frame, CANCEL, 140, function() frame:Hide() end)
@@ -283,7 +333,7 @@ function AssignmentsWindow:Update(message)
     for i, job in ipairs(self.jobs) do
         self.rows[i]:SetText(self:JobText(job))
     end
-    self.preview:SetText(Assignments.Preview(self.encounter, self.jobs, self.people))
+    self.preview:SetText(UTRM:GetModule("MRT"):FormatNote(Assignments.Preview(self.encounter, self.jobs, self.people)))
     local changed = Assignments.Changed(self.encounter, self.jobs)
     if message then
         self.frame:SetStatusText(message)
