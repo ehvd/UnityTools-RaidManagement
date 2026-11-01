@@ -176,6 +176,7 @@ L["Everyone"] = "Tutti"
 L["only what everyone sees"] = "solo ciò che vedono tutti"
 
 -- Fallback note after a boss kill
+L["After a kill: %s"] = "Dopo un'uccisione: %s"
 L["After a kill: switches to %s"] = "Dopo un'uccisione: passa a %s"
 L["After a kill: no switch"] = "Dopo un'uccisione: nessun cambio"
 L["%s killed: switched to %s"] = "%s ucciso: passato a %s"

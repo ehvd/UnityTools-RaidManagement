@@ -1,3 +1,4 @@
+local _, ns = ...
 local UTRM = UnityToolsRaidManagement
 local L = UTRM.L
 
@@ -294,12 +295,33 @@ function PlanWindow:SetScale(value)
     if frame then frame:SetScale(value) end
 end
 
--- ⚙: the Raid Plan window, and the window's own settings
+-- After a kill ▸: the fallback note picked quickly, as in the Raid Plan window's Config section
+local function addFallbackMenu(root, plan)
+    local fallback = ns.FallbackRules.Encounter(plan)
+    local function choose(encounter)
+        if PlanWindow:SetFallback(encounter) then
+            PlanWindow:Refresh(encounter and format(L["After a kill: switches to %s"], encounter.label)
+                or L["After a kill: no switch"])
+        end
+    end
+    local menu = root:CreateButton(format(L["After a kill: %s"], fallback and fallback.label or NONE))
+    menu:CreateRadio(NONE, function() return fallback == nil end, function() choose(nil) end)
+    for i, encounter in ipairs(plan.encounters) do
+        menu:CreateRadio(format("%d. %s", i, encounter.label),
+            function() return encounter == fallback end,
+            function() choose(encounter) end)
+    end
+end
+
+-- ⚙: the Raid Plan window, the switch after a kill, and the window's own settings
 local function openOptionsMenu(owner)
     local plan = currentPlan()
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(plan and plan.event.title or L["Raid plan"])
         root:CreateButton(L["Open Raid Plan"], function() UTRM.RaidPlanWindow:Open() end)
+        if plan and #plan.encounters > 0 then
+            addFallbackMenu(root, plan)
+        end
         root:CreateDivider()
         root:CreateCheckbox(L["Lock position"],
             function() return PlanWindow:IsLocked() end,

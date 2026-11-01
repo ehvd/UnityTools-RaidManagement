@@ -36,14 +36,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   sees; Save is a plan edit that syncs, and the note
   goes to Method Raid Tools when the encounter is active. Protocol 1 plans and hand-edited notes say what to do
   instead
-- Fallback note after a boss kill: choose an encounter in the Raid Plan window's Config section ("After a kill"), for
-  example the night's trash note. When a boss of the plan dies, the raid leader's client makes it active as if
+- Fallback note after a boss kill: choose an encounter in the plan window's ⚙ menu (After a kill ▸) or the Raid Plan
+  window's Config section, for example the night's trash note. When a boss of the plan dies, the raid leader's client makes it active as if
   chosen in the window (note sent, groups sorted after combat, the raid follows). Not after a wipe; with a
   protocol 1 plan any kill switches. The choice is a plan edit and syncs to the raid
 
 ### Changed
 
-- The plan window's ⚙ menu is short again: Open Raid Plan, Lock position, Scale, Close (Lock position and Scale are
+- The plan window's ⚙ menu is short again: Open Raid Plan, After a kill ▸, Lock position, Scale, Close (they are
   also in Config). The minimap button's menu has Open Raid Plan and Open mini window; hiding the button moved to
   Config, the free raid note editor stays on `/utrm note`. The import window, Gargul and Force sync moved into the
   Raid Plan window

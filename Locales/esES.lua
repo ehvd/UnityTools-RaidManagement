@@ -176,6 +176,7 @@ L["Everyone"] = "Todos"
 L["only what everyone sees"] = "solo lo que ven todos"
 
 -- Fallback note after a boss kill
+L["After a kill: %s"] = "Tras derrotar al jefe: %s"
 L["After a kill: switches to %s"] = "Tras derrotar al jefe: cambia a %s"
 L["After a kill: no switch"] = "Tras derrotar al jefe: sin cambio"
 L["%s killed: switched to %s"] = "%s derrotado: cambiado a %s"
@@ -198,7 +199,7 @@ L["Edited by hand: assignments no longer rebuild this note."] = "Editada a mano:
 L["The raid plan changed: your changes to these groups were dropped."] = "El plan de banda cambió: tus cambios en estos grupos se descartaron."
 L["Loot priorities"] = "Prioridades de botín"
 L["Import into Gargul"] = "Importar en Gargul"
-L["After a kill"] = "Tras una muerte"
+L["After a kill"] = "Tras derrotar al jefe"
 L["Switch the note to"] = "Cambiar la nota a"
 L["Mini window"] = "Miniventana"
 L["Show the minimap button"] = "Mostrar el botón del minimapa"
