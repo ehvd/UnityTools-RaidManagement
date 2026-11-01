@@ -205,7 +205,7 @@ end
 function Sync:FollowNote(plan)
     for _, encounter in ipairs(plan.encounters) do
         if encounter.key == plan.active then
-            UTRM:GetModule("MRT"):SetLocalNote(encounter.note)
+            UTRM:GetModule("MRT"):SetLocalNote(UTRM:GetModule("PlanImport"):NoteOf(encounter))
             return
         end
     end

@@ -125,6 +125,17 @@ L["Raid note editor..."] = "Editor della nota d'incursione..."
 L["Hide minimap button"] = "Nascondi il pulsante della minimappa"
 L["Minimap button hidden: /utrm minimap shows it again."] = "Pulsante della minimappa nascosto: /utrm minimap lo mostra di nuovo."
 
+-- Editing an encounter's note (issue #25)
+L["Edit note..."] = "Modifica nota..."
+L["Note: %s"] = "Nota: %s"
+L["Reset to the plan's note"] = "Ripristina la nota del piano"
+L["Note edited in game"] = "Nota modificata in gioco"
+L["Note saved in the raid plan."] = "Nota salvata nel piano d'incursione."
+L["The plan's note is back."] = "La nota del piano è stata ripristinata."
+L["The note is unchanged."] = "La nota non è cambiata."
+L["Saved on your client only: you are not raid leader or assistant."] = "Salvata solo sul tuo client: non sei capo incursione né assistente."
+L["This encounter is no longer in the raid plan."] = "Questo scontro non è più nel piano d'incursione."
+
 -- Groups editor (#26)
 L["Edit groups..."] = "Modifica gruppi..."
 L["Edit groups"] = "Modifica gruppi"
@@ -154,5 +165,4 @@ L["Use the night's groups for %s again? Its own groups (%s) are deleted."] = "Us
 L["Use the night's groups for %s again? Its groups stay for: %s"] = "Usare di nuovo i gruppi della serata per %s? I suoi gruppi restano per: %s"
 L["Discard your changes to the groups?"] = "Scartare le modifiche ai gruppi?"
 L["These groups are no longer in the raid plan."] = "Questi gruppi non sono più nel piano d'incursione."
-L["This encounter is no longer in the raid plan."] = "Questo scontro non è più nel piano d'incursione."
 L["The raid plan changed, so the groups editor was closed."] = "Il piano d'incursione è cambiato, quindi l'editor dei gruppi è stato chiuso."

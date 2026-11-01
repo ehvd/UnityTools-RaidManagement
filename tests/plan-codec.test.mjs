@@ -195,6 +195,10 @@ test('a plan with a broken shape names the first problem', () => {
   const badGargul = night();
   badGargul.gargul = { string: 5 };
   assert.equal(run(encode(badGargul)), 'CHECK:gargul');
+
+  const badCustomNote = night();
+  badCustomNote.encounters[1].customNote = 7;
+  assert.equal(run(encode(badCustomNote)), 'CHECK:encounters[2].customNote');
 });
 
 test('a plan without a Gargul string is fine', () => {

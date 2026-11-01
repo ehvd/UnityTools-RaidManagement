@@ -125,6 +125,17 @@ L["Raid note editor..."] = "Raid-Notiz-Editor..."
 L["Hide minimap button"] = "Minikarten-Schaltfläche verbergen"
 L["Minimap button hidden: /utrm minimap shows it again."] = "Minikarten-Schaltfläche verborgen: /utrm minimap zeigt sie wieder."
 
+-- Editing an encounter's note (issue #25)
+L["Edit note..."] = "Notiz bearbeiten..."
+L["Note: %s"] = "Notiz: %s"
+L["Reset to the plan's note"] = "Notiz aus dem Plan wiederherstellen"
+L["Note edited in game"] = "Notiz im Spiel bearbeitet"
+L["Note saved in the raid plan."] = "Notiz im Raidplan gespeichert."
+L["The plan's note is back."] = "Die Notiz aus dem Plan ist wiederhergestellt."
+L["The note is unchanged."] = "Die Notiz ist unverändert."
+L["Saved on your client only: you are not raid leader or assistant."] = "Nur bei dir gespeichert: du bist weder Raidleiter noch Assistent."
+L["This encounter is no longer in the raid plan."] = "Dieser Boss ist nicht mehr im Raidplan."
+
 -- Groups editor (#26)
 L["Edit groups..."] = "Gruppen bearbeiten..."
 L["Edit groups"] = "Gruppen bearbeiten"
@@ -154,5 +165,4 @@ L["Use the night's groups for %s again? Its own groups (%s) are deleted."] = "F�
 L["Use the night's groups for %s again? Its groups stay for: %s"] = "Für %s wieder die Gruppen des Abends verwenden? Die Gruppen bleiben für: %s"
 L["Discard your changes to the groups?"] = "Deine Änderungen an den Gruppen verwerfen?"
 L["These groups are no longer in the raid plan."] = "Diese Gruppen sind nicht mehr im Raidplan."
-L["This encounter is no longer in the raid plan."] = "Dieser Boss ist nicht mehr im Raidplan."
 L["The raid plan changed, so the groups editor was closed."] = "Der Raidplan hat sich geändert, daher wurde der Gruppeneditor geschlossen."
