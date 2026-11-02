@@ -97,7 +97,7 @@ function Gargul:Attach(host)
     container:AddChild(pasteHeading)
 
     local editBox = AceGUI:Create("MultiLineEditBox")
-    editBox:SetLabel(L["Paste the Gargul string from the loot policy page:"])
+    editBox:SetLabel(L["Paste a Gargul import string:"])
     editBox:DisableButton(true)
     editBox:SetFullWidth(true)
     editBox:SetNumLines(8)

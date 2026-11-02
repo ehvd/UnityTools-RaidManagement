@@ -85,9 +85,9 @@ function Gargul:SetPlanString(text)
     local kind, result = ns.GargulString.Check(text, LibStub("LibDeflate"))
     if not kind then
         if result == "empty" then
-            return false, L["Paste the loot priority string from the loot policy page first."]
+            return false, L["Paste a Gargul import string first."]
         end
-        return false, format(L["This is not a Gargul loot priority string (%s). Copy it again from the loot policy page."],
+        return false, format(L["This is not a Gargul import string (%s)."],
             result)
     end
     local ok, message = UTRM:GetModule("PlanImport"):Edit(function(plan)
