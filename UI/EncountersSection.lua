@@ -4,17 +4,23 @@ local L = UTRM.L
 
 local AceGUI = LibStub("AceGUI-3.0")
 
--- The Encounters section of the Raid Plan window (UI/RaidPlanWindow.lua, issue #44): the plan's encounter list.
--- Rename, move up or down and remove the chosen encounter; add a boss of the boss table (Modules/Bosses.lua, issue
--- #43, when it is there) or a custom encounter with only a name. Every change is saved at once as an edit of the
--- plan (PlanImport:Edit), so it syncs to the raid; the list changes are in Modules/EncounterList.lua.
+-- The Encounters section of the Raid Plan window (UI/RaidPlanWindow.lua, issue #44): the plan's encounter list, one
+-- row per encounter in plan order (rename in place, move up or down, remove), and below it adding a boss of the boss
+-- table (Modules/Bosses.lua, issue #43, when it is there) or a custom encounter with only a name. Every change is
+-- saved at once as an edit of the plan (PlanImport:Edit), so it syncs to the raid; the list changes are in
+-- Modules/EncounterList.lua.
 local EncountersSection = {}
 UTRM.EncountersSection = EncountersSection
 
 local REMOVE_POPUP = "UNITYTOOLSRAIDMANAGEMENT_REMOVE_ENCOUNTER"
+local LIST_HEIGHT = 290                 -- ten rows, then the list scrolls
 local LABEL_WIDTH = 110
-local FIELD_WIDTH = 260                 -- the encounter dropdown's width
+local FIELD_WIDTH = 260                 -- the Add part's dropdowns and name box
 local BUTTON_WIDTH = 120
+local PLACE_WIDTH = 28                  -- a row: "12.", the name, the hint, three small buttons
+local NAME_WIDTH = 220
+local HINT_WIDTH = 170
+local SMALL_BUTTON = 24
 local GREY = "|cff999999"
 local CUSTOM = ""                       -- the Raid dropdown's value for a custom encounter
 
@@ -26,6 +32,62 @@ end
 local function currentPlan()
     return UTRM:GetModule("PlanImport"):GetPlan()
 end
+
+---------------------------------------------------------------------------------------- small buttons ---
+
+-- A row's small buttons in Blizzard's own art: the scroll bar's up and down arrows, the close button's X. An AceGUI
+-- widget of its own, so the rows' scroll frame lays them out with the rest.
+local ICON_BUTTON = "UTRM-IconButton"
+local ART = {
+    up = "Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-",
+    down = "Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-",
+    remove = "Interface\\Buttons\\UI-Panel-MinimizeButton-",
+}
+
+do
+    local methods = {
+        OnAcquire = function(self)
+            self:SetWidth(SMALL_BUTTON)
+            self:SetHeight(SMALL_BUTTON)
+            self:SetDisabled(false)
+            self.tooltip = nil
+        end,
+        SetKind = function(self, kind)
+            local art, frame = ART[kind], self.frame
+            frame:SetNormalTexture(art .. "Up")
+            frame:SetPushedTexture(art .. "Down")
+            frame:SetDisabledTexture(art .. "Disabled")
+            frame:SetHighlightTexture(art .. "Highlight", "ADD")
+        end,
+        SetDisabled = function(self, disabled)
+            self.frame:SetEnabled(not disabled)
+        end,
+        SetTooltip = function(self, text)
+            self.tooltip = text
+        end,
+    }
+
+    local function constructor()
+        local frame = CreateFrame("Button", nil, UIParent)
+        frame:Hide()
+        frame:SetScript("OnClick", function(button) button.obj:Fire("OnClick") end)
+        frame:SetScript("OnEnter", function(button)
+            if not button.obj.tooltip then return end
+            GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+            GameTooltip:SetText(button.obj.tooltip)
+            GameTooltip:Show()
+        end)
+        frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        local widget = { frame = frame, type = ICON_BUTTON }
+        for name, method in pairs(methods) do widget[name] = method end
+        frame.obj = widget
+        return AceGUI:RegisterAsWidget(widget)
+    end
+
+    AceGUI:RegisterWidgetType(ICON_BUTTON, constructor, 1)
+end
+
+--------------------------------------------------------------------------------------------- helpers ---
 
 local function heading(container, text)
     local widget = AceGUI:Create("Heading")
@@ -41,36 +103,61 @@ local function newRow(container)
     container:AddChild(rest)
 end
 
+local function label(container, text, width, font)
+    local widget = AceGUI:Create("Label")
+    widget:SetFontObject(font or GameFontNormal)
+    widget:SetWidth(width)
+    widget:SetText(text)
+    container:AddChild(widget)
+    return widget
+end
+
 local function labelled(container, text, widget)
-    local label = AceGUI:Create("Label")
-    label:SetFontObject(GameFontNormal)
-    label:SetWidth(LABEL_WIDTH)
-    label:SetText(text)
-    container:AddChild(label)
+    label(container, text, LABEL_WIDTH)
     container:AddChild(widget)
 end
 
-local function button(container, text, disabled, onClick)
+local function button(container, text, onClick)
     local widget = AceGUI:Create("Button")
     widget:SetText(text)
     widget:SetWidth(BUTTON_WIDTH)
-    widget:SetDisabled(disabled)
     widget:SetCallback("OnClick", onClick)
     container:AddChild(widget)
     return widget
 end
 
-local function nameBox(text, onEnter, onChange)
-    local box = AceGUI:Create("EditBox")
-    box:SetWidth(FIELD_WIDTH)
-    box:SetMaxLetters(60)
-    box:SetText(text or "")
-    box:SetCallback("OnEnterPressed", function(widget, _, value)
-        widget:ClearFocus()
-        onEnter(value)
+local function smallButton(container, kind, tooltip, disabled, onClick)
+    local widget = AceGUI:Create(ICON_BUTTON)
+    widget:SetKind(kind)
+    widget:SetTooltip(tooltip)
+    widget:SetDisabled(disabled)
+    widget:SetCallback("OnClick", onClick)
+    container:AddChild(widget)
+end
+
+-- A row's name: renamed on Enter or when the box loses focus; Escape puts the name back. The edit box is AceGUI's
+-- (pooled), so its focus-lost and Escape scripts go back to AceGUI's when the row is released.
+local function nameBox(text, onRename)
+    local widget = AceGUI:Create("EditBox")
+    widget:SetWidth(NAME_WIDTH)
+    widget:SetMaxLetters(60)
+    widget:DisableButton(true)
+    widget:SetText(text)
+    local box = widget.editbox
+    local escape = box:GetScript("OnEscapePressed")
+    widget:SetCallback("OnEnterPressed", function() AceGUI:ClearFocus() end)
+    box:SetScript("OnEscapePressed", function(frame)
+        frame:SetText(text)
+        escape(frame)
     end)
-    if onChange then box:SetCallback("OnTextChanged", function(_, _, value) onChange(value) end) end
-    return box
+    box:SetScript("OnEditFocusLost", function(frame)
+        if not EncountersSection.building then onRename(frame:GetText()) end
+    end)
+    widget:SetCallback("OnRelease", function()
+        box:SetScript("OnEditFocusLost", nil)
+        box:SetScript("OnEscapePressed", escape)
+    end)
+    return widget
 end
 
 -- Runs `change(plan)` (an EncounterList function's results) as an edit of the plan. Returns its results, or nil and
@@ -101,18 +188,22 @@ end
 
 ------------------------------------------------------------------------------------------------ actions ---
 
-function EncountersSection:Rename(label)
-    local key = self.key
-    local ok, why = edit(function(plan) return ns.EncounterList.Rename(plan, key, label) end)
-    if not ok then return self:Fail(why) end
-    self:Saved(format(L["Renamed to %s"], strtrim(label)))
+function EncountersSection:Rename(key, name)
+    local ok, why = edit(function(plan) return ns.EncounterList.Rename(plan, key, name) end)
+    if not ok then
+        -- An empty name: the row shows the name it keeps
+        if why == "label" and self.host then self:Attach(self.host) end
+        return self:Fail(why)
+    end
+    self:Saved(format(L["Renamed to %s"], strtrim(name)))
 end
 
-function EncountersSection:Move(by)
-    local key = self.key
+-- The moved row is highlighted when the list redraws (the plan edit redraws it)
+function EncountersSection:Move(key, by)
+    self.highlight = key
     local index, why = edit(function(plan) return ns.EncounterList.Move(plan, key, by) end)
     if not index then return self:Fail(why) end
-    self:Saved(format(L["Moved to place %d"], index))
+    self:Saved(format(L["Moved %s to place %d"], currentPlan().encounters[index].label, index))
 end
 
 -- Asks first, naming the encounter
@@ -127,23 +218,17 @@ StaticPopupDialogs[REMOVE_POPUP] = {
     preferredIndex = 3,
 }
 
-function EncountersSection:ConfirmRemove()
+function EncountersSection:ConfirmRemove(key)
     local plan = currentPlan()
-    local index = plan and ns.EncounterList.IndexOf(plan, self.key)
+    local index = plan and ns.EncounterList.IndexOf(plan, key)
     if not index then return end
     StaticPopupDialogs[REMOVE_POPUP].text = L["Remove the encounter %s from the raid plan?"]
-    StaticPopup_Show(REMOVE_POPUP, plan.encounters[index].label, nil, self.key)
+    StaticPopup_Show(REMOVE_POPUP, plan.encounters[index].label, nil, key)
 end
 
 -- The plan window moves on when the active encounter goes: the next one is activated (its note and groups sent)
 function EncountersSection:Remove(key)
     local plan = currentPlan()
-    local before = plan and ns.EncounterList.IndexOf(plan, key)
-    if before then
-        -- What stays chosen here: the encounter that takes its place
-        local following = plan.encounters[before + 1] or plan.encounters[before - 1]
-        self.key = following and following.key
-    end
     local wasActive = plan and plan.active == key
     local removed, active = edit(function(edited) return ns.EncounterList.Remove(edited, key) end)
     if not removed then return self:Fail(active) end
@@ -151,6 +236,7 @@ function EncountersSection:Remove(key)
     self:Saved(format(L["Removed %s"], removed.label))
 end
 
+-- The new encounter is the list's last row, highlighted and scrolled into view
 function EncountersSection:Add()
     local boss
     if self.raid ~= CUSTOM and self.boss then
@@ -164,7 +250,8 @@ function EncountersSection:Add()
     local index, why = edit(function(plan) return ns.EncounterList.Add(plan, name, boss) end)
     if not index then return self:Fail(why) end
     local encounter = currentPlan().encounters[index]
-    self.key, self.name = encounter.key, boss and self.name or ""
+    self.highlight, self.name = encounter.key, boss and self.name or ""
+    self.scroll.offset = math.huge
     self:Attach(self.host)
     self:Saved(format(L["Added %s"], encounter.label))
 end
@@ -189,40 +276,39 @@ end
 
 ------------------------------------------------------------------------------------------------ section ---
 
+-- The rows: "n.", the name, a grey hint (boss and its encounter ID, or custom; active), up, down, remove. The scroll
+-- position is kept across redraws.
 function EncountersSection:AddList(container, plan)
-    heading(container, L["Encounters"])
+    local box = AceGUI:Create("InlineGroup")
+    box:SetTitle(L["Encounters"])
+    box:SetFullWidth(true)
+    box:SetAutoAdjustHeight(false)
+    box:SetHeight(LIST_HEIGHT)
+    box:SetLayout("Fill")
+    container:AddChild(box)
+    local rows = AceGUI:Create("ScrollFrame")
+    rows:SetLayout("Flow")
+    rows:SetStatusTable(self.scroll)
+    box:AddChild(rows)
+
     local count = #plan.encounters
     if count == 0 then
-        local empty = AceGUI:Create("Label")
-        empty:SetFullWidth(true)
-        empty:SetFontObject(GameFontHighlight)
-        empty:SetText(L["The plan has no encounters."])
-        container:AddChild(empty)
+        label(rows, L["The plan has no encounters."], 400, GameFontHighlight)
         return
     end
-    local host = self.host
-    host:AddEncounterDropdown(container, self.key, function(key)
-        self.key = key
-        self:Attach(host)
-    end, function() return false end)
-
-    local index = ns.EncounterList.IndexOf(plan, self.key)
-    local encounter = plan.encounters[index]
-    labelled(container, L["Name"], nameBox(encounter.label, function(value) self:Rename(value) end))
-    newRow(container)
-
-    local about = encounter.encounterId and format(L["Boss, encounter ID %d"], encounter.encounterId)
-        or L["Custom encounter"]
-    if plan.fallback == encounter.key then about = about .. ", " .. L["the note after a kill"] end
-    local info = AceGUI:Create("Label")
-    info:SetFullWidth(true)
-    info:SetFontObject(GameFontHighlightSmall)
-    info:SetText(GREY .. about .. "|r")
-    container:AddChild(info)
-
-    button(container, L["Move up"], index == 1, function() self:Move(-1) end)
-    button(container, L["Move down"], index == count, function() self:Move(1) end)
-    button(container, L["Remove"], false, function() self:ConfirmRemove() end)
+    for i, encounter in ipairs(plan.encounters) do
+        local key = encounter.key
+        local place = format("%d.", i)
+        if key == self.highlight then place = "|cff40ff40" .. place .. "|r" end
+        label(rows, place, PLACE_WIDTH, key == self.highlight and GameFontNormal or GameFontHighlight)
+        rows:AddChild(nameBox(encounter.label, function(name) self:Rename(key, name) end))
+        local hint = encounter.encounterId and format(L["Boss, ID %d"], encounter.encounterId) or L["Custom"]
+        if key == plan.active then hint = hint .. "  " .. L["(active)"] end
+        label(rows, "  " .. GREY .. hint .. "|r", HINT_WIDTH, GameFontHighlightSmall)
+        smallButton(rows, "up", L["Move up"], i == 1, function() self:Move(key, -1) end)
+        smallButton(rows, "down", L["Move down"], i == count, function() self:Move(key, 1) end)
+        smallButton(rows, "remove", L["Remove"], false, function() self:ConfirmRemove(key) end)
+    end
 end
 
 function EncountersSection:AddNew(container, plan)
@@ -261,29 +347,39 @@ function EncountersSection:AddNew(container, plan)
         end
     end
 
-    local name = nameBox(self.name, function(value)
+    local name = AceGUI:Create("EditBox")
+    name:SetWidth(FIELD_WIDTH)
+    name:SetMaxLetters(60)
+    name:DisableButton(true)
+    name:SetText(self.name)
+    name:SetCallback("OnTextChanged", function(_, _, value) self.name = value end)
+    name:SetCallback("OnEnterPressed", function(widget, _, value)
+        widget:ClearFocus()
         self.name = value
         self:Add()
-    end, function(value) self.name = value end)
-    name:DisableButton(true)
+    end)
     labelled(container, L["Name"], name)
-    button(container, L["Add"], false, function() self:Add() end)
+    button(container, L["Add"], function() self:Add() end)
 end
 
 function EncountersSection:Attach(host)
     self.host = host
+    self.building = true            -- releasing the rows takes the focus from a name box: no rename then
     local container = host.container
     container:ReleaseChildren()
     local plan = currentPlan()
-    self.key = host:EncounterToEdit(self.key)
+    self.scroll = self.scroll or {}
     self.raid = self.raid or CUSTOM
     self.name = self.name or ""
     self:AddList(container, plan)
     self:AddNew(container, plan)
+    self.building = false
 end
 
 function EncountersSection:Detach()
+    self.building = true
     self.host = nil
+    self.highlight = nil
 end
 
 function EncountersSection:OnPlanChanged()

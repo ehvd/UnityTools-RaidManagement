@@ -7,12 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ### Added
 
-- Encounters (the Raid Plan window) changes the plan's encounter list in game: add a boss from the built-in boss
-  table (it sets the label and encounter ID) or a custom encounter with only a name, remove one after a
-  confirmation, rename one (the label only: the sync and the note after a kill still match) and move one up or
-  down. New encounters start with an empty note on the night's groups. Removing the active encounter makes the
-  next one active, removing the note after a kill sets that back to none, and an encounter's own groups go with it
-  when no other encounter uses them. Every change syncs to the raid like other plan edits
+- Encounters (the Raid Plan window) changes the plan's encounter list in game. It lists every encounter in plan
+  order: rename one in its row (the label only: the sync and the note after a kill still match), move it up or
+  down with the arrow buttons, or remove it after a confirmation. Below the list, add a boss from the built-in
+  boss table (it sets the label and encounter ID) or a custom encounter with only a name; it starts with an empty
+  note on the night's groups. Removing the active encounter makes the next one active, removing the note after a
+  kill sets that back to none, and an encounter's own groups go with it when no other encounter uses them. Every
+  change syncs to the raid like other plan edits
 
 ## [0.2.0] - 2026-11-01
 
