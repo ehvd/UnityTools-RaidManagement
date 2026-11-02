@@ -17,9 +17,11 @@ local LIST_HEIGHT = 290                 -- ten rows, then the list scrolls
 local LABEL_WIDTH = 110
 local FIELD_WIDTH = 260                 -- the Add part's dropdowns and name box
 local BUTTON_WIDTH = 120
-local PLACE_WIDTH = 28                  -- a row: "12.", the name, the hint, three small buttons
+-- A row (its own full-width group, so it never flows into the next): "15." right-aligned, a gap, the name, the hint,
+-- three small buttons; 488 px, inside the list's scroll frame with its scroll bar shown
+local PLACE_WIDTH, PLACE_GAP = 30, 6
 local NAME_WIDTH = 220
-local HINT_WIDTH = 170
+local HINT_WIDTH = 160
 local SMALL_BUTTON = 24
 local GREY = "|cff999999"
 local CUSTOM = ""                       -- the Raid dropdown's value for a custom encounter
@@ -300,14 +302,19 @@ function EncountersSection:AddList(container, plan)
         local key = encounter.key
         local place = format("%d.", i)
         if key == self.highlight then place = "|cff40ff40" .. place .. "|r" end
-        label(rows, place, PLACE_WIDTH, key == self.highlight and GameFontNormal or GameFontHighlight)
-        rows:AddChild(nameBox(encounter.label, function(name) self:Rename(key, name) end))
+        local row = AceGUI:Create("SimpleGroup")
+        row:SetFullWidth(true)
+        row:SetLayout("Flow")
+        rows:AddChild(row)
+        label(row, place, PLACE_WIDTH, key == self.highlight and GameFontNormal or GameFontHighlight):SetJustifyH("RIGHT")
+        label(row, "", PLACE_GAP)
+        row:AddChild(nameBox(encounter.label, function(name) self:Rename(key, name) end))
         local hint = encounter.encounterId and format(L["Boss, ID %d"], encounter.encounterId) or L["Custom"]
         if key == plan.active then hint = hint .. "  " .. L["(active)"] end
-        label(rows, "  " .. GREY .. hint .. "|r", HINT_WIDTH, GameFontHighlightSmall)
-        smallButton(rows, "up", L["Move up"], i == 1, function() self:Move(key, -1) end)
-        smallButton(rows, "down", L["Move down"], i == count, function() self:Move(key, 1) end)
-        smallButton(rows, "remove", L["Remove"], false, function() self:ConfirmRemove(key) end)
+        label(row, "  " .. GREY .. hint .. "|r", HINT_WIDTH, GameFontHighlightSmall)
+        smallButton(row, "up", L["Move up"], i == 1, function() self:Move(key, -1) end)
+        smallButton(row, "down", L["Move down"], i == count, function() self:Move(key, 1) end)
+        smallButton(row, "remove", L["Remove"], false, function() self:ConfirmRemove(key) end)
     end
 end
 
