@@ -24,6 +24,7 @@ Modules\NoteTemplate.lua
 Modules\Assignments.lua
 Modules\NoteView.lua
 Modules\PlanCodec.lua
+Modules\GargulString.lua
 Modules\PlanImport.lua
 Modules\GroupPlan.lua
 Modules\GroupEdit.lua
