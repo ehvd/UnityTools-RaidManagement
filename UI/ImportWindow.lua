@@ -4,7 +4,7 @@ local L = UTRM.L
 local AceGUI = LibStub("AceGUI-3.0")
 
 -- The Import section of the Raid Plan window (UI/RaidPlanWindow.lua): paste the raid plan export of the UnityWiki raid
--- planner, see the current plan, clear it
+-- planner, see the current plan, clear it, export it as a string (issue #46)
 local ImportWindow = {}
 UTRM.ImportWindow = ImportWindow
 
@@ -58,6 +58,8 @@ function ImportWindow:Refresh(status)
     local plan = UTRM:GetModule("PlanImport"):GetPlan()
     self.summary:SetText(UTRM:GetModule("PlanImport"):Summary(plan))
     self.clear:SetDisabled(not plan)
+    self.export:SetDisabled(not plan)
+    self:ShowExport(nil)   -- an earlier export is not the plan any more
     if status then
         self:SetStatus(status)
     end
@@ -89,6 +91,27 @@ function ImportWindow:Store(plan)
     UTRM.PlanWindow:Show()
 end
 
+-- The export box shows `text` (nil: empty), all selected for Ctrl+C: the game has no clipboard API. A night's string
+-- (up to ~60,000 characters) goes in with one SetText, one layout of the text; a paste is slow because it lays the
+-- text out again for every character (hookPaste).
+function ImportWindow:ShowExport(text)
+    self.exported = text
+    self.exportBox:SetText(text or "")
+    if text then
+        self.exportBox:SetFocus()
+        self.exportBox:HighlightText()
+    end
+end
+
+function ImportWindow:Export()
+    local PlanImport = UTRM:GetModule("PlanImport")
+    local plan = PlanImport:GetPlan()
+    if not plan then return end
+    local text = PlanImport:Export(plan)
+    self:ShowExport(text)
+    self:SetStatus(format(L["Exported %s: %d characters. Ctrl+C to copy."], plan.event.title, #text))
+end
+
 StaticPopupDialogs["UNITYTOOLSRAIDMANAGEMENT_REPLACE_PLAN"] = {
     text = L["Replace the imported raid plan \"%s\" with \"%s\"?"],
     button1 = YES,
@@ -110,7 +133,7 @@ function ImportWindow:Attach(host)
     editBox:SetLabel(L["Paste the string from Export for addon in the UnityWiki raid planner:"])
     editBox:DisableButton(true)
     editBox:SetFullWidth(true)
-    editBox:SetNumLines(12)
+    editBox:SetNumLines(8)
     hookPaste(editBox)
     container:AddChild(editBox)
 
@@ -136,7 +159,30 @@ function ImportWindow:Attach(host)
     clear:SetCallback("OnClick", function() UTRM.PlanWindow:ConfirmClear() end)
     container:AddChild(clear)
 
-    self.editBox, self.summary, self.clear = editBox, summary, clear
+    local exportHeading = AceGUI:Create("Heading")
+    exportHeading:SetText(L["Export"])
+    exportHeading:SetFullWidth(true)
+    container:AddChild(exportHeading)
+
+    -- Read only: what is typed into it is undone, and focusing it selects all of it again
+    local exportBox = AceGUI:Create("MultiLineEditBox")
+    exportBox:SetLabel(L["The raid plan as one string, for another raid leader or the raid planner. Ctrl+C to copy:"])
+    exportBox:DisableButton(true)
+    exportBox:SetFullWidth(true)
+    exportBox:SetNumLines(4)
+    exportBox:SetMaxLetters(0)
+    exportBox.editBox:SetMaxBytes(0)   -- no limit (a widget from AceGUI's pool may have had the paste box's)
+    exportBox:SetCallback("OnTextChanged", function() self:ShowExport(self.exported) end)
+    exportBox:SetCallback("OnEditFocusGained", function(widget) widget:HighlightText() end)
+    container:AddChild(exportBox)
+
+    local export = AceGUI:Create("Button")
+    export:SetText(L["Export"])
+    export:SetWidth(140)
+    export:SetCallback("OnClick", function() self:Export() end)
+    container:AddChild(export)
+
+    self.editBox, self.summary, self.clear, self.exportBox, self.export = editBox, summary, clear, exportBox, export
     host:SetStatus("")
     self:Refresh()
     editBox:SetFocus()
@@ -145,6 +191,7 @@ end
 function ImportWindow:Detach()
     if self.editBox then unhookPaste(self.editBox) end
     self.host, self.editBox, self.summary, self.clear, self.pasted = nil, nil, nil, nil, nil
+    self.exportBox, self.export, self.exported = nil, nil, nil
 end
 
 function ImportWindow:OnPlanChanged()
