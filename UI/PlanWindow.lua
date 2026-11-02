@@ -550,7 +550,7 @@ local function create()
     frame.import:SetScript("OnClick", function() UTRM.RaidPlanWindow:Open("import") end)
     frame.newPlan = panelButton(half, L["New plan"])
     frame.newPlan:SetPoint("LEFT", frame, "TOP", GAP, rowMiddle)
-    frame.newPlan:SetScript("OnClick", function() UTRM.ImportWindow:OpenNewPlan() end)
+    frame.newPlan:SetScript("OnClick", function() UTRM.NewPlanSection:Open() end)
 
     -- Row 3: the result of the last action
     frame.status = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")

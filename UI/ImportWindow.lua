@@ -1,26 +1,12 @@
-local _, ns = ...
 local UTRM = UnityToolsRaidManagement
 local L = UTRM.L
 
 local AceGUI = LibStub("AceGUI-3.0")
 
 -- The Import section of the Raid Plan window (UI/RaidPlanWindow.lua): paste the raid plan export of the UnityWiki raid
--- planner, or make a new plan in game (issue #43: a title and raids, Modules/NewPlan.lua), see the current plan, clear
--- it
+-- planner, see the current plan, clear it
 local ImportWindow = {}
 UTRM.ImportWindow = ImportWindow
-
-local RAID_WIDTH = 190   -- three raid check boxes a row
-
--- A name of Modules/Bosses.lua in the client's language, English where there is no translation
-local function translate(text)
-    return rawget(L, text) or text
-end
-
--- The new plan's form, kept while the window is closed until a plan is made: the chosen raid slugs (a set) and
--- whether the title was typed (else it follows the raids)
-ImportWindow.newRaids = {}
-ImportWindow.titleTyped = false
 
 -- A night's export is up to ~60,000 characters. Rendering that much text in a multi-line edit box freezes the
 -- client, so (like the import of WeakAuras) the edit box keeps only the first bytes while OnChar, which still fires
@@ -88,84 +74,34 @@ function ImportWindow:Import()
     self:Offer(plan, L["Imported %s."])
 end
 
--- Stores `plan` (imported or made here), asking first when it replaces one; `done` is the message, "%s" the title
-function ImportWindow:Offer(plan, done)
+-- Stores `plan` (imported here or made in the New plan section, UI/NewPlanSection.lua), asking first when it replaces
+-- one. `done` is the status message ("%s" the title); `onStored()` runs once the plan is stored.
+function ImportWindow:Offer(plan, done, onStored)
     local current = UTRM:GetModule("PlanImport"):GetPlan()
     if current then
         StaticPopup_Show("UNITYTOOLSRAIDMANAGEMENT_REPLACE_PLAN", current.event.title, plan.event.title,
-            { plan = plan, done = done })
+            { plan = plan, done = done, onStored = onStored })
     else
-        self:Store(plan, done)
+        self:Store(plan, done, onStored)
     end
 end
 
-function ImportWindow:Store(plan, done)
+function ImportWindow:Store(plan, done, onStored)
     UTRM:GetModule("PlanImport"):Store(plan)
     self.pasted = nil
-    wipe(self.newRaids)
-    self.titleTyped = false
-    local host = self.host
-    if host then   -- the new plan's form empty again
-        self:Detach()
-        self:Attach(host)
+    if self.editBox then
+        self.editBox:SetText("")
     end
-    self:Refresh(format(done, plan.event.title))
+    if onStored then onStored() end
+    UTRM.RaidPlanWindow:SetStatus(format(done, plan.event.title))
     UTRM.PlanWindow:Show()
-end
-
--- The raids ticked in the form, in the game's order
-function ImportWindow:ChosenRaids()
-    local slugs, names = {}, {}
-    for _, raid in ipairs(ns.Bosses.Raids()) do
-        if self.newRaids[raid.slug] then
-            slugs[#slugs + 1] = raid.slug
-            names[#names + 1] = translate(raid.name)
-        end
-    end
-    return slugs, names
-end
-
--- Create plan: the raid as it is now becomes the night's groups (empty outside a raid)
-function ImportWindow:CreatePlan()
-    local roster = {}
-    if IsInRaid() then
-        for i = 1, GetNumGroupMembers() do
-            local name, _, subgroup, _, _, class = GetRaidRosterInfo(i)
-            if name then
-                roster[#roster + 1] = { name = name, group = subgroup, class = class }
-            end
-        end
-    end
-    local plan, problem = ns.NewPlan.Build({
-        title = self.title:GetText(),
-        raids = (self:ChosenRaids()),
-        roster = roster,
-        player = UnitName("player"),
-        now = GetServerTime(),
-        translate = translate,
-    })
-    if not plan then
-        self:SetStatus("|cffff4040" .. (problem == "title" and L["Give the new plan a title."]
-            or L["Choose at least one raid for the new plan."]) .. "|r")
-        return
-    end
-    self:Offer(plan, L["Created %s."])
-end
-
--- After a raid is ticked: the default title follows the raids until one is typed, and Create plan needs a raid
-function ImportWindow:UpdateNewPlan()
-    local slugs, names = self:ChosenRaids()
-    if not self.titleTyped then
-        self.title:SetText(ns.NewPlan.DefaultTitle(names, date("%Y-%m-%d")))
-    end
-    self.create:SetDisabled(#slugs == 0)
 end
 
 StaticPopupDialogs["UNITYTOOLSRAIDMANAGEMENT_REPLACE_PLAN"] = {
     text = L["Replace the imported raid plan \"%s\" with \"%s\"?"],
     button1 = YES,
     button2 = NO,
-    OnAccept = function(_, data) ImportWindow:Store(data.plan, data.done) end,
+    OnAccept = function(_, data) ImportWindow:Store(data.plan, data.done, data.onStored) end,
     timeout = 0,
     whileDead = true,
     hideOnEscape = true,
@@ -182,7 +118,7 @@ function ImportWindow:Attach(host)
     editBox:SetLabel(L["Paste the string from Export for addon in the UnityWiki raid planner:"])
     editBox:DisableButton(true)
     editBox:SetFullWidth(true)
-    editBox:SetNumLines(8)
+    editBox:SetNumLines(12)
     hookPaste(editBox)
     container:AddChild(editBox)
 
@@ -191,37 +127,6 @@ function ImportWindow:Attach(host)
     import:SetWidth(140)
     import:SetCallback("OnClick", function() self:Import() end)
     container:AddChild(import)
-
-    -- New plan: a title and the night's raids
-    local newHeading = AceGUI:Create("Heading")
-    newHeading:SetText(L["New plan"])
-    newHeading:SetFullWidth(true)
-    container:AddChild(newHeading)
-
-    local title = AceGUI:Create("EditBox")
-    title:SetLabel(L["Title"])
-    title:DisableButton(true)
-    title:SetFullWidth(true)
-    title:SetCallback("OnTextChanged", function(_, _, text) self.titleTyped = text ~= "" end)
-    container:AddChild(title)
-
-    for _, raid in ipairs(ns.Bosses.Raids()) do
-        local box = AceGUI:Create("CheckBox")
-        box:SetLabel(translate(raid.name))
-        box:SetWidth(RAID_WIDTH)
-        box:SetValue(self.newRaids[raid.slug] == true)
-        box:SetCallback("OnValueChanged", function(_, _, checked)
-            self.newRaids[raid.slug] = checked or nil
-            self:UpdateNewPlan()
-        end)
-        container:AddChild(box)
-    end
-
-    local create = AceGUI:Create("Button")
-    create:SetText(L["Create plan"])
-    create:SetWidth(140)
-    create:SetCallback("OnClick", function() self:CreatePlan() end)
-    container:AddChild(create)
 
     local heading = AceGUI:Create("Heading")
     heading:SetText(L["Current plan"])
@@ -239,26 +144,15 @@ function ImportWindow:Attach(host)
     clear:SetCallback("OnClick", function() UTRM.PlanWindow:ConfirmClear() end)
     container:AddChild(clear)
 
-    self.editBox, self.summary, self.clear, self.title, self.create = editBox, summary, clear, title, create
+    self.editBox, self.summary, self.clear = editBox, summary, clear
     host:SetStatus("")
-    if self.titleTyped then
-        title:SetText(self.typedTitle or "")
-    end
-    self:UpdateNewPlan()
     self:Refresh()
-    if self.focusTitle then
-        self.focusTitle = nil
-        title:SetFocus()
-    else
-        editBox:SetFocus()
-    end
+    editBox:SetFocus()
 end
 
 function ImportWindow:Detach()
     if self.editBox then unhookPaste(self.editBox) end
-    if self.title then self.typedTitle = self.title:GetText() end
     self.host, self.editBox, self.summary, self.clear, self.pasted = nil, nil, nil, nil, nil
-    self.title, self.create = nil, nil
 end
 
 function ImportWindow:OnPlanChanged()
@@ -267,11 +161,5 @@ end
 
 -- The plan window's Import button and `/utrm import`
 function ImportWindow:Open()
-    UTRM.RaidPlanWindow:Open("import")
-end
-
--- The plan window's New plan button: the Import section with the new plan's title focused
-function ImportWindow:OpenNewPlan()
-    self.focusTitle = true
     UTRM.RaidPlanWindow:Open("import")
 end
