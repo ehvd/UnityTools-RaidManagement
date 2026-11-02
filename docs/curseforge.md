@@ -1,4 +1,5 @@
-<!-- CurseForge project page. Paste the "Description" section into the project description editor. -->
+<!-- CurseForge project page. Paste the "Description" section into the project description editor (make description
+copies just that section). Keep "## Description" the last section: it runs to the end of the file. -->
 
 ## Project settings
 
