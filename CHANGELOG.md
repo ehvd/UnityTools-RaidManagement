@@ -5,6 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+### Added
+
+- Groups (the Raid Plan window) adds players to the raid plan by hand: type a name, choose the class and Add, and the
+  player is on the bench in their class colour, from where they go into a group like anyone else. A name already in
+  the plan or the raid, or an empty one, is refused with a message. The × on a bench player takes them out of the
+  plan and out of every group layout, after a confirmation when other encounters' groups or assignments use them
+  (assignments stay as they are). Both are part of the section's unsaved changes: Save stores them (and syncs them
+  like other group edits), Undo changes drops them
+
 ## [0.2.0] - 2026-11-01
 
 ### Added

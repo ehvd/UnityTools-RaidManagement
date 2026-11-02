@@ -201,3 +201,83 @@ test('a player taken out of the groups goes to the bench, and a bench player fil
     return first .. "|" .. table.concat(GroupEdit.Bench(people, l, nobody), ",") .. "|" .. l[${slot(2, 1)}]`),
   'Aldreth,Zoë|Aldreth,Brumm|Zoë');
 });
+
+test('a typed name is trimmed and capitalized as WoW spells it', () => {
+  assert.equal(run(`return GroupEdit.CleanName("  aLDRETH ")`), 'Aldreth');
+  assert.equal(run(`return GroupEdit.CleanName("brumm-Firemaw")`), 'Brumm-Firemaw');
+  assert.equal(run(`return "[" .. GroupEdit.CleanName("   ") .. "]"`), '[]');
+});
+
+test('an empty name or one already in the plan or raid is refused', () => {
+  assert.equal(run(`
+    local taken = { aldreth = true }
+    local function isTaken(name) return taken[name:lower()] end
+    return tostring(GroupEdit.CheckNewName("", isTaken)) .. " " .. tostring(GroupEdit.CheckNewName("-Firemaw", isTaken))
+      .. " " .. tostring(GroupEdit.CheckNewName("Aldreth", isTaken)) .. " "
+      .. tostring(GroupEdit.CheckNewName("Zoë", isTaken))`),
+  'empty empty taken nil');
+});
+
+test('adding a player puts them in the people, once, any spelling', () => {
+  assert.equal(run(`${PLAN}
+    local added = GroupEdit.AddPerson(plan, "Zoë", "MAGE")
+    local again, why = GroupEdit.AddPerson(plan, "Zoë", "PRIEST")
+    local planned, why2 = GroupEdit.AddPerson(plan, "aldreth-Firemaw", "PRIEST")
+    return added .. " " .. plan.people["Zoë"].class .. " " .. tostring(again) .. why .. " " .. tostring(planned) .. why2`),
+  'Zoë MAGE niltaken niltaken');
+});
+
+test('removing a player takes them out of the people and every layout', () => {
+  assert.equal(run(`${PLAN}
+    plan.people = { Swap = { class = "ROGUE" }, Brumm = { class = "MAGE" } }
+    plan.layouts.default[5] = "swap-Firemaw"
+    local changed = GroupEdit.RemovePerson(plan, "Swap")
+    local again = GroupEdit.RemovePerson(plan, "Swap")
+    return tostring(changed) .. " " .. tostring(again) .. " " .. tostring(plan.people.Swap) .. " ["
+      .. plan.layouts["Twins swap"][1] .. "|" .. plan.layouts.default[5] .. "|" .. plan.layouts.default[1]
+      .. "] " .. plan.people.Brumm.class`),
+  'true false nil [||Aldreth] MAGE');
+});
+
+test('the uses of a player are the other encounters\' groups and the assignments naming them', () => {
+  assert.equal(run(`${PLAN}
+    plan.encounters[1].slots = { { n = 1, holders = { "Tank", "swap" } } }
+    local uses = GroupEdit.UsesOf(plan, "Swap", "default")
+    local mine = GroupEdit.UsesOf(plan, "Swap", "Twins swap")
+    local out = {}
+    for _, e in ipairs(uses.groups) do out[#out + 1] = e.label end
+    out[#out + 1] = "/"
+    for _, e in ipairs(uses.holds) do out[#out + 1] = e.label end
+    return table.concat(out, ",") .. " " .. #mine.groups .. tostring(uses.night)`),
+  'Twins,/,Ragnaros 0false');
+});
+
+test('the night\'s groups count as a use when no encounter is on them', () => {
+  assert.equal(run(`${PLAN}
+    plan.encounters[1].layout, plan.encounters[2].layout = "Twins swap", "Twins swap"
+    return tostring(GroupEdit.UsesOf(plan, "Aldreth", "Twins swap").night)`), 'true');
+});
+
+test('saving the draft removes, adds, then saves the layout in one change', () => {
+  assert.equal(run(`${PLAN}
+    plan.people = { Swap = { class = "ROGUE" } }
+    edited[2] = "Zoë"
+    local key = GroupEdit.SaveDraft(plan, "Twins swap", edited, { { name = "Zoë", class = "MAGE" } }, { "Swap" })
+    return key .. " " .. tostring(plan.people.Swap) .. " " .. plan.people["Zoë"].class .. " "
+      .. plan.layouts["Twins swap"][1] .. plan.layouts["Twins swap"][2] .. " " .. plan.layouts.default[1]`),
+  'Twins swap nil MAGE BrummZoë Aldreth');
+});
+
+test('a draft with nothing new is unchanged, and a missing layout is refused', () => {
+  assert.equal(run(`${PLAN}
+    local key, why = GroupEdit.SaveDraft(plan, "default", names("Aldreth"), {}, { "Nobody" })
+    local gone, why2 = GroupEdit.SaveDraft(plan, "gone", edited, { { name = "Zoë", class = "MAGE" } }, {})
+    return tostring(key) .. why .. " " .. tostring(gone) .. why2 .. " " .. tostring(plan.people)`),
+  'nilunchanged nillayout nil');
+});
+
+test('a removed player is not saved back from the draft layout', () => {
+  assert.equal(run(`${PLAN}
+    local key = GroupEdit.SaveDraft(plan, "default", names("Aldreth"), {}, { "aldreth" })
+    return key .. "[" .. plan.layouts.default[1] .. "]"`), 'default[]');
+});

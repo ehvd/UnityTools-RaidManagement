@@ -236,3 +236,19 @@ L["Sync"] = true
 L["Not in a raid: your edits stay on your client until you lead a raid or assist in one."] = true
 L["You are raid leader or assistant: your edits sync to the raid."] = true
 L["You are not raid leader or assistant: your edits stay on your client, and the leader's plan may replace them."] = true
+
+-- Add and remove players in the Groups section (issue #52)
+L["Add a player"] = true
+L["Class"] = true
+L["Add"] = true
+L["Take out of the raid plan"] = true
+L["Type the player's name first."] = true
+L["%s is already in the raid plan or the raid."] = true
+L["Choose the player's class first."] = true
+L["%s is on the bench. Save to keep them in the plan."] = true
+L["%s is no longer added."] = true
+L["%s is out of the raid plan. Save to keep it so."] = true
+L["Take %s out of the raid plan?"] = true
+L["In the night's groups."] = true
+L["In the groups of: %s"] = true
+L["Assigned in: %s (the assignments stay; change them in Assignments)"] = true
