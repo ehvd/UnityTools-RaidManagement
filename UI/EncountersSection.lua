@@ -18,6 +18,11 @@ local BUTTON_WIDTH = 120
 local GREY = "|cff999999"
 local CUSTOM = ""                       -- the Raid dropdown's value for a custom encounter
 
+-- A name of Modules/Bosses.lua in the client's language, English where there is no translation
+local function translate(text)
+    return rawget(L, text) or text
+end
+
 local function currentPlan()
     return UTRM:GetModule("PlanImport"):GetPlan()
 end
@@ -169,7 +174,7 @@ function EncountersSection:ChooseRaid(slug)
     self.raid, self.boss, self.name = slug, nil, ""
     if slug ~= CUSTOM then
         local first = ns.Bosses.Of(slug)[1]
-        if first then self.boss, self.name = first.key, first.label end
+        if first then self.boss, self.name = first.key, translate(first.label) end
     end
     self:Attach(self.host)
 end
@@ -177,7 +182,7 @@ end
 function EncountersSection:ChooseBoss(key)
     self.boss = key
     for _, entry in ipairs(ns.Bosses.Of(self.raid)) do
-        if entry.key == key then self.name = entry.label end
+        if entry.key == key then self.name = translate(entry.label) end
     end
     self:Attach(self.host)
 end
@@ -226,7 +231,7 @@ function EncountersSection:AddNew(container, plan)
     if Bosses then
         local raids, raidOrder = { [CUSTOM] = L["Custom encounter"] }, { CUSTOM }
         for _, raid in ipairs(ns.EncounterList.Raids(Bosses, plan)) do
-            raids[raid.slug] = raid.name
+            raids[raid.slug] = translate(raid.name)
             raidOrder[#raidOrder + 1] = raid.slug
         end
         if not raids[self.raid] then self.raid = CUSTOM end
@@ -241,7 +246,7 @@ function EncountersSection:AddNew(container, plan)
         if self.raid ~= CUSTOM then
             local bosses, bossOrder = {}, {}
             for i, entry in ipairs(Bosses.Of(self.raid)) do
-                bosses[entry.key] = entry.label
+                bosses[entry.key] = translate(entry.label)
                     .. (ns.EncounterList.HasBoss(plan, entry.encounterId) and ("  " .. GREY .. L["(in the plan)"] .. "|r")
                         or "")
                 bossOrder[i] = entry.key
