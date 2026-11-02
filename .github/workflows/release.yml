@@ -25,20 +25,21 @@ jobs:
       - name: Package and upload
         uses: BigWigsMods/packager@v2
 
-      # CurseForge has no API to edit a project's description. For full releases (not alpha/beta) the repo's
-      # description is attached to the GitHub release and shown in the job summary, ready to paste (make description).
+      # CurseForge has no API to edit a project's description. For full releases (not alpha/beta) the description
+      # (the Description section of docs/curseforge.md, what goes into CurseForge's editor) is attached to the GitHub
+      # release and shown in the job summary, ready to paste (make description).
       - name: Attach the CurseForge description
         if: ${{ !contains(github.ref_name, '-') }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cp docs/curseforge.md curseforge-description.md
+          awk -v section=Description -f .github/scripts/curseforge-section.awk docs/curseforge.md > curseforge-description.md
           gh release upload "$GITHUB_REF_NAME" curseforge-description.md --clobber
           {
             echo "## CurseForge description for $GITHUB_REF_NAME"
             echo "Paste this into the project description (https://authors.curseforge.com/#/projects/1766854/description). It is also attached to the release as curseforge-description.md."
             echo
-            cat docs/curseforge.md
+            cat curseforge-description.md
           } >> "$GITHUB_STEP_SUMMARY"
 
       # Nothing to do when the description is unchanged since the previous full release. Otherwise an issue
@@ -56,22 +57,38 @@ jobs:
             echo "The CurseForge description is unchanged since $previous."
             exit 0
           fi
-          # The description goes into the issue as a code block (GitHub adds a copy button). The fence is one
-          # backtick longer than the longest backtick run in the text, so the text can never close it early.
-          fence=$(grep -o '`\+' docs/curseforge.md | awk '{ if (length($0) > m) m = length($0) } END { n = (m < 3 ? 3 : m + 1); s = ""; for (i = 0; i < n; i++) s = s "`"; print s }')
+          # The summary and the description each go into the issue as their own code block (GitHub adds a copy
+          # button), so each copies exactly what its CurseForge field takes. A fence is one backtick longer than the
+          # longest backtick run in its text, so the text can never close it early.
+          section() { awk -v section="$1" -f .github/scripts/curseforge-section.awk docs/curseforge.md; }
+          fence() { printf '%s\n' "$1" | grep -o '`\+' | awk '{ if (length($0) > m) m = length($0) } END { n = (m < 3 ? 3 : m + 1); s = ""; for (i = 0; i < n; i++) s = s "`"; print s }'; }
+          summary=$(section Summary)
+          description=$(section Description)
           {
             echo "docs/curseforge.md changed since ${previous:-the first release}. CurseForge cannot be updated by CI, so please paste it:"
             echo
             echo "1. Open the [project description editor on CurseForge]($EDITOR_URL)"
-            echo "2. Copy the snippet below with its copy button (or run \`make description\`, or download \`curseforge-description.md\` from [the release]($RELEASE_URL))"
-            echo "3. Paste it into the editor and save"
+            echo "2. Copy the **Description** block below with its copy button (or run \`make description\`, or download \`curseforge-description.md\` from [the release]($RELEASE_URL)), paste it into the editor and save"
+            echo "3. If the summary changed, copy the **Summary** block into the project's summary field"
             echo "4. Close this issue"
             echo
-            echo "## Description (Markdown)"
+            echo "## Summary"
             echo
-            echo "${fence}markdown"
-            printf '%s\n' "$(cat docs/curseforge.md)"
-            echo "$fence"
+            echo "$(fence "$summary")text"
+            printf '%s\n' "$summary"
+            fence "$summary"
+            echo
+            echo "## Description"
+            echo
+            echo "$(fence "$description")markdown"
+            printf '%s\n' "$description"
+            fence "$description"
+            echo
+            echo "<details><summary>Project settings (for reference)</summary>"
+            echo
+            section "Project settings"
+            echo
+            echo "</details>"
           } > issue-body.md
           url=$(gh issue create \
             --title "Update the CurseForge description for $GITHUB_REF_NAME" \

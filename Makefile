@@ -93,9 +93,11 @@ uninstall: check-addon-dir ## Remove the installed addon or the link (never touc
 	@T="$(DEST)" powershell -NoProfile -Command '$(PS_REMOVE)'
 	@echo "Removed $(DEST)"
 
-description: ## Copy the CurseForge description (docs/curseforge.md) to the clipboard
-	@powershell -NoProfile -Command 'Get-Content -Raw -Encoding UTF8 docs/curseforge.md | Set-Clipboard'
-	@echo "Copied docs/curseforge.md to the clipboard. Paste it into the project description: https://authors.curseforge.com/#/projects/1766854/description"
+description: ## Copy the CurseForge description (the Description section of docs/curseforge.md) to the clipboard
+	@awk -v section=Description -f .github/scripts/curseforge-section.awk docs/curseforge.md > .curseforge-description.tmp
+	@powershell -NoProfile -Command 'Get-Content -Raw -Encoding UTF8 .curseforge-description.tmp | Set-Clipboard'
+	@rm -f .curseforge-description.tmp
+	@echo "Copied the description to the clipboard. Paste it into the project description: https://authors.curseforge.com/#/projects/1766854/description"
 
 clean: ## Remove the fetched libraries
 	rm -rf Libs .libs-tmp
