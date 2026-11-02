@@ -87,9 +87,10 @@ while it lays the text out. The import window caps the edit box with `SetMaxByte
 WeakAuras uses. The edit box is an AceGUI widget from a pool shared with other addons, so the window removes its
 `OnChar` / `OnUpdate` scripts and the byte limit before releasing it.
 
-Exporting (0.3.0) goes the other way: the game has no clipboard API, so the Export box holds the whole string,
-selected, for Ctrl+C. It is set with one `SetText` (one layout of the text, where a paste lays it out again for every
-character) with no letter or byte limit, and what is typed into it is undone. `PlanCodec.Encode` is the reverse of
+Exporting (0.3.0, the Raid Plan window's Export section) goes the other way: the game has no clipboard API, so the
+box holds the whole string, selected, for Ctrl+C. It is made when the section opens and again when the plan changes,
+set with one `SetText` (one layout of the text, where a paste lays it out again for every character) with no letter
+or byte limit, and what is typed into it is undone. `PlanCodec.Encode` is the reverse of
 `Decode`: compact JSON (`protocol` first, then the keys sorted, so one plan always gives one string; UTF-8 and MRT's
 `|c…|r` as they are, `"`, `\` and control characters escaped), `LibDeflate:CompressZlib`, standard base64 with
 padding. That is UnityWiki's export protocol 2, so this addon's import and the wiki's `decodeAddon` both read it
@@ -104,7 +105,7 @@ raid roster shows, if any), the event, the Gargul string, `generatedAt` the expo
 plan to the sync). What only this addon keeps (the active encounter, the import, choice and sync times, the
 revision, the fallback note) stays out until UnityWiki settles their names (ehvd/UnityWiki#143).
 
-Source: `UI/ImportWindow.lua`; the format of the export: UnityWiki `docs/addon-export.md`
+Source: `UI/ImportWindow.lua`, `UI/ExportSection.lua`; the format of the export: UnityWiki `docs/addon-export.md`
 
 ## 7. Raid plan sync
 

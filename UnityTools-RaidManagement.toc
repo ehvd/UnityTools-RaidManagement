@@ -37,6 +37,7 @@ Modules\Fallback.lua
 
 UI\NoteEditor.lua
 UI\ImportWindow.lua
+UI\ExportSection.lua
 UI\PlanWindow.lua
 UI\GroupEditor.lua
 UI\AssignmentsWindow.lua

@@ -6,7 +6,7 @@ local AceGUI = LibStub("AceGUI-3.0")
 
 -- The Raid Plan window (issue #37): everything about the raid plan in one place. Blizzard's options list on the left
 -- (AceGUI's TreeGroup, as in the Interface Options) picks a section: Groups, Assignments, Notes, Gargul, Config,
--- Import. The editing sections keep their own drafts with their own Save; leaving a section (or its encounter) with
+-- Import, Export. The editing sections keep their own drafts with their own Save; leaving a section (or its encounter) with
 -- unsaved changes asks first, and the list marks such a section with *. Choosing an encounter here only picks what
 -- is edited: the active encounter changes in the plan window alone.
 local RaidPlanWindow = UTRM:NewModule("RaidPlanWindow", "AceEvent-3.0")
@@ -203,7 +203,7 @@ end
 
 -- The sections in the list's order. Each one has Attach(host) and Detach(); the editing ones IsChanged() and
 -- Discard(); OnPlanChanged() when it follows plan changes through the window.
-local ORDER = { "groups", "assignments", "notes", "gargul", "config", "import" }
+local ORDER = { "groups", "assignments", "notes", "gargul", "config", "import", "export" }
 local SECTIONS = {
     groups = { title = L["Groups"], needsPlan = true, get = function() return UTRM.GroupEditor end },
     assignments = { title = L["Assignments"], needsPlan = true, get = function() return UTRM.AssignmentsWindow end },
@@ -211,6 +211,7 @@ local SECTIONS = {
     gargul = { title = L["Gargul"], needsPlan = true, get = function() return Gargul end },
     config = { title = L["Config"], get = function() return Config end },
     import = { title = L["Import"], get = function() return UTRM.ImportWindow end },
+    export = { title = L["Export"], needsPlan = true, get = function() return UTRM.ExportSection end },
 }
 
 local function section(key)

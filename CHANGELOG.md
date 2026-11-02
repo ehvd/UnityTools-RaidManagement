@@ -7,7 +7,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ### Added
 
-- Export (the Raid Plan window's Import section) gives the raid plan as one string, selected for Ctrl+C, to import
+- Export, a new section of the Raid Plan window, gives the raid plan as one string, selected for Ctrl+C, to import
   on another client or bring back to the UnityWiki raid planner. It is the planner's own export format (protocol 2),
   with the plan as edited in game: hand-edited notes, current assignments, edited groups, and the classes of people
   added in game when the raid roster shows them. The active encounter, the fallback note and the edit history are
