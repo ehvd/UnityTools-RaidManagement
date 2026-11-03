@@ -13,7 +13,10 @@ local EncountersSection = {}
 UTRM.EncountersSection = EncountersSection
 
 local REMOVE_POPUP = "UNITYTOOLSRAIDMANAGEMENT_REMOVE_ENCOUNTER"
-local LIST_HEIGHT = 290                 -- ten rows, then the list scrolls
+-- The list takes the section's height that the Add part below it leaves (the section is as tall as the groups
+-- editor, UI/RaidPlanWindow.lua), at least a few rows; longer lists scroll
+local MIN_LIST_HEIGHT = 150
+local FLOW_GAP = 3                      -- AceGUI's Flow layout puts 3 px between rows
 local LABEL_WIDTH = 110
 local FIELD_WIDTH = 260                 -- the Add part's dropdowns and name box
 local BUTTON_WIDTH = 120
@@ -279,13 +282,13 @@ end
 ------------------------------------------------------------------------------------------------ section ---
 
 -- The rows: "n.", the name, a grey hint (boss and its encounter ID, or custom; active), up, down, remove. The scroll
--- position is kept across redraws.
+-- position is kept across redraws. Returns the list's box (Attach sizes it).
 function EncountersSection:AddList(container, plan)
     local box = AceGUI:Create("InlineGroup")
     box:SetTitle(L["Encounters"])
     box:SetFullWidth(true)
     box:SetAutoAdjustHeight(false)
-    box:SetHeight(LIST_HEIGHT)
+    box:SetHeight(MIN_LIST_HEIGHT)
     box:SetLayout("Fill")
     container:AddChild(box)
     local rows = AceGUI:Create("ScrollFrame")
@@ -296,7 +299,7 @@ function EncountersSection:AddList(container, plan)
     local count = #plan.encounters
     if count == 0 then
         label(rows, L["The plan has no encounters."], 400, GameFontHighlight)
-        return
+        return box
     end
     for i, encounter in ipairs(plan.encounters) do
         local key = encounter.key
@@ -316,6 +319,7 @@ function EncountersSection:AddList(container, plan)
         smallButton(row, "down", L["Move down"], i == count, function() self:Move(key, 1) end)
         smallButton(row, "remove", L["Remove"], false, function() self:ConfirmRemove(key) end)
     end
+    return box
 end
 
 function EncountersSection:AddNew(container, plan)
@@ -378,8 +382,17 @@ function EncountersSection:Attach(host)
     self.scroll = self.scroll or {}
     self.raid = self.raid or CUSTOM
     self.name = self.name or ""
-    self:AddList(container, plan)
-    self:AddNew(container, plan)
+    local list = self:AddList(container, plan)
+    local form = AceGUI:Create("SimpleGroup")
+    form:SetFullWidth(true)
+    form:SetLayout("Flow")
+    container:AddChild(form)
+    self:AddNew(form, plan)
+    -- The Add part at the bottom of the section, the list in the rest
+    local height = host.content:GetHeight()
+    if not height or height <= 0 then height = UTRM.GroupEditor.HEIGHT end
+    list:SetHeight(math.max(MIN_LIST_HEIGHT, floor(height - form.frame:GetHeight() - 2 * FLOW_GAP)))
+    container:DoLayout()
     self.building = false
 end
 
