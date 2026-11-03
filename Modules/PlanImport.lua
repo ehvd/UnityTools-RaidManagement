@@ -14,7 +14,7 @@ function PlanImport:Read(text)
     local data, code = Codec.Decode(text, LibDeflate)
     if not data then
         if code == "empty" then
-            return nil, L["Paste the string from the raid planner's Export for addon first."]
+            return nil, L["Paste a raid plan string first."]
         end
         return nil, format(L["This is not a complete raid plan export (%s). Copy it again with Copy for addon."], code)
     end
@@ -25,7 +25,7 @@ function PlanImport:Read(text)
     end
     local problem = Codec.Check(data)
     if problem then
-        return nil, format(L["The raid plan export is damaged (%s). Export it again from the raid planner."], problem)
+        return nil, format(L["The raid plan string is damaged (%s). Copy it again."], problem)
     end
 
     -- Only what this addon reads goes into the SavedVariables

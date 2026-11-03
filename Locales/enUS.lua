@@ -39,17 +39,17 @@ L["Send"] = true
 L["Reload from MRT"] = true
 
 -- Raid plan import
-L["import a raid plan from the UnityWiki raid planner"] = true
+L["import a raid plan"] = true
 L["Current plan"] = true
-L["Paste the string from Export for addon in the UnityWiki raid planner:"] = true
+L["Paste a raid plan string:"] = true
 L["Import"] = true
 L["%d characters pasted. Press Import."] = true
 L["Imported %s."] = true
 L["Replace the imported raid plan \"%s\" with \"%s\"?"] = true
-L["Paste the string from the raid planner's Export for addon first."] = true
+L["Paste a raid plan string first."] = true
 L["This is not a complete raid plan export (%s). Copy it again with Copy for addon."] = true
 L["This export uses protocol version %d, but this addon supports version %s. Update Unity Tools - Raid Management."] = true
-L["The raid plan export is damaged (%s). Export it again from the raid planner."] = true
+L["The raid plan string is damaged (%s). Copy it again."] = true
 L["No raid plan imported yet."] = true
 L["%d encounters, %d named group layouts"] = true
 L["Gargul loot priorities included"] = true
@@ -185,7 +185,7 @@ L["These groups are no longer in the raid plan."] = true
 
 -- Assignments window
 L["Assignments"] = true
-L["Export the plan again from the wiki to change assignments."] = true
+L["This encounter's note has no assignment slots. Write the names in the note (Notes)."] = true
 L["The note of this encounter was edited by hand. Reset it to the plan's note to change its assignments."] = true
 L["This encounter's note has no assignments."] = true
 L["Note preview"] = true
