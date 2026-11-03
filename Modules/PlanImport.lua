@@ -14,7 +14,7 @@ function PlanImport:Read(text)
     local data, code = Codec.Decode(text, LibDeflate)
     if not data then
         if code == "empty" then
-            return nil, L["Paste the string from the raid planner's Export for addon first."]
+            return nil, L["Paste a raid plan string first."]
         end
         return nil, format(L["This is not a complete raid plan export (%s). Copy it again with Copy for addon."], code)
     end
@@ -25,7 +25,7 @@ function PlanImport:Read(text)
     end
     local problem = Codec.Check(data)
     if problem then
-        return nil, format(L["The raid plan export is damaged (%s). Export it again from the raid planner."], problem)
+        return nil, format(L["The raid plan string is damaged (%s). Copy it again."], problem)
     end
 
     -- Only what this addon reads goes into the SavedVariables
@@ -126,6 +126,17 @@ function PlanImport:EditNote(key, text)
     return ok, message
 end
 
+-- The plan as one string in UnityWiki's own format (issue #46), to import on another client or bring back to the
+-- wiki: what goes in is PlanCodec.Payload's. Names the plan has no class for get the one the raid roster shows.
+function PlanImport:Export(plan)
+    local classes = {}
+    for i = 1, GetNumGroupMembers() do
+        local name, _, _, _, _, class = GetRaidRosterInfo(i)
+        if name then classes[name] = class end
+    end
+    return Codec.Encode(Codec.Payload(plan, GetServerTime(), function(name) return classes[name] end), LibDeflate)
+end
+
 -- A few lines describing a plan for the import window
 function PlanImport:Summary(plan)
     if not plan then
@@ -138,8 +149,9 @@ function PlanImport:Summary(plan)
             .. (plan.event.startsAt and ("  " .. date("%Y-%m-%d %H:%M", plan.event.startsAt)) or ""),
         format(L["%d encounters, %d named group layouts"], #plan.encounters, named),
         plan.gargul and L["Gargul loot priorities included"] or L["No Gargul loot priorities"],
-        format(L["Exported %s, imported %s"], date("%Y-%m-%d %H:%M", plan.generatedAt or 0),
-            date("%Y-%m-%d %H:%M", plan.importedAt or 0)),
+        ns.NewPlan.IsMadeInGame(plan) and format(L["Made in game %s"], date("%Y-%m-%d %H:%M", plan.generatedAt or 0))
+            or format(L["Exported %s, imported %s"], date("%Y-%m-%d %H:%M", plan.generatedAt or 0),
+                date("%Y-%m-%d %H:%M", plan.importedAt or 0)),
     }
     if plan.syncedFrom then
         lines[#lines + 1] = format(L["Synced from %s"], plan.syncedFrom)
