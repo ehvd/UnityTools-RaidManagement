@@ -315,7 +315,9 @@ function AssignmentsWindow:Build(message)
     end, function() return self:IsChanged() end)
 
     if not Assignments.HasTemplate(encounter) then
-        addLabel(frame, L["This encounter's note has no assignment slots. Write the names in the note (Notes)."])
+        addLabel(frame, ns.NewPlan.IsMadeInGame(plan)
+            and L["This plan was made in game: its notes have no assignment slots. Write the names in the note (Notes)."]
+            or L["This encounter's note has no assignment slots. Write the names in the note (Notes)."])
         host:SetStatus(message or "")
         host:UpdateTree()
         return
