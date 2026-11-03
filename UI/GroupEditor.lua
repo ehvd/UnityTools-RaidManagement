@@ -7,7 +7,8 @@ local GroupEdit, GroupPlan = ns.GroupEdit, ns.GroupPlan
 -- plan as 8 groups of 5, next to the raid members and the bench who are not in it. The dropdown picks the night's
 -- groups or an encounter (it never changes the active one): an encounter on the night's groups shows them read-only
 -- until it gets its own groups (Create override); its own groups can be edited or deleted. Click a player, then a
--- slot, another player or a list (or drag) to move, swap or take out. Every change is a plan edit
+-- slot, another player or a list (or drag) to move, swap or take out. Players can be added to the plan (on the bench)
+-- or taken out of it (× on the bench, issue #52); Save stores that with the groups. Every change is a plan edit
 -- (Modules/PlanImport.lua) that syncs, and saving the active encounter's groups sorts the raid. The layout changes go
 -- through Modules/GroupEdit.lua.
 local GroupEditor = UTRM:NewModule("GroupEditor", "AceEvent-3.0")
@@ -15,7 +16,8 @@ UTRM.GroupEditor = GroupEditor
 
 -- Layout (1 px = 1 UI pixel at 100% scale), inside the Raid Plan window's section: under the dropdown row an info
 -- line (two lines) and the hint, then the groups like Blizzard's raid panel (two columns of four, the label above
--- each box), the two lists on the right, and Save / Undo under the groups. The window's status bar shows the messages.
+-- each box), the two lists on the right with Add a player under them, and Save / Undo under the groups. The window's
+-- status bar shows the messages.
 local SLOT_WIDTH, SLOT_HEIGHT = 158, 14       -- the raid panel's name buttons
 local BOX_PAD = 5                             -- the tooltip border is 4 px wide
 local BOX_WIDTH, BOX_HEIGHT = SLOT_WIDTH + 2 * BOX_PAD, 5 * SLOT_HEIGHT + 2 * BOX_PAD
@@ -28,11 +30,19 @@ local GROUPS_WIDTH = 2 * BOX_WIDTH + COLUMN_GAP
 local GROUPS_HEIGHT = 4 * GROUP_BLOCK + 3 * ROW_GAP
 local LIST_LEFT, LIST_WIDTH = GROUPS_WIDTH + 16, 220
 local LIST_GAP = 8
-local PANE_HEIGHT = (GROUPS_HEIGHT - 2 * LABEL - LIST_GAP) / 2
-local PANE_INSET = 8                          -- keeps the scroll bar's arrows off the pane's border
-local SCROLLBAR = 22                          -- UIPanelScrollFrameTemplate's bar sits 6 px right of the frame, 16 wide
 local BUTTON_WIDTH, BUTTON_HEIGHT = 140, 24   -- the note editor's buttons (AceGUI Button: UIPanelButtonTemplate)
 local BUTTONS_TOP = GROUPS_TOP + GROUPS_HEIGHT + 10
+-- Add a player (issue #52), under the lists: a label, the name box (InputBoxTemplate, 20 high, its art reaches 5 px
+-- left of it), then the class box and Add on Save's row
+local INPUT_HEIGHT, INPUT_ART = 20, 6
+local ADD_WIDTH = 70
+local NAME_TOP = BUTTONS_TOP - 4 - INPUT_HEIGHT
+local ADD_LABEL_TOP = NAME_TOP - LABEL
+local PANE_HEIGHT = (ADD_LABEL_TOP - LIST_GAP - GROUPS_TOP - 2 * LABEL - LIST_GAP) / 2
+local PANE_INSET = 8                          -- keeps the scroll bar's arrows off the pane's border
+local SCROLLBAR = 22                          -- UIPanelScrollFrameTemplate's bar sits 6 px right of the frame, 16 wide
+local REMOVE_SIZE = 18                        -- the close button's art on a bench row (the red square is ~11 px)
+local CLOSE_ART = "Interface\\Buttons\\UI-Panel-MinimizeButton-"
 local CONTENT_WIDTH = LIST_LEFT + LIST_WIDTH
 local CONTENT_HEIGHT = BUTTONS_TOP + BUTTON_HEIGHT
 GroupEditor.WIDTH, GroupEditor.HEIGHT = CONTENT_WIDTH, CONTENT_HEIGHT   -- what the Raid Plan window must fit
@@ -41,6 +51,7 @@ local SLOTS, GROUP_SIZE = 40, 5
 local FRAME_NAME = "UnityToolsRaidManagementGroupFrame"
 local DELETE_POPUP = "UNITYTOOLSRAIDMANAGEMENT_DELETE_OVERRIDE"
 local DISCARD_POPUP = "UNITYTOOLSRAIDMANAGEMENT_DISCARD_GROUPS"
+local REMOVE_POPUP = "UNITYTOOLSRAIDMANAGEMENT_REMOVE_PLAYER"
 local HIGHLIGHT = "Interface\\QuestFrame\\UI-QuestTitleHighlight"
 local PANE_BACKDROP = {
     bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
@@ -86,12 +97,14 @@ local function currentRoster()
     return byKey, members
 end
 
--- A name's class: the raid's, else the plan's people (protocol 2), else the last one seen in a raid
-local function classFinder(plan, byKey)
+-- A name's class: the raid's, else the players added in the draft and the plan's people (protocol 2), else the last
+-- one seen in a raid
+local function classFinder(plan, byKey, added)
     local people = {}
     for name, person in pairs(plan.people or {}) do
         if person.class then people[GroupPlan.Key(name)] = person.class end
     end
+    for _, person in ipairs(added) do people[GroupPlan.Key(person.name)] = person.class end
     local classes = UTRM.db.global.classes
     return function(name)
         local key = GroupPlan.Key(name)
@@ -99,14 +112,34 @@ local function classFinder(plan, byKey)
     end
 end
 
--- Everybody the plan names: its people and the players of all its layouts (candidates for the bench)
-local function plannedNames(plan)
-    local names = {}
-    for name in pairs(plan.people or {}) do names[#names + 1] = name end
-    for _, layout in pairs(plan.layouts) do
-        for slot = 1, SLOTS do names[#names + 1] = layout[slot] or "" end
+local function keySet(names)
+    local set = {}
+    for _, name in ipairs(names) do set[GroupPlan.Key(name)] = true end
+    return set
+end
+
+-- Everybody the plan names: its people and the players of all its layouts (candidates for the bench), but the
+-- players `removed` in the draft, and with the ones `added` in it
+local function plannedNames(plan, added, removed)
+    local names, gone = {}, keySet(removed)
+    local function keep(name)
+        if name ~= "" and not gone[GroupPlan.Key(name)] then names[#names + 1] = name end
     end
+    for name in pairs(plan.people or {}) do keep(name) end
+    for _, layout in pairs(plan.layouts) do
+        for slot = 1, SLOTS do keep(layout[slot] or "") end
+    end
+    for _, person in ipairs(added) do names[#names + 1] = person.name end
     return names
+end
+
+-- A class name in its class colour
+local function className(class)
+    local text = LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[class] or class
+    local color = RAID_CLASS_COLORS[class]
+    if not color then return text end
+    local function byte(value) return math.floor(value * 255 + 0.5) end
+    return format("|cff%02x%02x%02x%s|r", byte(color.r), byte(color.g), byte(color.b), text)
 end
 
 ----------------------------------------------------------------------------------------------- editing ---
@@ -117,8 +150,10 @@ local function sameTarget(a, b)
     return a and b and a.slot == b.slot and a.name == b.name and a.list == b.list
 end
 
+-- The draft: the layout shown, and the players added to the plan ({ name, class }) and removed from it (names)
 function GroupEditor:IsChanged()
-    return self.layout ~= nil and not GroupEdit.Equal(self.layout, self.original)
+    return self.layout ~= nil
+        and (not GroupEdit.Equal(self.layout, self.original) or #self.added > 0 or #self.removed > 0)
 end
 
 -- The second click (or the drop) with `target`: moves, swaps, fills a slot, or takes a player out to the lists
@@ -155,8 +190,87 @@ function GroupEditor:Remove(slot)
     self:Render()
 end
 
+-- Add: the name typed and the class chosen join the plan's people in the draft, on the bench
+function GroupEditor:AddPlayer(text)
+    if self.readOnly then return end
+    local name = GroupEdit.CleanName(text)
+    local plan = currentPlan()
+    local byKey = currentRoster()
+    local gone, added = keySet(self.removed), {}
+    for _, person in ipairs(self.added) do added[GroupPlan.Key(person.name)] = true end
+    local why = GroupEdit.CheckNewName(name, function(candidate)
+        local key = GroupPlan.Key(candidate)
+        return byKey[key] or added[key] or (not gone[key] and GroupEdit.InPlan(plan, candidate))
+    end)
+    if not why and not self.addClass then why = "class" end
+    if why then
+        local messages = {
+            empty = L["Type the player's name first."],
+            taken = format(L["%s is already in the raid plan or the raid."], name),
+            class = L["Choose the player's class first."],
+        }
+        self.message = "|cffff4040" .. messages[why] .. "|r"
+        self:Render()
+        return false
+    end
+    self.added[#self.added + 1] = { name = name, class = self.addClass }
+    self.selected = nil
+    self.message = format(L["%s is on the bench. Save to keep them in the plan."], name)
+    self:Render()
+    return true
+end
+
+-- The player leaves the plan in the draft: a player added in the draft is just forgotten
+function GroupEditor:RemovePlayer(name)
+    if self.readOnly then return end
+    local key, wasAdded = GroupPlan.Key(name), false
+    for i, person in ipairs(self.added) do
+        if GroupPlan.Key(person.name) == key then
+            table.remove(self.added, i)
+            wasAdded = true
+            break
+        end
+    end
+    if not wasAdded then self.removed[#self.removed + 1] = name end
+    self.selected = nil
+    self.message = wasAdded and format(L["%s is no longer added."], name)
+        or format(L["%s is out of the raid plan. Save to keep it so."], name)
+    self:Render()
+end
+
+StaticPopupDialogs[REMOVE_POPUP] = {
+    text = "",
+    button1 = YES,
+    button2 = NO,
+    OnAccept = function(_, name) GroupEditor:RemovePlayer(name) end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+-- × on a bench row: asks first when the plan uses the player elsewhere (other groups, assignments)
+function GroupEditor:ConfirmRemovePlayer(name)
+    if self.readOnly then return end
+    local uses = GroupEdit.UsesOf(currentPlan(), name, self.layoutKey)
+    local lines = {}
+    if uses.night then lines[#lines + 1] = L["In the night's groups."] end
+    if #uses.groups > 0 then lines[#lines + 1] = format(L["In the groups of: %s"], labels(uses.groups)) end
+    if #uses.holds > 0 then
+        lines[#lines + 1] = format(L["Assigned in: %s (the assignments stay; change them in Assignments)"],
+            labels(uses.holds))
+    end
+    if #lines == 0 then
+        self:RemovePlayer(name)
+        return
+    end
+    StaticPopupDialogs[REMOVE_POPUP].text = L["Take %s out of the raid plan?"] .. "\n\n%s"
+    StaticPopup_Show(REMOVE_POPUP, name, table.concat(lines, "\n"), name)
+end
+
 function GroupEditor:Undo()
     self.layout = GroupEdit.Copy(self.original)
+    self.added, self.removed = {}, {}
     self.selected, self.message = nil, nil
     self:Render()
 end
@@ -189,12 +303,15 @@ end
 function GroupEditor:Save()
     if self.readOnly then return end
     local layoutKey, layout, encounterKey = self.layoutKey, self.layout, self.encounterKey
-    local saved = edit(function(plan) return GroupEdit.Save(plan, layoutKey, layout) end,
+    local added, removed = self.added, self.removed
+    local saved = edit(function(plan) return GroupEdit.SaveDraft(plan, layoutKey, layout, added, removed) end,
         L["These groups are no longer in the raid plan."])
     if not saved then return end
     local plan = currentPlan()
     local encounter = findEncounter(plan, encounterKey)
-    self.original = GroupEdit.Copy(layout)
+    self.original = GroupEdit.Copy(plan.layouts[layoutKey])
+    self.layout = GroupEdit.Copy(self.original)
+    self.added, self.removed = {}, {}
     self.selected = nil
     self.message = encounter and format(L["Groups of %s saved."], encounter.label) or L["The night's groups saved."]
     self:Render()
@@ -392,10 +509,10 @@ local function label(parent, x, y, width)
     return text
 end
 
--- The encounter box, set up like the plan window's (UI/PlanWindow.lua): Blizzard's UIDropDownMenuTemplate art around
+-- A dropdown box, set up like the plan window's (UI/PlanWindow.lua): Blizzard's UIDropDownMenuTemplate art around
 -- `holder` (it reaches 15 px left and 17 px right of it), with our MenuUtil menu instead of Blizzard's list
-local function dropdown(holder, onClick)
-    local box = CreateFrame("Frame", FRAME_NAME .. "DropDown", holder, "UIDropDownMenuTemplate")
+local function dropdown(holder, suffix, onClick)
+    local box = CreateFrame("Frame", FRAME_NAME .. suffix, holder, "UIDropDownMenuTemplate")
     box:ClearAllPoints()
     box:SetPoint("TOPLEFT", holder, "TOPLEFT", -15, 0)
     box:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", 17, 0)
@@ -420,9 +537,25 @@ local function dropdown(holder, onClick)
     button:SetScript("OnMouseDown", nil)
     local cover = CreateFrame("Button", nil, holder)
     cover:SetAllPoints(holder)
-    for _, clickable in ipairs({ cover, button }) do
+    holder.clickables = { cover, button }
+    for _, clickable in ipairs(holder.clickables) do
         clickable:SetScript("OnClick", onClick)
     end
+end
+
+-- The class of the player to add: the nine classes in their colours
+local function openClassMenu(owner)
+    MenuUtil.CreateContextMenu(owner, function(_, root)
+        for _, class in ipairs(GroupEdit.CLASSES) do
+            root:CreateRadio(className(class),
+                function() return GroupEditor.addClass == class end,
+                function()
+                    GroupEditor.addClass = class
+                    owner.text:SetText(className(class))
+                    return MenuResponse and MenuResponse.Close
+                end)
+        end
+    end)
 end
 
 local function openMenu(owner)
@@ -484,7 +617,7 @@ local function create()
     frame.choice = CreateFrame("Frame", nil, content)
     frame.choice:SetPoint("TOPLEFT")
     frame.choice:SetSize(DROPDOWN_WIDTH, DROPDOWN)
-    dropdown(frame.choice, function() openMenu(frame.choice) end)
+    dropdown(frame.choice, "DropDown", function() openMenu(frame.choice) end)
 
     frame.override = panelButton(content, BUTTON_WIDTH, 22, L["Create override"])
     frame.override:SetPoint("LEFT", frame.choice, "RIGHT", 24, 0)
@@ -529,6 +662,31 @@ local function create()
     frame.bench = listPane(content, "bench", GROUPS_TOP + LABEL + PANE_HEIGHT + LIST_GAP)
     frame.panes = { frame.raid, frame.bench }
 
+    -- Add a player: the name, then the class and Add on Save's row
+    label(content, LIST_LEFT, ADD_LABEL_TOP, LIST_WIDTH):SetText(L["Add a player"])
+    frame.addName = CreateFrame("EditBox", FRAME_NAME .. "AddName", content, "InputBoxTemplate")
+    frame.addName:SetPoint("TOPLEFT", LIST_LEFT + INPUT_ART, -NAME_TOP)
+    frame.addName:SetSize(LIST_WIDTH - INPUT_ART, INPUT_HEIGHT)
+    frame.addName:SetAutoFocus(false)
+    frame.addName:SetMaxLetters(48)
+    frame.addName:SetScript("OnEnterPressed", function(box)
+        if GroupEditor:AddPlayer(box:GetText()) then box:SetText("") end
+    end)
+    frame.addName:SetScript("OnEscapePressed", function(box) box:ClearFocus() end)
+
+    frame.add = panelButton(content, ADD_WIDTH, 22, L["Add"])
+    frame.add:SetPoint("RIGHT", content, "TOPLEFT", LIST_LEFT + LIST_WIDTH, -(BUTTONS_TOP + BUTTON_HEIGHT / 2))
+    frame.add:SetScript("OnClick", function()
+        if GroupEditor:AddPlayer(frame.addName:GetText()) then frame.addName:SetText("") end
+        frame.addName:ClearFocus()
+    end)
+
+    -- The class box fills the row up to Add (its art reaches 17 px right of the holder)
+    frame.addClass = CreateFrame("Frame", nil, content)
+    frame.addClass:SetPoint("LEFT", content, "TOPLEFT", LIST_LEFT, -(BUTTONS_TOP + BUTTON_HEIGHT / 2))
+    frame.addClass:SetSize(LIST_WIDTH - 17 - 4 - frame.add:GetWidth(), DROPDOWN)
+    dropdown(frame.addClass, "AddClass", function() openClassMenu(frame.addClass) end)
+
     -- Save and Undo under the groups
     frame.save = panelButton(content, BUTTON_WIDTH, BUTTON_HEIGHT, L["Save"])
     frame.save:SetPoint("TOPLEFT", 0, -BUTTONS_TOP)
@@ -564,7 +722,27 @@ local function showName(button, name, class, absent)
     end
 end
 
--- Fills a list pane with `names`; `empty` is shown when there are none
+-- The × on a bench row (the close button's art): takes the player out of the plan
+local function removeButton(button)
+    local remove = CreateFrame("Button", nil, button)
+    remove:SetSize(REMOVE_SIZE, REMOVE_SIZE)
+    remove:SetPoint("RIGHT", 2, 0)
+    remove:SetNormalTexture(CLOSE_ART .. "Up")
+    remove:SetPushedTexture(CLOSE_ART .. "Down")
+    remove:SetHighlightTexture(CLOSE_ART .. "Highlight", "ADD")
+    remove:SetScript("OnClick", function() GroupEditor:ConfirmRemovePlayer(button.target.name) end)
+    remove:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L["Take out of the raid plan"])
+        GameTooltip:Show()
+    end)
+    remove:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    button.marker:ClearAllPoints()
+    button.marker:SetPoint("RIGHT", remove, "LEFT", 0, 0)
+    button.remove = remove
+end
+
+-- Fills a list pane with `names`; `empty` is shown when there are none. The bench's rows have a ×.
 local function fillList(box, names, classOf, empty)
     local selected = GroupEditor.selected
     local width = box.child:GetWidth()
@@ -573,12 +751,14 @@ local function fillList(box, names, classOf, empty)
         if not button then
             button = nameButton(box.child, width)
             button:SetPoint("TOPLEFT", 0, -(i - 1) * SLOT_HEIGHT)
+            if box.list == "bench" then removeButton(button) end
             box.buttons[i] = button
         end
         button.target = { name = name }
         showName(button, name, classOf(name), false)
         button.selected:SetShown(selected ~= nil and selected.name == name)
         button:EnableMouse(not GroupEditor.readOnly)
+        if button.remove then button.remove:SetShown(not GroupEditor.readOnly) end
         button:Show()
     end
     for i = #names + 1, #box.buttons do
@@ -616,7 +796,7 @@ function GroupEditor:Render()
     local layout, selected, readOnly = self.layout, self.selected, self.readOnly
     local byKey, members = currentRoster()
     local inRaid = IsInRaid()
-    local classOf = classFinder(plan, byKey)
+    local classOf = classFinder(plan, byKey, self.added)
 
     -- The dropdown's text, the override button and the info line
     if encounter then
@@ -657,9 +837,19 @@ function GroupEditor:Render()
     fillList(frame.raid, unplaced, classOf,
         inRaid and L["Drop a player here to take them out of the groups."] or L["Not in a raid"])
 
-    local bench = GroupEdit.Bench(plannedNames(plan), layout, function(name) return byKey[GroupPlan.Key(name)] end)
+    local bench = GroupEdit.Bench(plannedNames(plan, self.added, self.removed), layout,
+        function(name) return byKey[GroupPlan.Key(name)] end)
     frame.bench.label:SetText(format(L["Bench (%d)"], #bench))
     fillList(frame.bench, bench, classOf, L["Drop a player here to take them out of the groups."])
+
+    -- Add a player: only where the groups can be edited
+    frame.addName:SetEnabled(not readOnly)
+    if readOnly then frame.addName:ClearFocus() end
+    frame.addName:SetAlpha(readOnly and 0.5 or 1)
+    frame.add:SetEnabled(not readOnly)
+    frame.addClass.text:SetText(self.addClass and className(self.addClass) or L["Class"])
+    frame.addClass:SetAlpha(readOnly and 0.5 or 1)
+    for _, clickable in ipairs(frame.addClass.clickables) do clickable:EnableMouse(not readOnly) end
 
     local changed = self:IsChanged()
     frame.save:SetEnabled(changed)
@@ -683,6 +873,7 @@ function GroupEditor:Load(encounterKey)
     self.readOnly = encounter ~= nil and encounter.layout == "default"
     self.original = GroupEdit.Copy(plan.layouts[self.layoutKey])
     self.layout = GroupEdit.Copy(self.original)
+    self.added, self.removed = {}, {}
     self.selected, self.message, self.pending = nil, nil, nil
 end
 

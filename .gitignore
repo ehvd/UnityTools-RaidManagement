@@ -10,6 +10,7 @@ Thumbs.db
 
 # Local tooling
 .libs-tmp/
+*.tmp
 local.mk
 
 # Test tooling (tests/: npm install)
