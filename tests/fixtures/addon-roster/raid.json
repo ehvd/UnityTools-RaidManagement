@@ -1,0 +1,18 @@
+{
+  "comment": "What GetRaidRosterInfo(1..n) returned for a made-up raid, as JSON (nil is null), plus who made the string, their realm (GetNormalizedRealmName) and when. The addon builds payload.json from this; see docs/addon-roster.md.",
+  "player": "Stronkbogart",
+  "realm": "PyrewoodVillage",
+  "time": 1793612345,
+  "raid": [
+    { "name": "Stronkbogart", "rank": 2, "subgroup": 1, "level": 60, "class": "Warrior", "fileName": "WARRIOR", "zone": "Ahn'Qiraj", "online": true, "isDead": false, "role": "MAINTANK", "isML": true },
+    { "name": "Tracedeneïge", "rank": 0, "subgroup": 1, "level": 60, "class": "Warrior", "fileName": "WARRIOR", "zone": "Ahn'Qiraj", "online": true, "isDead": false, "role": null, "isML": false },
+    { "name": "Bogartlover", "rank": 1, "subgroup": 2, "level": 60, "class": "Paladin", "fileName": "PALADIN", "zone": "Ahn'Qiraj", "online": true, "isDead": true, "role": null, "isML": false },
+    { "name": "Lootgoblin", "rank": 0, "subgroup": 3, "level": 58, "class": "Rogue", "fileName": "ROGUE", "zone": "Ahn'Qiraj", "online": true, "isDead": false, "role": null, "isML": false },
+    { "name": "Zeta-Azjol-Nerub", "rank": 0, "subgroup": 3, "level": 60, "class": "Mage", "fileName": "MAGE", "zone": "Orgrimmar", "online": true, "isDead": false, "role": null, "isML": false },
+    { "name": "Arrowyn", "rank": 0, "subgroup": 4, "level": 60, "class": "Hunter", "fileName": "HUNTER", "zone": "Ahn'Qiraj", "online": true, "isDead": false, "role": null, "isML": false },
+    { "name": "Felhex", "rank": 0, "subgroup": 5, "level": 60, "class": "Warlock", "fileName": "WARLOCK", "zone": "Ahn'Qiraj", "online": true, "isDead": false, "role": null, "isML": false },
+    { "name": "Moonbeam-Firemaw", "rank": 0, "subgroup": 6, "level": 60, "class": "Druid", "fileName": "DRUID", "zone": null, "online": null, "isDead": false, "role": null, "isML": false },
+    { "name": "Thrallson", "rank": 0, "subgroup": 7, "level": 60, "class": "Shaman", "fileName": "SHAMAN", "zone": "Ahn'Qiraj", "online": true, "isDead": false, "role": null, "isML": false },
+    { "name": "Mendwell", "rank": 0, "subgroup": 8, "level": 60, "class": "Priest", "fileName": "PRIEST", "zone": "Offline", "online": false, "isDead": false, "role": null, "isML": false }
+  ]
+}

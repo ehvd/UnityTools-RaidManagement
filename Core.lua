@@ -42,6 +42,7 @@ function UTRM:PrintHelp()
     self:Print("  /utrm plan - " .. L["show or hide the raid plan window"])
     self:Print("  /utrm import - " .. L["import a raid plan"])
     self:Print("  /utrm edit - " .. L["open the Raid Plan window"])
+    self:Print("  /utrm roster - " .. L["export the raid's members and groups"])
     self:Print("  /utrm minimap - " .. L["show or hide the minimap button"])
     self:Print("  /utrm version - " .. L["show the addon version"])
 end
@@ -64,6 +65,8 @@ function UTRM:OnSlashCommand(input)
         self.ImportWindow:Open()
     elseif command == "edit" then
         self.RaidPlanWindow:Open()
+    elseif command == "roster" then
+        self.RosterDialog:Open()
     elseif command == "version" then
         self:Print(format(L["Version %s"], self.version))
     else

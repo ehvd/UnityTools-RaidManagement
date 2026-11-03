@@ -54,6 +54,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   layout); its groups are its layout's, and editing them edits that layout. All of it is part of the section's
   unsaved changes (Save / Undo changes) and syncs like other group edits; Save sorts the raid when the active
   encounter's groups changed
+- Export raid (a button in Groups of the Raid Plan window, or `/utrm roster`) gives the raid's members and groups as
+  one string, selected for Ctrl+C, for pasting into a raid planner: it matches the plan's names (from the signups)
+  with the characters really in the raid. Each member goes with their realm, class, level, group, rank, whether they
+  are online and their zone (UnityWiki's roster protocol 1). It works without a plan; outside a raid the dialog says
+  so, and Refresh makes the string again
 
 ### Changed
 

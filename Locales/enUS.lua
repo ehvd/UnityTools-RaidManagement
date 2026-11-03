@@ -363,3 +363,10 @@ L["No encounter uses them."] = true
 L["%s deleted: %d encounters go back to Default. Save to keep it so."] = true
 L["Groups saved."] = true
 L["In Default, which no encounter uses."] = true
+
+L["export the raid's members and groups"] = true
+L["Export raid"] = true
+L["The raid's members and groups as one string. Ctrl+C to copy:"] = true
+L["Exported %d raid members. Ctrl+C to copy."] = true
+L["%d not loaded yet: press Refresh."] = true
+L["Refresh"] = true

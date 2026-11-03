@@ -16,6 +16,7 @@ globals = {
     "UnityToolsRaidManagementNoteFrame",
     "UnityToolsRaidManagementPlanFrame",
     "UnityToolsRaidManagementRaidPlanFrame",
+    "UnityToolsRaidManagementRosterFrame",
     "SlashCmdList",
     "StaticPopupDialogs",
     "UISpecialFrames",
@@ -53,7 +54,7 @@ read_globals = {
     "GetLootMethod", "SetLootMethod", "InviteUnit", "C_PartyInfo",
     "Ambiguate", "ACCEPT", "DECLINE", "SAVE", "UnitInRaid",
     "C_Timer", "GetTime", "GetServerTime", "GetLocale", "geterrorhandler",
-    "UnitName", "UnitGUID", "UnitExists", "UnitClass", "UnitLevel", "InCombatLockdown",
+    "UnitName", "GetNormalizedRealmName", "UnitGUID", "UnitExists", "UnitClass", "UnitLevel", "InCombatLockdown",
     "IsInGroup", "IsInRaid", "GetNumGroupMembers", "GetSpellInfo",
     "C_Spell", "GetSpellTexture", "LOCALIZED_CLASS_NAMES_MALE", "LOCALIZED_CLASS_NAMES_FEMALE",
 }
