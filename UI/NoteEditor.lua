@@ -12,6 +12,16 @@ UTRM.NoteEditor = NoteEditor
 local FRAME_GLOBAL = "UnityToolsRaidManagementNoteFrame"
 local specialFrameAdded = false
 
+-- The Notes section's box fills the section (as tall as the groups editor, UI/RaidPlanWindow.lua) under the encounter
+-- dropdown (26) and over the buttons (24). AceGUI's MultiLineEditBox is 14 px a line plus 19 without its button and
+-- 10 for its label; the Flow layout puts 3 px between rows.
+local LINE_HEIGHT = 14
+local SECTION_FIXED = 26 + 3 + 10 + 19 + 3 + 24 + 4
+
+local function sectionLines()
+    return math.floor((UTRM.GroupEditor.HEIGHT - SECTION_FIXED) / LINE_HEIGHT)
+end
+
 local function planImport()
     return UTRM:GetModule("PlanImport")
 end
@@ -163,7 +173,7 @@ function Section:Build(message)
         self:Build()
     end, function() return self:IsChanged() end)
 
-    local editBox = noteBox(container, 24)
+    local editBox = noteBox(container, sectionLines())
     editBox:SetText(planImport():NoteOf(encounter))
     editBox:SetCallback("OnTextChanged", function() self:UpdateButtons() end)
     self.editBox = editBox

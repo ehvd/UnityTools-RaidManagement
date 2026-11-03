@@ -78,6 +78,28 @@ function Gargul:GetState(plan)
     return "outdated"
 end
 
+-- Makes `text` the plan's Gargul string (issue #45) when Gargul's importer would take it (Modules/GargulString.lua),
+-- without importing it. A plan edit, so it syncs; Import into Gargul and the readiness check then use it.
+-- Returns true, or false and a message.
+function Gargul:SetPlanString(text)
+    local kind, result = ns.GargulString.Check(text, LibStub("LibDeflate"))
+    if not kind then
+        if result == "empty" then
+            return false, L["Paste a Gargul import string first."]
+        end
+        return false, format(L["This is not a Gargul import string (%s)."],
+            result)
+    end
+    local ok, message = UTRM:GetModule("PlanImport"):Edit(function(plan)
+        if plan.gargul and plan.gargul.string == result then return false end
+        plan.gargul = { string = result, generatedAt = GetServerTime() }
+    end)
+    if not ok then
+        return false, message or L["The raid plan already has these loot priorities."]
+    end
+    return true
+end
+
 -- Imports the plan's string; returns true or false and a message (for the plan window's status line)
 function Gargul:ImportPlan(plan)
     if not plan or not plan.gargul then
