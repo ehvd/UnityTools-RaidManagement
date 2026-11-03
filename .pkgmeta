@@ -36,3 +36,12 @@ ignore:
   - README.md
   - icon.png
   - tests
+  # Ship only what the libs target of the Makefile copies. LibDeflate's docs hold README.md.html and
+  # readme.md.html, which clash on a case-insensitive disk: CurseForge rejected every file that had them.
+  - Libs/LibDeflate/docs
+  - Libs/LibDeflate/examples
+  - Libs/LibDeflate/README.md
+  - Libs/LibDeflate/changelog.md
+  - Libs/LibDeflate/LibDeflate.toc
+  - Libs/LibDeflate/libdeflate-1.0.2-1.rockspec
+  - Libs/LibDataBroker-1.1/README.textile
