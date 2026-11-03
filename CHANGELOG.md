@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+### Fixed
+
+- The Raid Plan window's Notes section: the note box fills the section instead of leaving empty space under it
 ### Changed
 
 - The addon's texts no longer name UnityWiki or its raid planner: the import asks for a raid plan string, and an
