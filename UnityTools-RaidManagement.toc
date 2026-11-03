@@ -32,6 +32,7 @@ Modules\GroupEdit.lua
 Modules\RaidGroups.lua
 Modules\Gargul.lua
 Modules\FallbackRules.lua
+Modules\EncounterList.lua
 Modules\Readiness.lua
 Modules\SyncRules.lua
 Modules\Sync.lua
@@ -43,5 +44,6 @@ UI\NewPlanSection.lua
 UI\PlanWindow.lua
 UI\GroupEditor.lua
 UI\AssignmentsWindow.lua
+UI\EncountersSection.lua
 UI\RaidPlanWindow.lua
 UI\Minimap.lua

@@ -237,6 +237,26 @@ L["Not in a raid: your edits stay on your client until you lead a raid or assist
 L["You are raid leader or assistant: your edits sync to the raid."] = true
 L["You are not raid leader or assistant: your edits stay on your client, and the leader's plan may replace them."] = true
 
+-- Encounters section (issue #44)
+L["Encounters"] = true
+L["Add an encounter"] = true
+L["Custom encounter"] = true
+L["Raid"] = true
+L["Boss"] = true
+L["Name"] = true
+L["Add"] = true
+L["Remove"] = true
+L["Move up"] = true
+L["Move down"] = true
+L["(in the plan)"] = true
+L["Boss, ID %d"] = true
+L["Custom"] = true
+L["Enter a name first."] = true
+L["Renamed to %s"] = true
+L["Moved %s to place %d"] = true
+L["Removed %s"] = true
+L["Added %s"] = true
+L["Remove the encounter %s from the raid plan?"] = true
 -- New plan (issue #43)
 L["New plan"] = true
 L["Title"] = true
