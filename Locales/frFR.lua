@@ -203,6 +203,14 @@ L["Not in a raid: your edits stay on your client until you lead a raid or assist
 L["You are raid leader or assistant: your edits sync to the raid."] = "Vous êtes chef de raid ou assistant : vos modifications sont synchronisées avec le raid."
 L["You are not raid leader or assistant: your edits stay on your client, and the leader's plan may replace them."] = "Vous n'êtes ni chef de raid ni assistant : vos modifications restent sur votre client, et le plan du chef peut les remplacer."
 
+-- Default assignments (issue #59)
+L["1 override"] = "1 exception"
+L["%d overrides"] = "%d exceptions"
+L["Use default: %s"] = "Utiliser le défaut : %s"
+L["Note preview: %s"] = "Aperçu de la note : %s"
+L["None of the encounters' notes have assignments."] = "Aucune note des rencontres n'a d'affectations."
+L["Default assignments saved: %d encounters rebuilt."] = "Affectations par défaut enregistrées : %d rencontres reconstruites."
+L["%d encounters keep their own players: the new ones cannot fill the job there."] = "%d rencontres gardent leurs propres joueurs : les nouveaux ne peuvent pas y tenir ce rôle."
 -- Add and remove players in the Groups section (issue #52)
 L["Add a player"] = "Ajouter un joueur"
 L["Class"] = "Classe"

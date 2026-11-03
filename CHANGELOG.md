@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ### Added
 
+- Default assignments: Default, at the top of the Assignments section's Encounter dropdown, changes a job (TANK1,
+  HEALER1 …) on every encounter that follows the default and rebuilds their notes. On an encounter, a job with
+  other players than the default is an override: its name is cyan, its menu has Use default, and the Encounter
+  dropdown shows how many overrides each encounter has. An imported plan takes each job's most common players as
+  its default, so its exceptions show as overrides at once. The defaults are kept in the plan and sync with it;
+  the export still writes each encounter's own players
 - Groups (the Raid Plan window) adds players to the raid plan by hand: type a name, choose the class and Add, and the
   player is on the bench in their class colour, from where they go into a group like anyone else. A name already in
   the plan or the raid, or an empty one, is refused with a message. The × on a bench player takes them out of the
