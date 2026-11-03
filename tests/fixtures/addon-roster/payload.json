@@ -1,0 +1,109 @@
+{
+  "protocol": 1,
+  "kind": "roster",
+  "generatedAt": 1793612345,
+  "by": "Stronkbogart",
+  "realm": "PyrewoodVillage",
+  "members": [
+    {
+      "name": "Stronkbogart",
+      "realm": "PyrewoodVillage",
+      "class": "WARRIOR",
+      "level": 60,
+      "group": 1,
+      "rank": 2,
+      "online": true,
+      "zone": "Ahn'Qiraj"
+    },
+    {
+      "name": "Tracedeneïge",
+      "realm": "PyrewoodVillage",
+      "class": "WARRIOR",
+      "level": 60,
+      "group": 1,
+      "rank": 0,
+      "online": true,
+      "zone": "Ahn'Qiraj"
+    },
+    {
+      "name": "Bogartlover",
+      "realm": "PyrewoodVillage",
+      "class": "PALADIN",
+      "level": 60,
+      "group": 2,
+      "rank": 1,
+      "online": true,
+      "zone": "Ahn'Qiraj"
+    },
+    {
+      "name": "Lootgoblin",
+      "realm": "PyrewoodVillage",
+      "class": "ROGUE",
+      "level": 58,
+      "group": 3,
+      "rank": 0,
+      "online": true,
+      "zone": "Ahn'Qiraj"
+    },
+    {
+      "name": "Zeta",
+      "realm": "Azjol-Nerub",
+      "class": "MAGE",
+      "level": 60,
+      "group": 3,
+      "rank": 0,
+      "online": true,
+      "zone": "Orgrimmar"
+    },
+    {
+      "name": "Arrowyn",
+      "realm": "PyrewoodVillage",
+      "class": "HUNTER",
+      "level": 60,
+      "group": 4,
+      "rank": 0,
+      "online": true,
+      "zone": "Ahn'Qiraj"
+    },
+    {
+      "name": "Felhex",
+      "realm": "PyrewoodVillage",
+      "class": "WARLOCK",
+      "level": 60,
+      "group": 5,
+      "rank": 0,
+      "online": true,
+      "zone": "Ahn'Qiraj"
+    },
+    {
+      "name": "Moonbeam",
+      "realm": "Firemaw",
+      "class": "DRUID",
+      "level": 60,
+      "group": 6,
+      "rank": 0,
+      "online": false,
+      "zone": ""
+    },
+    {
+      "name": "Thrallson",
+      "realm": "PyrewoodVillage",
+      "class": "SHAMAN",
+      "level": 60,
+      "group": 7,
+      "rank": 0,
+      "online": true,
+      "zone": "Ahn'Qiraj"
+    },
+    {
+      "name": "Mendwell",
+      "realm": "PyrewoodVillage",
+      "class": "PRIEST",
+      "level": 60,
+      "group": 8,
+      "rank": 0,
+      "online": false,
+      "zone": "Offline"
+    }
+  ]
+}
