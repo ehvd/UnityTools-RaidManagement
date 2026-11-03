@@ -24,6 +24,8 @@ Modules\NoteTemplate.lua
 Modules\Assignments.lua
 Modules\NoteView.lua
 Modules\PlanCodec.lua
+Modules\Bosses.lua
+Modules\NewPlan.lua
 Modules\PlanImport.lua
 Modules\GroupPlan.lua
 Modules\GroupEdit.lua
@@ -38,6 +40,7 @@ Modules\Fallback.lua
 
 UI\NoteEditor.lua
 UI\ImportWindow.lua
+UI\NewPlanSection.lua
 UI\PlanWindow.lua
 UI\GroupEditor.lua
 UI\AssignmentsWindow.lua
