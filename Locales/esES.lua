@@ -207,3 +207,12 @@ L["Sync"] = "Sincronización"
 L["Not in a raid: your edits stay on your client until you lead a raid or assist in one."] = "No estás en una banda: tus cambios se quedan en tu cliente hasta que lideres una banda o seas asistente en ella."
 L["You are raid leader or assistant: your edits sync to the raid."] = "Eres líder de banda o asistente: tus cambios se sincronizan con la banda."
 L["You are not raid leader or assistant: your edits stay on your client, and the leader's plan may replace them."] = "No eres líder de banda ni asistente: tus cambios se quedan en tu cliente y el plan del líder puede reemplazarlos."
+
+-- Default assignments (issue #59)
+L["1 override"] = "1 excepción"
+L["%d overrides"] = "%d excepciones"
+L["Use default: %s"] = "Usar predeterminado: %s"
+L["Note preview: %s"] = "Vista previa de la nota: %s"
+L["None of the encounters' notes have assignments."] = "Ninguna nota de los encuentros tiene asignaciones."
+L["Default assignments saved: %d encounters rebuilt."] = "Asignaciones predeterminadas guardadas: %d encuentros reconstruidos."
+L["%d encounters keep their own players: the new ones cannot fill the job there."] = "%d encuentros mantienen sus propios jugadores: los nuevos no pueden ocupar el puesto allí."

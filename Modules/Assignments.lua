@@ -177,6 +177,188 @@ function Assignments.Slots(encounter, jobs)
     return slots
 end
 
+-------------------------------------------------------------------------------------------- the defaults ---
+-- Default assignments (issue #59): one set of holders per job key for the whole night, kept in the plan as
+-- plan.assignmentDefaults (key → holders), so they sync with it. An encounter's job with other holders is an
+-- override. A plan without them (an import) takes each job's most common holders across its encounters (ties: the
+-- first encounter's). Protocol 2 has no defaults: the encounters' slots always keep their actual holders.
+
+-- Whether the encounter takes part: its note is rebuilt from its template (not edited by hand)
+function Assignments.TakesPart(encounter)
+    return Assignments.HasTemplate(encounter) and encounter.customNote == nil
+end
+
+-- Each job key's default holders (copies): the stored ones, else the most common among the encounters
+function Assignments.Defaults(plan)
+    local stored = type(plan.assignmentDefaults) == "table" and plan.assignmentDefaults or {}
+    local counts, order = {}, {}
+    for _, encounter in ipairs(plan.encounters or {}) do
+        if Assignments.TakesPart(encounter) then
+            for _, job in ipairs(Assignments.Jobs(encounter)) do
+                local seen = counts[job.key]
+                if not seen then
+                    seen = {}
+                    counts[job.key] = seen
+                    order[#order + 1] = job.key
+                end
+                local found = false
+                for _, entry in ipairs(seen) do
+                    if sameList(entry.holders, job.holders) then
+                        entry.count = entry.count + 1
+                        found = true
+                    end
+                end
+                if not found then seen[#seen + 1] = { holders = job.holders, count = 1 } end
+            end
+        end
+    end
+    local defaults = {}
+    for _, key in ipairs(order) do
+        if type(stored[key]) == "table" then
+            defaults[key] = copy(stored[key])
+        else
+            local best
+            for _, entry in ipairs(counts[key]) do
+                if not best or entry.count > best.count then best = entry end
+            end
+            defaults[key] = copy(best.holders)
+        end
+    end
+    return defaults
+end
+
+-- The Default's jobs: every job key of the encounters that take part, with the tokens and candidates of all of
+-- them and the default holders, grouped as an encounter's jobs are (GroupJobs)
+function Assignments.DefaultJobs(plan, defaults)
+    local jobs, byKey = {}, {}
+    for _, encounter in ipairs(plan.encounters or {}) do
+        if Assignments.TakesPart(encounter) then
+            for _, job in ipairs(Assignments.Jobs(encounter)) do
+                local merged = byKey[job.key]
+                if not merged then
+                    merged = {
+                        key = job.key, kind = job.kind, multi = job.multi, tokens = {},
+                        holders = copy(defaults[job.key]), candidates = {}, known = {},
+                    }
+                    byKey[job.key] = merged
+                    jobs[#jobs + 1] = merged
+                end
+                merged.multi = merged.multi or job.multi
+                for _, token in ipairs(job.tokens) do
+                    if not merged.known["token:" .. token] then
+                        merged.known["token:" .. token] = true
+                        merged.tokens[#merged.tokens + 1] = token
+                    end
+                end
+                for _, name in ipairs(job.candidates) do
+                    if not merged.known[name] then
+                        merged.known[name] = true
+                        merged.candidates[#merged.candidates + 1] = name
+                    end
+                end
+            end
+        end
+    end
+    for _, job in ipairs(jobs) do
+        job.known = nil
+        table.sort(job.candidates, byName)
+    end
+    return Assignments.GroupJobs(jobs)
+end
+
+-- Whether an encounter's job has other holders than the default
+function Assignments.IsOverride(job, defaults)
+    local default = defaults[job.key]
+    return default ~= nil and not sameList(default, job.holders)
+end
+
+-- How many of the jobs are overrides
+function Assignments.Overrides(jobs, defaults)
+    local count = 0
+    for _, job in ipairs(jobs) do
+        if Assignments.IsOverride(job, defaults) then count = count + 1 end
+    end
+    return count
+end
+
+-- Whether the default's holders can fill the job: one at most for a job of one, all of them candidates
+function Assignments.CanUse(job, holders)
+    if not job.multi and #holders > 1 then return false end
+    for _, holder in ipairs(holders) do
+        local candidate = false
+        for _, name in ipairs(job.candidates) do
+            if name == holder then candidate = true end
+        end
+        if not candidate then return false end
+    end
+    return true
+end
+
+-- Puts the job back to the default; false when the default cannot fill it (CanUse)
+function Assignments.UseDefault(job, defaults)
+    local default = defaults[job.key]
+    if not default or not Assignments.CanUse(job, default) then return false end
+    job.holders = copy(default)
+    return true
+end
+
+-- How many of the Default's jobs have other holders than `defaults`
+function Assignments.ChangedDefaults(defaults, jobs)
+    local count = 0
+    for _, job in ipairs(jobs) do
+        if not sameList(defaults[job.key] or {}, job.holders) then count = count + 1 end
+    end
+    return count
+end
+
+-- An encounter's jobs after the Default's jobs are saved: a job that follows the old default (`defaults`) and
+-- whose default changed gets the new holders, unless they cannot fill it here (CanUse): then it keeps its own, as
+-- an override. Changes `jobs` in place; returns them, whether any changed and whether any kept their own.
+function Assignments.FollowDefaults(jobs, defaults, defaultJobs)
+    local new = {}
+    for _, job in ipairs(defaultJobs) do new[job.key] = job.holders end
+    local changed, kept = false, false
+    for _, job in ipairs(jobs) do
+        local old, holders = defaults[job.key], new[job.key]
+        if old and holders and not sameList(old, holders) and sameList(old, job.holders) then
+            if Assignments.CanUse(job, holders) then
+                job.holders = copy(holders)
+                changed = true
+            else
+                kept = true
+            end
+        end
+    end
+    return jobs, changed, kept
+end
+
+-- Stores the Default's jobs as the plan's defaults (plan.assignmentDefaults) and rebuilds the note of every
+-- encounter they change (FollowDefaults). Returns the keys of the encounters rebuilt and of those that keep their
+-- own holders for a job.
+function Assignments.SaveDefaults(plan, defaults, defaultJobs, people)
+    local rebuilt, kept = {}, {}
+    for _, encounter in ipairs(plan.encounters or {}) do
+        if Assignments.TakesPart(encounter) then
+            local jobs, changed, keeps = Assignments.FollowDefaults(Assignments.Jobs(encounter), defaults, defaultJobs)
+            if changed then
+                Assignments.Apply(encounter, jobs, people)
+                rebuilt[#rebuilt + 1] = encounter.key
+            end
+            if keeps then kept[#kept + 1] = encounter.key end
+        end
+    end
+    local stored = {}
+    for _, job in ipairs(defaultJobs) do stored[job.key] = copy(job.holders) end
+    plan.assignmentDefaults = stored
+    return rebuilt, kept
+end
+
+-- Keeps the defaults as they are now in the plan, so changing an encounter does not change which holders are the
+-- most common (a plan without stored defaults): before an encounter's jobs are saved
+function Assignments.KeepDefaults(plan)
+    plan.assignmentDefaults = Assignments.Defaults(plan)
+end
+
 -- The note the jobs give
 function Assignments.Preview(encounter, jobs, people)
     return ns.NoteTemplate.Render(encounter.template, Assignments.Slots(encounter, jobs), people)

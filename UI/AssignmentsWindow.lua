@@ -9,6 +9,8 @@ local Assignments = ns.Assignments
 -- (export protocol 2). The encounter dropdown picks the encounter to change (it never changes the active one), then
 -- one row per job with a dropdown of its candidates, a preview of the rebuilt note, Save. Saving is a plan edit
 -- (PlanImport:Edit), so it syncs like one, and the note goes to Method Raid Tools when the encounter is the active one.
+-- Default (issue #59), above the encounters in the dropdown, changes a job on every encounter that follows the
+-- default (Modules/Assignments.lua); on an encounter, a job with other holders is an override, its key in cyan.
 -- Layout from the Figma wireframe "Assignments", every control at its own size.
 local AssignmentsWindow = UTRM:NewModule("AssignmentsWindow", "AceEvent-3.0")
 UTRM.AssignmentsWindow = AssignmentsWindow
@@ -16,9 +18,12 @@ UTRM.AssignmentsWindow = AssignmentsWindow
 local ROWS_HEIGHT = 196                 -- seven rows of jobs (a 26 tall dropdown and the layout's gap), then scrolls
 local LABEL_WIDTH = 110
 local DROPDOWN_WIDTH = 400              -- wide enough that the next label starts a new row
+local ENCOUNTER_WIDTH = 260             -- the other sections' encounter box (UI/RaidPlanWindow.lua)
 local PREVIEW_HEIGHT = 150
 local MENU_HEIGHT = 400                 -- a menu of a whole raid scrolls past this
 local GREY = "|cff808080"
+local OVERRIDE = "|cff40d8e8"           -- the Groups section's colour for a layout of its own
+local DEFAULT_TEXT = DEFAULT or "Default"
 
 local ROLES = { tank = L["Tank"], healer = L["Healer"], melee = L["Melee"], ranged = L["Ranged"] }
 
@@ -73,13 +78,30 @@ function AssignmentsWindow:CandidateText(name)
     return text
 end
 
-function AssignmentsWindow:JobText(job)
-    if #job.holders == 0 then
+local function holdersText(window, holders)
+    if #holders == 0 then
         return GREY .. "(" .. L["nobody"] .. ")|r"
     end
     local names = {}
-    for i, name in ipairs(job.holders) do names[i] = self:HolderText(name) end
+    for i, name in ipairs(holders) do names[i] = window:HolderText(name) end
     return table.concat(names, ", ")
+end
+
+function AssignmentsWindow:JobText(job)
+    return holdersText(self, job.holders)
+end
+
+-- A row's label: the job's tokens, cyan when it is an override of the default
+function AssignmentsWindow:KeyText(job)
+    local text = table.concat(job.tokens, " · ")
+    if not self.showDefault and Assignments.IsOverride(job, self.defaults) then
+        return OVERRIDE .. text .. "|r"
+    end
+    return text
+end
+
+local function overridesText(count)
+    return count == 1 and L["1 override"] or format(L["%d overrides"], count)
 end
 
 ------------------------------------------------------------------------------------------------- menus ---
@@ -116,6 +138,83 @@ function AssignmentsWindow:OpenMenu(job, owner)
         elseif #job.candidates == 0 then
             root:CreateTitle(L["Nobody can fill this."])
         end
+        -- An override goes back to the default (greyed out when the default's players cannot fill it here)
+        if not self.showDefault and Assignments.IsOverride(job, self.defaults) then
+            root:CreateDivider()
+            local default = self.defaults[job.key]
+            local button = root:CreateButton(format(L["Use default: %s"], holdersText(self, default)), function()
+                Assignments.UseDefault(job, self.defaults)
+                self:Update()
+                return MenuResponse and MenuResponse.Close
+            end)
+            if button.SetEnabled and not Assignments.CanUse(job, default) then button:SetEnabled(false) end
+        end
+    end)
+    if menu then menu:SetFrameStrata("TOOLTIP") end
+end
+
+-- A menu entry with `right` at its right edge (the entries are as wide as the widest, so these line up), as the
+-- Groups section's encounter menu shows a layout of its own. Without AttachFontString it follows the text.
+local function withRight(description, right)
+    description:AddInitializer(function(button)
+        if not button.AttachFontString then
+            button.fontString:SetText(button.fontString:GetText() .. "  " .. right)
+            return
+        end
+        local text = button:AttachFontString()
+        text:ClearAllPoints()
+        text:SetPoint("RIGHT")
+        text:SetJustifyH("RIGHT")
+        text:SetText(right)
+        return button.fontString:GetUnboundedStringWidth() + 16 + text:GetUnboundedStringWidth() + 24, 20
+    end)
+end
+
+-- The encounter text of the dropdown: "3. Lucifron", the active one marked
+local function encounterText(plan, i, encounter)
+    local text = format("%d. %s", i, encounter.label)
+    if encounter.key == plan.active then text = text .. "  " .. GREY .. L["(active)"] .. "|r" end
+    return text
+end
+
+-- How many overrides an encounter has: the shown one's as they are now, the others' as saved
+function AssignmentsWindow:OverridesOf(encounter)
+    if not Assignments.TakesPart(encounter) then return 0 end
+    if not self.showDefault and self.jobs and encounter.key == self.key then
+        return Assignments.Overrides(self.jobs, self.defaults)
+    end
+    return Assignments.Overrides(Assignments.Jobs(encounter), self.defaults)
+end
+
+-- The Encounter dropdown's menu: Default, a divider, the encounters with their overrides on the right in cyan.
+-- With unsaved changes, choosing another asks first.
+function AssignmentsWindow:OpenEncounterMenu(owner)
+    local plan = currentPlan()
+    if not plan then return end
+    local function choose(showDefault, key)
+        local function go()
+            self.showDefault, self.key = showDefault, key or self.key
+            self:Build()
+        end
+        if self:IsChanged() then
+            self.host:ConfirmDiscard(L["Assignments"], go)
+        else
+            go()
+        end
+        return MenuResponse and MenuResponse.Close
+    end
+    local menu = MenuUtil.CreateContextMenu(owner, function(_, root)
+        root:CreateTitle(plan.event.title)
+        root:CreateRadio(DEFAULT_TEXT, function() return self.showDefault end, function() return choose(true) end)
+        root:CreateDivider()
+        for i, encounter in ipairs(plan.encounters) do
+            local radio = root:CreateRadio(encounterText(plan, i, encounter),
+                function() return not self.showDefault and self.key == encounter.key end,
+                function() return choose(false, encounter.key) end)
+            local count = self:OverridesOf(encounter)
+            if count > 0 then withRight(radio, OVERRIDE .. overridesText(count) .. "|r") end
+        end
+        if root.SetScrollMode then root:SetScrollMode(MENU_HEIGHT) end
     end)
     if menu then menu:SetFrameStrata("TOOLTIP") end
 end
@@ -156,7 +255,7 @@ end
 -- in this encounter's planned layout (not the raid's groups now) and the classes among the people
 function AssignmentsWindow:Viewer()
     local name = self.viewer
-    if not name then return nil end
+    if not (name and self.encounter) then return nil end
     local present = {}
     for _, class in pairs(self.viewers.classes) do present[class] = true end
     local plan = currentPlan()
@@ -195,7 +294,7 @@ end
 -- The rows use AceGUI's Dropdown for its look (UIDropDownMenuTemplate, set up as the plan window's) with this menu
 -- instead of its own list. AceGUI widgets are shared with other addons: the clicks and the text's alignment go back
 -- before the widget is released.
-function AssignmentsWindow:HookDropdown(dropdown, openMenu)
+function AssignmentsWindow:HookDropdown(dropdown, openMenu, justify)
     local saved = {
         button = dropdown.button:GetScript("OnClick"),
         cover = dropdown.button_cover:GetScript("OnClick"),
@@ -204,7 +303,7 @@ function AssignmentsWindow:HookDropdown(dropdown, openMenu)
     local function open() openMenu(dropdown.frame) end
     dropdown.button:SetScript("OnClick", open)
     dropdown.button_cover:SetScript("OnClick", open)
-    dropdown.text:SetJustifyH("LEFT")
+    dropdown.text:SetJustifyH(justify or "LEFT")
     self.hooked[#self.hooked + 1] = { dropdown = dropdown, saved = saved }
 end
 
@@ -296,7 +395,7 @@ function AssignmentsWindow:Build(message)
     self:UnhookDropdowns()
     self:DetachPreview()
     frame:ReleaseChildren()
-    self.jobs, self.rows, self.preview = nil, nil, nil
+    self.jobs, self.rows, self.labels, self.preview = nil, nil, nil, nil
 
     local plan = currentPlan()
     self.key = host:EncounterToEdit(self.key)
@@ -308,12 +407,13 @@ function AssignmentsWindow:Build(message)
         return
     end
     self.people, self.raid = plan.people, raidMembers()
+    self.defaults = Assignments.Defaults(plan)
+    self:AddEncounterRow(frame, plan, encounter)
 
-    host:AddEncounterDropdown(frame, self.key, function(key)
-        self.key = key
-        self:Build()
-    end, function() return self:IsChanged() end)
-
+    if self.showDefault then
+        self:BuildDefault(plan, encounter, message)
+        return
+    end
     if not Assignments.HasTemplate(encounter) then
         addLabel(frame, L["Export the plan again from the wiki to change assignments."])
         host:SetStatus(message or "")
@@ -332,7 +432,46 @@ function AssignmentsWindow:Build(message)
 
     self.jobs = Assignments.GroupJobs(Assignments.Jobs(encounter))
     self.encounter = encounter
+    self:BuildJobs(L["This encounter's note has no assignments."], message)
+end
 
+-- The encounter row: "Encounter" and a dropdown of Default and the plan's encounters (OpenEncounterMenu); the rest
+-- of the row stays empty, the section starts below it
+function AssignmentsWindow:AddEncounterRow(frame, plan, encounter)
+    local label = AceGUI:Create("Label")
+    label:SetFontObject(GameFontNormal)
+    label:SetWidth(LABEL_WIDTH)
+    label:SetText(L["Encounter"])
+    frame:AddChild(label)
+    local dropdown = AceGUI:Create("Dropdown")
+    dropdown:SetWidth(ENCOUNTER_WIDTH)
+    self:HookDropdown(dropdown, function(owner) self:OpenEncounterMenu(owner) end, dropdown.text:GetJustifyH())
+    local _, index = findEncounter(plan, encounter.key)
+    dropdown:SetText(self.showDefault and DEFAULT_TEXT or encounterText(plan, index, encounter))
+    frame:AddChild(dropdown)
+    local rest = AceGUI:Create("Label")
+    rest:SetFullWidth(true)
+    frame:AddChild(rest)
+end
+
+-- Default: every job key of the plan's encounters with the default holders. The preview shows the encounter the
+-- section showed last (else the first that takes part) as the new defaults would make it.
+function AssignmentsWindow:BuildDefault(plan, encounter, message)
+    self.jobs = Assignments.DefaultJobs(plan, self.defaults)
+    self.encounter = nil
+    if Assignments.TakesPart(encounter) then
+        self.encounter = encounter
+    else
+        for _, other in ipairs(plan.encounters) do
+            if not self.encounter and Assignments.TakesPart(other) then self.encounter = other end
+        end
+    end
+    self:BuildJobs(L["None of the encounters' notes have assignments."], message)
+end
+
+-- The rows of `self.jobs` (or `empty` when there are none), the preview, Save and Undo changes
+function AssignmentsWindow:BuildJobs(empty, message)
+    local frame = self.host.container
     -- The jobs: label and dropdown, in a scroll frame
     local rowsBox = AceGUI:Create("SimpleGroup")
     rowsBox:SetFullWidth(true)
@@ -343,15 +482,15 @@ function AssignmentsWindow:Build(message)
     rows:SetLayout("Flow")
     rowsBox:AddChild(rows)
     if #self.jobs == 0 then
-        addLabel(rows, L["This encounter's note has no assignments."])
+        addLabel(rows, empty)
     end
-    self.rows = {}
+    self.rows, self.labels = {}, {}
     for i, job in ipairs(self.jobs) do
         local label = AceGUI:Create("Label")
         label:SetFontObject(GameFontNormalSmall)
         label:SetWidth(LABEL_WIDTH)
-        label:SetText(table.concat(job.tokens, " · "))
         rows:AddChild(label)
+        self.labels[i] = label
         local dropdown = AceGUI:Create("Dropdown")
         dropdown:SetWidth(DROPDOWN_WIDTH)
         self:HookDropdown(dropdown, function(owner) self:OpenMenu(job, owner) end)
@@ -393,7 +532,9 @@ function AssignmentsWindow:Build(message)
 
     -- The rebuilt note, as Method Raid Tools shows it, in the window's own scroll frame
     local previewBox = AceGUI:Create("InlineGroup")
-    previewBox:SetTitle(L["Note preview"])
+    -- Default: the note of the encounter it previews, named
+    previewBox:SetTitle(self.showDefault and self.encounter and format(L["Note preview: %s"], self.encounter.label)
+        or L["Note preview"])
     previewBox:SetFullWidth(true)
     previewBox:SetAutoAdjustHeight(false)
     previewBox:SetHeight(PREVIEW_HEIGHT)
@@ -410,12 +551,20 @@ end
 function AssignmentsWindow:Update(message)
     if not (self.host and self.jobs) then return end
     for i, job in ipairs(self.jobs) do
+        self.labels[i]:SetText(self:KeyText(job))
         self.rows[i]:SetText(self:JobText(job))
     end
     self.viewerDropdown:SetText(self:ViewerText(self.viewer))
-    local note = ns.NoteView.For(Assignments.Preview(self.encounter, self.jobs, self.people), self:Viewer())
+    local note = ""
+    if self.encounter then
+        local jobs = self.jobs
+        if self.showDefault then
+            jobs = Assignments.FollowDefaults(Assignments.Jobs(self.encounter), self.defaults, self.jobs)
+        end
+        note = ns.NoteView.For(Assignments.Preview(self.encounter, jobs, self.people), self:Viewer())
+    end
     self.preview:SetText(UTRM:GetModule("MRT"):FormatNote(note))
-    local changed = Assignments.Changed(self.encounter, self.jobs)
+    local changed = self:ChangedCount()
     self.saveButton:SetDisabled(changed == 0)
     self.undoButton:SetDisabled(changed == 0)
     if message then
@@ -453,7 +602,34 @@ function AssignmentsWindow:EditEncounter(change)
     return ok, message
 end
 
+-- Default: the new holders go to every encounter that follows the old default (Modules/Assignments.lua)
+function AssignmentsWindow:SaveDefault()
+    local invalid = Assignments.Validate(self.jobs)
+    if invalid then
+        self.host:SetStatus("|cffff4040" .. format(L["%s cannot be saved like this: choose again."], invalid) .. "|r")
+        return
+    end
+    local defaults, jobs, rebuilt, kept = self.defaults, self.jobs, {}, {}
+    self.editing = true
+    local ok, message = UTRM:GetModule("PlanImport"):Edit(function(plan)
+        rebuilt, kept = Assignments.SaveDefaults(plan, defaults, jobs, plan.people)
+    end)
+    self.editing = false
+    if not ok then
+        self:Build("|cffff4040" .. (message or L["The encounter changed in the meantime: check it again."]) .. "|r")
+        return
+    end
+    for _, key in ipairs(rebuilt) do postIfActive(key) end
+    local text = format(L["Default assignments saved: %d encounters rebuilt."], #rebuilt)
+    if #kept > 0 then
+        text = text .. " " .. format(L["%d encounters keep their own players: the new ones cannot fill the job there."],
+            #kept)
+    end
+    self:Build(UTRM.RaidPlanWindow:SavedMessage(text))
+end
+
 function AssignmentsWindow:Save()
+    if self.showDefault then return self:SaveDefault() end
     local invalid = Assignments.Validate(self.jobs)
     if invalid then
         self.host:SetStatus("|cffff4040" .. format(L["%s cannot be saved like this: choose again."], invalid) .. "|r")
@@ -462,6 +638,8 @@ function AssignmentsWindow:Save()
     local jobs = self.jobs
     local ok, message = self:EditEncounter(function(encounter, plan)
         if encounter.customNote ~= nil or not Assignments.HasTemplate(encounter) then return false end
+        -- The defaults stay what they are now, also when this changes which holders are the most common
+        if plan.assignmentDefaults == nil then Assignments.KeepDefaults(plan) end
         Assignments.Apply(encounter, jobs, plan.people)
     end)
     if not ok then
@@ -480,8 +658,15 @@ function AssignmentsWindow:ResetNote()
     self:Build(not ok and message and ("|cffff4040" .. message .. "|r") or nil)
 end
 
+-- How many jobs the draft changes: the Default's against the defaults, an encounter's against its slots
+function AssignmentsWindow:ChangedCount()
+    if not self.jobs then return 0 end
+    if self.showDefault then return Assignments.ChangedDefaults(self.defaults, self.jobs) end
+    return Assignments.Changed(self.encounter, self.jobs)
+end
+
 function AssignmentsWindow:IsChanged()
-    return self.jobs ~= nil and Assignments.Changed(self.encounter, self.jobs) > 0
+    return self:ChangedCount() > 0
 end
 
 -- Shows the section in the Raid Plan window (`host`, UI/RaidPlanWindow.lua) on the encounter it showed last
@@ -495,7 +680,7 @@ end
 function AssignmentsWindow:Detach()
     self:UnhookDropdowns()
     self:DetachPreview()
-    self.host, self.jobs, self.rows, self.viewerDropdown = nil, nil, nil, nil
+    self.host, self.jobs, self.rows, self.labels, self.viewerDropdown = nil, nil, nil, nil, nil
 end
 
 -- Unsaved changes are dropped (the Raid Plan window asked first)

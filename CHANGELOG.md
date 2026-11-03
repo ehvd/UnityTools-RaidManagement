@@ -5,6 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+### Added
+
+- Default assignments: Default, at the top of the Assignments section's Encounter dropdown, changes a job (TANK1,
+  HEALER1 …) on every encounter that follows the default and rebuilds their notes. On an encounter, a job with
+  other players than the default is an override: its name is cyan, its menu has Use default, and the Encounter
+  dropdown shows how many overrides each encounter has. An imported plan takes each job's most common players as
+  its default, so its exceptions show as overrides at once. The defaults are kept in the plan and sync with it;
+  the export still writes each encounter's own players
+
 ## [0.2.0] - 2026-11-01
 
 ### Added

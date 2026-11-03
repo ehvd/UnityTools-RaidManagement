@@ -81,6 +81,42 @@ function groupTokens(tokensJson)
     for i, job in ipairs(A.GroupJobs(jobs)) do out[i] = job.tokens[1] end
     return encode(out)
 end
+
+-- The defaults of a plan: its defaults, the Default's jobs after \`steps\`, each encounter's overrides; with
+-- \`save\`, SaveDefaults runs and the plan comes back too. \`keep\` runs KeepDefaults first.
+function defaults(planJson, stepsJson, save, keep)
+    local plan, steps = Codec.JSONDecode(planJson), Codec.JSONDecode(stepsJson)
+    if keep then A.KeepDefaults(plan) end
+    local d = A.Defaults(plan)
+    local jobs = A.DefaultJobs(plan, d)
+    for _, step in ipairs(steps) do
+        if step.set then A.Set(jobOf(jobs, step.set), step.name) end
+        if step.toggle then A.Toggle(jobOf(jobs, step.toggle), step.name) end
+    end
+    local overrides = {}
+    for _, encounter in ipairs(plan.encounters) do
+        overrides[encounter.key] = A.TakesPart(encounter) and A.Overrides(A.Jobs(encounter), d) or 0
+    end
+    local result = { defaults = d, jobs = jobs, overrides = overrides, changed = A.ChangedDefaults(d, jobs) }
+    if save then
+        result.rebuilt, result.kept = A.SaveDefaults(plan, d, jobs, plan.people)
+    end
+    result.plan = plan
+    return encode(result)
+end
+
+-- An encounter's job back to the default: { ok, holders }
+function useDefault(planJson, key, token)
+    local plan = Codec.JSONDecode(planJson)
+    local d = A.Defaults(plan)
+    for _, encounter in ipairs(plan.encounters) do
+        if encounter.key == key then
+            local job = jobOf(A.Jobs(encounter), token)
+            local ok = A.UseDefault(job, d)
+            return encode({ ok = ok, holders = job.holders, override = A.IsOverride(job, d) })
+        end
+    end
+end
 `;
 
 const L = lauxlib.luaL_newstate();
@@ -203,4 +239,114 @@ test('candidates in alphabetical order, ignoring case and accents', () => {
   for (const slot of lucifron.slots.filter((s) => s.token === 'TANK1' || s.token === 'MT')) slot.candidates = names;
   assert.deepEqual(run(lucifron).jobs[0].candidates,
     ['Ämber', 'Durance', 'jasmine', 'Jmdruid', 'Jugildina', 'Rigwar', 'Tracedeneige', 'Tracedeneïge']);
+});
+
+// Default assignments (issue #59)
+
+const plan = () => ({ people: PAYLOAD.people, encounters: structuredClone(PAYLOAD.encounters) });
+
+function callLua(name, ...args) {
+  lua.lua_getglobal(L, to_luastring(name));
+  for (const arg of args) {
+    if (typeof arg === 'boolean') lua.lua_pushboolean(L, arg);
+    else lua.lua_pushstring(L, to_luastring(typeof arg === 'string' ? arg : JSON.stringify(arg)));
+  }
+  if (lua.lua_pcall(L, args.length, 1, 0) !== lua.LUA_OK) throw new Error(to_jsstring(lua.lua_tostring(L, -1)));
+  const result = JSON.parse(to_jsstring(lua.lua_tostring(L, -1)));
+  lua.lua_pop(L, 1);
+  return result;
+}
+
+const defaults = (p, steps = [], save = false, keep = false) => callLua('defaults', p, steps, save, keep);
+const encounterOf = (p, key) => p.encounters.find((e) => e.key === key);
+const slotHolders = (p, key, token) => encounterOf(p, key).slots.find((s) => s.token === token).holders;
+
+test('defaults without stored ones: each job\'s most common holders, ties to the first encounter', () => {
+  const result = defaults(plan());
+  assert.deepEqual(result.defaults['role=tank&order=1'], ['Aldreth']);    // Lucifron and the Bug Trio
+  assert.deepEqual(result.defaults['role=healer&order=1'], ['Zoë']);      // Lucifron's Zoë against Magmadar's nobody
+  assert.deepEqual(result.defaults['@kicker'], ['Kael', 'Siggi']);       // the Welcome's, the first encounter
+  assert.equal(result.defaults['class=mage'], undefined);               // list and none jobs are not offered
+  assert.deepEqual(result.overrides, {
+    'x:1': 0, 'molten-core:trash': 0, 'molten-core:lucifron': 1, 'molten-core:magmadar': 1, 'ahn-qiraj:bug-trio': 0,
+  });
+  assert.equal(result.changed, 0);
+});
+
+test('stored defaults win; a job they do not name takes the most common holders', () => {
+  const p = plan();
+  p.assignmentDefaults = { 'role=tank&order=1': ['Brunhild'] };
+  const result = defaults(p);
+  assert.deepEqual(result.defaults['role=tank&order=1'], ['Brunhild']);
+  assert.deepEqual(result.defaults['role=tank&order=2'], ['Brunhild']);
+  assert.equal(result.overrides['ahn-qiraj:bug-trio'], 1);
+  assert.equal(result.overrides['molten-core:lucifron'], 2);
+});
+
+test('the Default\'s jobs: every key, tokens and candidates of all encounters, grouped like an encounter\'s', () => {
+  const { jobs } = defaults(plan());
+  assert.deepEqual(jobs.map((job) => job.tokens[0]),
+    ['@Kicker', 'TANK1', 'TANK2', 'TANK3', 'HEALER1', 'HEALER2', 'HEALER_PALADIN1', '@Tranq']);
+  const tank1 = jobs.find((job) => job.key === 'role=tank&order=1');
+  assert.deepEqual(tank1.tokens, ['TANK1', 'MT']);
+  assert.deepEqual(tank1.holders, ['Aldreth']);
+  const p = plan();
+  encounterOf(p, 'ahn-qiraj:bug-trio').slots[0].candidates = ['Aldreth', 'Kael'];
+  assert.deepEqual(defaults(p).jobs.find((job) => job.key === 'role=tank&order=1').candidates,
+    ['Aldreth', 'Brunhild', 'Fenlyn', 'Kael']);
+});
+
+test('saving the Default changes the encounters that follow it and rebuilds their notes; overrides stay', () => {
+  const result = defaults(plan(), [{ set: 'TANK1', name: 'Brunhild' }, { set: 'HEALER1', name: 'Fenlyn' }], true);
+  assert.equal(result.changed, 2);
+  assert.deepEqual(result.rebuilt, ['molten-core:lucifron', 'ahn-qiraj:bug-trio']);
+  assert.deepEqual(result.kept, []);
+  const p = result.plan;
+  assert.deepEqual(slotHolders(p, 'molten-core:lucifron', 'MT'), ['Brunhild']);
+  assert.deepEqual(slotHolders(p, 'molten-core:lucifron', 'HEALER1'), ['Fenlyn']);
+  assert.deepEqual(slotHolders(p, 'ahn-qiraj:bug-trio', 'MT'), ['Brunhild']);
+  assert.deepEqual(slotHolders(p, 'molten-core:magmadar', 'HEALER1'), []);   // its own (nobody): an override
+  assert.match(encounterOf(p, 'molten-core:lucifron').note, /^\{rt1\} \|cffc79c6eBrunhild\|r on Lucifron/);
+  assert.equal(encounterOf(p, 'molten-core:magmadar').note, encounterOf(plan(), 'molten-core:magmadar').note);
+  assert.deepEqual(p.assignmentDefaults['role=tank&order=1'], ['Brunhild']);
+  assert.deepEqual(p.assignmentDefaults['@kicker'], ['Kael', 'Siggi']);
+  // Saved, the defaults are the stored ones: Magmadar's healer is still its only override
+  const after = defaults(p);
+  assert.equal(after.overrides['molten-core:magmadar'], 1);
+  assert.equal(after.overrides['ahn-qiraj:bug-trio'], 0);
+});
+
+test('an encounter whose candidates do not include the new default keeps its holders', () => {
+  const p = plan();
+  for (const slot of encounterOf(p, 'ahn-qiraj:bug-trio').slots) slot.candidates = ['Aldreth', 'Brunhild'];
+  const result = defaults(p, [{ set: 'TANK1', name: 'Fenlyn' }], true);
+  assert.deepEqual(result.rebuilt, ['molten-core:lucifron']);
+  assert.deepEqual(result.kept, ['ahn-qiraj:bug-trio']);
+  assert.deepEqual(slotHolders(result.plan, 'ahn-qiraj:bug-trio', 'MT'), ['Aldreth']);
+});
+
+test('encounters with a hand-edited note take no part', () => {
+  const p = plan();
+  encounterOf(p, 'molten-core:lucifron').customNote = 'by hand';
+  const result = defaults(p, [{ set: 'MT', name: 'Brunhild' }], true);
+  assert.deepEqual(result.defaults['role=healer&order=1'], []);      // only Magmadar's left
+  assert.deepEqual(result.rebuilt, ['ahn-qiraj:bug-trio']);
+  assert.deepEqual(slotHolders(result.plan, 'molten-core:lucifron', 'MT'), ['Aldreth']);
+});
+
+test('KeepDefaults stores the defaults as they are, so an encounter change does not move them', () => {
+  const p = defaults(plan(), [], false, true).plan;
+  assert.deepEqual(p.assignmentDefaults['role=healer&order=1'], ['Zoë']);
+  encounterOf(p, 'molten-core:lucifron').slots.find((s) => s.token === 'HEALER1').holders = [];
+  assert.deepEqual(defaults(p).defaults['role=healer&order=1'], ['Zoë']);
+  assert.equal(defaults(p).overrides['molten-core:lucifron'], 2);
+});
+
+test('an override goes back to the default, unless the default cannot fill it there', () => {
+  const back = callLua('useDefault', plan(), 'molten-core:magmadar', 'HEALER1');
+  assert.deepEqual(back, { ok: true, holders: ['Zoë'], override: false });
+  const p = plan();
+  p.assignmentDefaults = { 'role=healer&order=1': ['Aldreth'] };
+  assert.deepEqual(callLua('useDefault', p, 'molten-core:magmadar', 'HEALER1'),
+    { ok: false, holders: [], override: true });
 });

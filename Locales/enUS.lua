@@ -236,3 +236,12 @@ L["Sync"] = true
 L["Not in a raid: your edits stay on your client until you lead a raid or assist in one."] = true
 L["You are raid leader or assistant: your edits sync to the raid."] = true
 L["You are not raid leader or assistant: your edits stay on your client, and the leader's plan may replace them."] = true
+
+-- Default assignments (issue #59)
+L["1 override"] = true
+L["%d overrides"] = true
+L["Use default: %s"] = true
+L["Note preview: %s"] = true
+L["None of the encounters' notes have assignments."] = true
+L["Default assignments saved: %d encounters rebuilt."] = true
+L["%d encounters keep their own players: the new ones cannot fill the job there."] = true
