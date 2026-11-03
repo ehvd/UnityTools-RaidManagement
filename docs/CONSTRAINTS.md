@@ -76,6 +76,11 @@ documented integration API; `Modules/Gargul.lua` uses its internals (Gargul 8.0.
   id per import. The addon stores that id and a checksum of its own string after importing; Gargul has the plan's
   priorities while both still match (someone importing something else changes the id; a new plan with other
   priorities changes the checksum).
+- A string pasted into the Raid Plan window's Gargul section is checked before it is saved, without importing it
+  (`Modules/GargulString.lua`, against Gargul 8.0.2): `TMB:import` trims it and picks the format by its first line
+  — item CSV (`^[0-9]+,`), DFT (starts with `"`), RRobin (a line `{` and JSON with `reserves`), TMB's JSON
+  (`{"wishlists":`), else base64(zlib(...)) of one of these. Gargul also accepts strings that import nothing; the
+  check refuses those.
 
 Source: `Interface/AddOns/Gargul/Classes/TMB.lua`, `Interface/TMB/Importer.lua` (Gargul 8.0.1)
 

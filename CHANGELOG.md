@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ### Added
 
+- The Raid Plan window's Gargul section has a Paste string box: Save puts a Gargul import string (loot priorities from
+  anywhere that makes one) into the plan, replacing the imported one or giving a plan without one its own. It syncs
+  like other edits; Import into Gargul and the readiness check then use it. A string Gargul's importer would not
+  take, or one that imports nothing, is refused with a message before saving
 - Encounters (the Raid Plan window) changes the plan's encounter list in game. It lists every encounter in plan
   order: rename one in its row (the label only: the sync and the note after a kill still match), move it up or
   down with the arrow buttons, or remove it after a confirmation. Below the list, add a boss from the built-in
