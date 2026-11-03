@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+### Added
+
+- New plan (its own section of the Raid Plan window, also opened by the plan window's New plan button when no plan is
+  loaded) makes a raid plan in game without the UnityWiki planner: a title (the raids and today's date unless you
+  type one) and one or more raids. The plan has, per raid, Trash and then the bosses in kill order with their
+  encounter IDs, empty notes, and the raid as it is arranged now as the night's groups (empty outside a raid). It replaces the current plan after the same
+  confirmation as an import, and syncs like one. The bosses come from a built-in table that mirrors UnityWiki's
+  (fights with several bosses, such as the Bug Trio, are one encounter); Assignments says such a plan's notes have no
+  assignment slots
+
 ## [0.2.0] - 2026-11-01
 
 ### Added
