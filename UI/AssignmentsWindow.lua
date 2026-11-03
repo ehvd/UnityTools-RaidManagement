@@ -315,7 +315,7 @@ function AssignmentsWindow:Build(message)
     end, function() return self:IsChanged() end)
 
     if not Assignments.HasTemplate(encounter) then
-        addLabel(frame, L["Export the plan again from the wiki to change assignments."])
+        addLabel(frame, L["This encounter's note has no assignment slots. Write the names in the note (Notes)."])
         host:SetStatus(message or "")
         host:UpdateTree()
         return

@@ -5,10 +5,10 @@ local L = UTRM.L
 local AceGUI = LibStub("AceGUI-3.0")
 
 -- The Raid Plan window (issue #37): everything about the raid plan in one place. Blizzard's options list on the left
--- (AceGUI's TreeGroup, as in the Interface Options) picks a section: Groups, Assignments, Notes, Gargul, Config,
--- Import. The editing sections keep their own drafts with their own Save; leaving a section (or its encounter) with
--- unsaved changes asks first, and the list marks such a section with *. Choosing an encounter here only picks what
--- is edited: the active encounter changes in the plan window alone.
+-- (AceGUI's TreeGroup, as in the Interface Options) picks a section: Groups, Assignments, Notes, Encounters, Gargul,
+-- Config, New plan, Import, Export, Raid members. The editing sections keep their own drafts with their own Save;
+-- leaving a section (or its encounter) with unsaved changes asks first, and the list marks such a section with *.
+-- Choosing an encounter here only picks what is edited: the active encounter changes in the plan window alone.
 local RaidPlanWindow = UTRM:NewModule("RaidPlanWindow", "AceEvent-3.0")
 UTRM.RaidPlanWindow = RaidPlanWindow
 
@@ -32,23 +32,17 @@ end
 
 ----------------------------------------------------------------------------------------------- sections ---
 
--- The plan-wide Gargul loot priorities: whether Gargul has them, and importing them
+-- The plan-wide Gargul loot priorities: whether Gargul has them, importing them, and pasting another string into the
+-- plan (issue #45; long pastes as in the Import section)
 local Gargul = {}
 
-function Gargul:Attach(host)
-    self.host = host
-    local container = host.container
-    container:ReleaseChildren()
+-- What Gargul has of the plan's loot priorities, and whether they can be imported
+function Gargul:Refresh()
     local plan = currentPlan()
+    if not (self.host and plan) then return end
     local module = UTRM:GetModule("Gargul")
     local _, unusable = module:GetAddon()
     local state = module:GetState(plan)
-
-    local heading = AceGUI:Create("Heading")
-    heading:SetText(L["Loot priorities"])
-    heading:SetFullWidth(true)
-    container:AddChild(heading)
-
     local text
     if not plan.gargul then
         text = L["The raid plan has no Gargul loot priorities."]
@@ -59,31 +53,108 @@ function Gargul:Attach(host)
     else
         text = "|cffffa040" .. L["Gargul: import the loot priorities"] .. "|r"
     end
+    self.label:SetText(text)
+    self.import:SetDisabled(not (plan.gargul and not unusable))
+    self.host.container:DoLayout()
+end
+
+-- Save follows the paste box: on while it holds something
+function Gargul:UpdateButtons()
+    if not self.editBox then return end
+    self.save:SetDisabled(not self:IsChanged())
+    self.host:UpdateTree()
+end
+
+function Gargul:Attach(host)
+    self.host = host
+    local container = host.container
+    container:ReleaseChildren()
+    local module = UTRM:GetModule("Gargul")
+
+    local heading = AceGUI:Create("Heading")
+    heading:SetText(L["Loot priorities"])
+    heading:SetFullWidth(true)
+    container:AddChild(heading)
+
     local label = AceGUI:Create("Label")
     label:SetFullWidth(true)
     label:SetFontObject(GameFontHighlight)
-    label:SetText(text)
     container:AddChild(label)
 
     local import = AceGUI:Create("Button")
     import:SetText(L["Import into Gargul"])
     import:SetWidth(180)
-    import:SetDisabled(not (plan.gargul and not unusable))
     import:SetCallback("OnClick", function()
         local ok, message = module:ImportPlan(currentPlan())
-        self:Attach(host)
+        self:Refresh()
         host:SetStatus(ok and message or ("|cffff4040" .. (message or "") .. "|r"))
     end)
     container:AddChild(import)
+
+    local pasteHeading = AceGUI:Create("Heading")
+    pasteHeading:SetText(L["Paste string"])
+    pasteHeading:SetFullWidth(true)
+    container:AddChild(pasteHeading)
+
+    local editBox = AceGUI:Create("MultiLineEditBox")
+    editBox:SetLabel(L["Paste a Gargul import string:"])
+    editBox:DisableButton(true)
+    editBox:SetFullWidth(true)
+    editBox:SetNumLines(8)
+    UTRM.ImportWindow.HookPaste(editBox, function(pasted)
+        self.pasted = pasted
+        if pasted then
+            host:SetStatus(format(L["%d characters pasted. Press Save."], #pasted))
+        end
+        self:UpdateButtons()
+    end)
+    editBox:SetCallback("OnTextChanged", function() self:UpdateButtons() end)
+    container:AddChild(editBox)
+
+    local save = AceGUI:Create("Button")
+    save:SetText(L["Save"])
+    save:SetWidth(140)
+    save:SetCallback("OnClick", function() self:Save() end)
+    container:AddChild(save)
+
+    self.label, self.import, self.editBox, self.save, self.pasted = label, import, editBox, save, nil
     host:SetStatus("")
+    self:Refresh()
+    self:UpdateButtons()
+end
+
+-- Checks the pasted string and stores it in the plan; a refused one stays in the box
+function Gargul:Save()
+    local host = self.host
+    local ok, message = UTRM:GetModule("Gargul"):SetPlanString(self.pasted or self.editBox:GetText())
+    if not ok then
+        host:SetStatus("|cffff4040" .. message .. "|r")
+        return
+    end
+    self:Discard()
+    host:SetStatus(host:SavedMessage(L["Loot priorities saved in the raid plan. Import them into Gargul."]))
+end
+
+function Gargul:IsChanged()
+    return self.editBox ~= nil and (self.pasted ~= nil or self.editBox:GetText() ~= "")
+end
+
+function Gargul:Discard()
+    self.pasted = nil
+    if self.editBox then
+        self.editBox:SetText("")
+        self:UpdateButtons()
+    end
 end
 
 function Gargul:Detach()
-    self.host = nil
+    if self.editBox then UTRM.ImportWindow.UnhookPaste(self.editBox) end
+    self.host, self.label, self.import, self.editBox, self.save, self.pasted = nil, nil, nil, nil, nil, nil
 end
 
+-- Another plan, an edit or a sync: what Gargul has of it; the paste box keeps what is being pasted
 function Gargul:OnPlanChanged()
-    if self.host then self:Attach(self.host) end
+    self:Refresh()
 end
 
 -- Settings that apply at once: the switch after a kill (a plan edit, it syncs), the plan window, the minimap button
@@ -203,14 +274,19 @@ end
 
 -- The sections in the list's order. Each one has Attach(host) and Detach(); the editing ones IsChanged() and
 -- Discard(); OnPlanChanged() when it follows plan changes through the window.
-local ORDER = { "groups", "assignments", "notes", "gargul", "config", "import" }
+local ORDER = { "groups", "assignments", "notes", "encounters", "gargul", "config", "newplan", "import",
+    "export", "roster" }
 local SECTIONS = {
     groups = { title = L["Groups"], needsPlan = true, get = function() return UTRM.GroupEditor end },
     assignments = { title = L["Assignments"], needsPlan = true, get = function() return UTRM.AssignmentsWindow end },
     notes = { title = L["Notes"], needsPlan = true, get = function() return UTRM.NoteEditor.Section end },
+    encounters = { title = L["Encounters"], needsPlan = true, get = function() return UTRM.EncountersSection end },
     gargul = { title = L["Gargul"], needsPlan = true, get = function() return Gargul end },
     config = { title = L["Config"], get = function() return Config end },
+    newplan = { title = L["New plan"], get = function() return UTRM.NewPlanSection end },
     import = { title = L["Import"], get = function() return UTRM.ImportWindow end },
+    export = { title = L["Export"], needsPlan = true, get = function() return UTRM.ExportSection end },
+    roster = { title = L["Raid members"], get = function() return UTRM.RosterSection end },
 }
 
 local function section(key)
@@ -397,7 +473,7 @@ function RaidPlanWindow:Create()
 end
 
 -- Opens the window: on section `key` when given (asking about unsaved changes), else where it was. Without a plan
--- only Config and Import can show.
+-- only Config, New plan and Import can show.
 function RaidPlanWindow:Open(key)
     local plan = currentPlan()
     if not self.frame then self:Create() end

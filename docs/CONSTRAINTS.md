@@ -76,6 +76,11 @@ documented integration API; `Modules/Gargul.lua` uses its internals (Gargul 8.0.
   id per import. The addon stores that id and a checksum of its own string after importing; Gargul has the plan's
   priorities while both still match (someone importing something else changes the id; a new plan with other
   priorities changes the checksum).
+- A string pasted into the Raid Plan window's Gargul section is checked before it is saved, without importing it
+  (`Modules/GargulString.lua`, against Gargul 8.0.2): `TMB:import` trims it and picks the format by its first line
+  — item CSV (`^[0-9]+,`), DFT (starts with `"`), RRobin (a line `{` and JSON with `reserves`), TMB's JSON
+  (`{"wishlists":`), else base64(zlib(...)) of one of these. Gargul also accepts strings that import nothing; the
+  check refuses those.
 
 Source: `Interface/AddOns/Gargul/Classes/TMB.lua`, `Interface/TMB/Importer.lua` (Gargul 8.0.1)
 
@@ -87,7 +92,25 @@ while it lays the text out. The import window caps the edit box with `SetMaxByte
 WeakAuras uses. The edit box is an AceGUI widget from a pool shared with other addons, so the window removes its
 `OnChar` / `OnUpdate` scripts and the byte limit before releasing it.
 
-Source: `UI/ImportWindow.lua`; the format of the export: UnityWiki `docs/addon-export.md`
+Exporting (0.3.0, the Raid Plan window's Export section) goes the other way: the game has no clipboard API, so the
+box holds the whole string, selected, for Ctrl+C. It is made when the section opens and again when the plan changes,
+set with one `SetText` (one layout of the text, where a paste lays it out again for every character) with no letter
+or byte limit, and what is typed into it is undone. `PlanCodec.Encode` is the reverse of
+`Decode`: compact JSON (`protocol` first, then the keys sorted, so one plan always gives one string; UTF-8 and MRT's
+`|c…|r` as they are, `"`, `\` and control characters escaped), `LibDeflate:CompressZlib`, standard base64 with
+padding. That is UnityWiki's export protocol 2, so this addon's import and the wiki's `decodeAddon` both read it
+(`tests/plan-export.test.mjs`, which also runs the wiki's decoder when UnityWiki is checked out next to the repo).
+Lua has one table for JSON's arrays and objects: an empty table is `[]` unless it is marked as an object
+(`PlanCodec.Object`; decoded objects are), so a person with neither class nor role stays `{}`.
+
+What goes in is `PlanCodec.Payload`: per encounter the note as used in game (`PlanImport:NoteOf`); an encounter with
+a hand-edited note goes without `template` and `slots`, the others with their current holders. The layouts that
+encounters use, `people` for every name the payload names (the plan's entries kept, the others with the class the
+raid roster shows, if any), the event, the Gargul string, `generatedAt` the export time (so an import of it is a new
+plan to the sync). What only this addon keeps (the active encounter, the import, choice and sync times, the
+revision, the fallback note) stays out until UnityWiki settles their names (ehvd/UnityWiki#143).
+
+Source: `UI/ImportWindow.lua`, `UI/ExportSection.lua`; the format of the export: UnityWiki `docs/addon-export.md`
 
 ## 7. Raid plan sync
 
@@ -124,7 +147,7 @@ travels as a whole plan, like an import. The meaning of the identity in `state` 
 A note edited in game is kept next to the plan's note as `encounter.customNote`; the plan's `note`, `template` and
 `slots` are never overwritten. `PlanImport:NoteOf(encounter)` is the note that is sent and shown (the hand edit when
 there is one), and Reset to the plan's note removes the hand edit. `PlanCodec.Check` checks `customNote` on synced
-plans; exports never carry it.
+plans; the wiki's exports never carry it, and this addon's export sends it as the encounter's `note` (section 6).
 
 Source: <https://warcraft.wiki.gg/wiki/API_C_ChatInfo.SendAddonMessage>, AceComm-3.0
 
