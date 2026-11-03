@@ -114,7 +114,7 @@ function ImportWindow:Attach(host)
     container:ReleaseChildren()
 
     local editBox = AceGUI:Create("MultiLineEditBox")
-    editBox:SetLabel(L["Paste the string from Export for addon in the UnityWiki raid planner:"])
+    editBox:SetLabel(L["Paste a raid plan string:"])
     editBox:DisableButton(true)
     editBox:SetFullWidth(true)
     editBox:SetNumLines(12)

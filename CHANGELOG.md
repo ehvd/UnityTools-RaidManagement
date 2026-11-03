@@ -5,6 +5,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+### Changed
+
+- The addon's texts no longer name UnityWiki or its raid planner: the import asks for a raid plan string, and an
+  encounter whose note has no assignment slots says to write the names in the note
 ### Added
 
 - Export, a new section of the Raid Plan window, gives the raid plan as one string, selected for Ctrl+C, to import
