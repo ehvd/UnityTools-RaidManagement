@@ -5,10 +5,10 @@ local L = UTRM.L
 local AceGUI = LibStub("AceGUI-3.0")
 
 -- The Raid Plan window (issue #37): everything about the raid plan in one place. Blizzard's options list on the left
--- (AceGUI's TreeGroup, as in the Interface Options) picks a section: Groups, Assignments, Notes, Gargul, Config,
--- Import. The editing sections keep their own drafts with their own Save; leaving a section (or its encounter) with
--- unsaved changes asks first, and the list marks such a section with *. Choosing an encounter here only picks what
--- is edited: the active encounter changes in the plan window alone.
+-- (AceGUI's TreeGroup, as in the Interface Options) picks a section: Groups, Assignments, Notes, Encounters, Gargul,
+-- Config, New plan, Import. The editing sections keep their own drafts with their own Save; leaving a section (or its
+-- encounter) with unsaved changes asks first, and the list marks such a section with *. Choosing an encounter here
+-- only picks what is edited: the active encounter changes in the plan window alone.
 local RaidPlanWindow = UTRM:NewModule("RaidPlanWindow", "AceEvent-3.0")
 UTRM.RaidPlanWindow = RaidPlanWindow
 
@@ -274,13 +274,15 @@ end
 
 -- The sections in the list's order. Each one has Attach(host) and Detach(); the editing ones IsChanged() and
 -- Discard(); OnPlanChanged() when it follows plan changes through the window.
-local ORDER = { "groups", "assignments", "notes", "gargul", "config", "import" }
+local ORDER = { "groups", "assignments", "notes", "encounters", "gargul", "config", "newplan", "import" }
 local SECTIONS = {
     groups = { title = L["Groups"], needsPlan = true, get = function() return UTRM.GroupEditor end },
     assignments = { title = L["Assignments"], needsPlan = true, get = function() return UTRM.AssignmentsWindow end },
     notes = { title = L["Notes"], needsPlan = true, get = function() return UTRM.NoteEditor.Section end },
+    encounters = { title = L["Encounters"], needsPlan = true, get = function() return UTRM.EncountersSection end },
     gargul = { title = L["Gargul"], needsPlan = true, get = function() return Gargul end },
     config = { title = L["Config"], get = function() return Config end },
+    newplan = { title = L["New plan"], get = function() return UTRM.NewPlanSection end },
     import = { title = L["Import"], get = function() return UTRM.ImportWindow end },
 }
 
@@ -468,7 +470,7 @@ function RaidPlanWindow:Create()
 end
 
 -- Opens the window: on section `key` when given (asking about unsaved changes), else where it was. Without a plan
--- only Config and Import can show.
+-- only Config, New plan and Import can show.
 function RaidPlanWindow:Open(key)
     local plan = currentPlan()
     if not self.frame then self:Create() end

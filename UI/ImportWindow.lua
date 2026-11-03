@@ -70,21 +70,29 @@ function ImportWindow:Import()
         self:SetStatus("|cffff4040" .. message .. "|r")
         return
     end
-    local current = PlanImport:GetPlan()
+    self:Offer(plan, L["Imported %s."])
+end
+
+-- Stores `plan` (imported here or made in the New plan section, UI/NewPlanSection.lua), asking first when it replaces
+-- one. `done` is the status message ("%s" the title); `onStored()` runs once the plan is stored.
+function ImportWindow:Offer(plan, done, onStored)
+    local current = UTRM:GetModule("PlanImport"):GetPlan()
     if current then
-        StaticPopup_Show("UNITYTOOLSRAIDMANAGEMENT_REPLACE_PLAN", current.event.title, plan.event.title, plan)
+        StaticPopup_Show("UNITYTOOLSRAIDMANAGEMENT_REPLACE_PLAN", current.event.title, plan.event.title,
+            { plan = plan, done = done, onStored = onStored })
     else
-        self:Store(plan)
+        self:Store(plan, done, onStored)
     end
 end
 
-function ImportWindow:Store(plan)
+function ImportWindow:Store(plan, done, onStored)
     UTRM:GetModule("PlanImport"):Store(plan)
     self.pasted = nil
     if self.editBox then
         self.editBox:SetText("")
     end
-    self:Refresh(format(L["Imported %s."], plan.event.title))
+    if onStored then onStored() end
+    UTRM.RaidPlanWindow:SetStatus(format(done, plan.event.title))
     UTRM.PlanWindow:Show()
 end
 
@@ -92,7 +100,7 @@ StaticPopupDialogs["UNITYTOOLSRAIDMANAGEMENT_REPLACE_PLAN"] = {
     text = L["Replace the imported raid plan \"%s\" with \"%s\"?"],
     button1 = YES,
     button2 = NO,
-    OnAccept = function(_, plan) ImportWindow:Store(plan) end,
+    OnAccept = function(_, data) ImportWindow:Store(data.plan, data.done, data.onStored) end,
     timeout = 0,
     whileDead = true,
     hideOnEscape = true,

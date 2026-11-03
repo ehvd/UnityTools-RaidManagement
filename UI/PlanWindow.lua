@@ -518,7 +518,7 @@ local function create()
     frame.title:SetJustifyH("LEFT")
     frame.title:SetWordWrap(false)
 
-    -- Row 2: ◀ [encounter ▼] ▶ (or Import when there is no plan); the arrows are centred on the dropdown
+    -- Row 2: ◀ [encounter ▼] ▶ (or Import and New plan when there is no plan); the arrows are centred on the dropdown
     local rowMiddle = -(ROW2 + DROPDOWN / 2)
     frame.prev = scrollArrowButton("UIPanelScrollUpButtonTemplate")
     frame.prev:SetPoint("LEFT", frame, "TOPLEFT", INSET, rowMiddle)
@@ -543,9 +543,14 @@ local function create()
     frame.encounter.cover:SetScript("OnDragStart", startMoving)
     frame.encounter.cover:SetScript("OnDragStop", stopMoving)
 
-    frame.import = panelButton(100, L["Import"])
-    frame.import:SetPoint("CENTER", frame, "TOP", 0, rowMiddle)
+    -- Without a plan: Import and New plan side by side, as wide as the smallest window allows
+    local half = (WIDTH - 2 * INSET - 2 * GAP) / 2
+    frame.import = panelButton(half, L["Import"])
+    frame.import:SetPoint("RIGHT", frame, "TOP", -GAP, rowMiddle)
     frame.import:SetScript("OnClick", function() UTRM.RaidPlanWindow:Open("import") end)
+    frame.newPlan = panelButton(half, L["New plan"])
+    frame.newPlan:SetPoint("LEFT", frame, "TOP", GAP, rowMiddle)
+    frame.newPlan:SetScript("OnClick", function() UTRM.NewPlanSection:Open() end)
 
     -- Row 3: the result of the last action
     frame.status = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -578,12 +583,14 @@ function PlanWindow:Refresh(status)
         frame.next:Hide()
         frame.encounter:Hide()
         frame.import:Show()
+        frame.newPlan:Show()
         self:UpdateReadiness()
         return
     end
 
     frame.title:SetText(plan.event.title)
     frame.import:Hide()
+    frame.newPlan:Hide()
     frame.prev:Show()
     frame.next:Show()
     frame.encounter:Show()

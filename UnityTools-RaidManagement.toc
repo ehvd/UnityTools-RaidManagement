@@ -25,12 +25,15 @@ Modules\Assignments.lua
 Modules\NoteView.lua
 Modules\PlanCodec.lua
 Modules\GargulString.lua
+Modules\Bosses.lua
+Modules\NewPlan.lua
 Modules\PlanImport.lua
 Modules\GroupPlan.lua
 Modules\GroupEdit.lua
 Modules\RaidGroups.lua
 Modules\Gargul.lua
 Modules\FallbackRules.lua
+Modules\EncounterList.lua
 Modules\Readiness.lua
 Modules\SyncRules.lua
 Modules\Sync.lua
@@ -38,8 +41,10 @@ Modules\Fallback.lua
 
 UI\NoteEditor.lua
 UI\ImportWindow.lua
+UI\NewPlanSection.lua
 UI\PlanWindow.lua
 UI\GroupEditor.lua
 UI\AssignmentsWindow.lua
+UI\EncountersSection.lua
 UI\RaidPlanWindow.lua
 UI\Minimap.lua
