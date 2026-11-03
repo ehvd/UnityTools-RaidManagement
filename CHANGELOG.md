@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+### Fixed
+
+- CurseForge rejected the v0.1.0, v0.2.0 and v0.3.0 files ("General error processing file"): the package carried
+  LibDeflate's docs, two of which have the same name but for case. The package now has only the libraries' code and
+  licenses
+
 ## [0.3.0] - 2026-11-03
 
 ### Added
