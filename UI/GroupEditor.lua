@@ -4,20 +4,22 @@ local L = UTRM.L
 local GroupEdit, GroupPlan = ns.GroupEdit, ns.GroupPlan
 
 -- Groups editor (issue #26), the Groups section of the Raid Plan window (UI/RaidPlanWindow.lua): one layout of the
--- plan as 8 groups of 5, next to the raid members and the bench who are not in it. The dropdown picks the night's
--- groups or an encounter (it never changes the active one): an encounter on the night's groups shows them read-only
--- until it gets its own groups (Create override); its own groups can be edited or deleted. Click a player, then a
--- slot, another player or a list (or drag) to move, swap or take out. Players can be added to the plan (on the bench)
--- or taken out of it (× on the bench, issue #52); Save stores that with the groups. Every change is a plan edit
--- (Modules/PlanImport.lua) that syncs, and saving the active encounter's groups sorts the raid. The layout changes go
--- through Modules/GroupEdit.lua.
+-- plan as 8 groups of 5, next to the raid members and the bench who are not in it. Layouts are shared (issue #55):
+-- the dropdown picks a layout (Default, the night's groups, or a named one such as "MC Default") or an encounter (it
+-- never changes the active one). A named layout can be deleted (its encounters go back to Default); an encounter
+-- picks the layout it uses (Groups) or gets a new one copied from it (New override), and editing its groups edits
+-- that layout for every encounter on it. Click a player, then a slot, another player or a list (or drag) to move,
+-- swap or take out. Players can be added to the plan (on the bench) or taken out of it (× on the bench, issue #52).
+-- All of it is one draft of every layout (Save / Undo changes); Save is one plan edit (Modules/PlanImport.lua) that
+-- syncs, and sorts the raid when the active encounter's groups changed. The layout changes go through
+-- Modules/GroupEdit.lua.
 local GroupEditor = UTRM:NewModule("GroupEditor", "AceEvent-3.0")
 UTRM.GroupEditor = GroupEditor
 
--- Layout (1 px = 1 UI pixel at 100% scale), inside the Raid Plan window's section: under the dropdown row an info
--- line (two lines) and the hint, then the groups like Blizzard's raid panel (two columns of four, the label above
--- each box), the two lists on the right with Add a player under them, and Save / Undo under the groups. The window's
--- status bar shows the messages.
+-- Layout (1 px = 1 UI pixel at 100% scale), inside the Raid Plan window's section: the dropdown row (for an
+-- encounter also Groups and New override), then the groups like Blizzard's raid panel (two columns of four, the label
+-- above each box), the two lists on the right with Add a player under them, and Save / Undo under the groups. The
+-- window's status bar shows the messages.
 local SLOT_WIDTH, SLOT_HEIGHT = 158, 14       -- the raid panel's name buttons
 local BOX_PAD = 5                             -- the tooltip border is 4 px wide
 local BOX_WIDTH, BOX_HEIGHT = SLOT_WIDTH + 2 * BOX_PAD, 5 * SLOT_HEIGHT + 2 * BOX_PAD
@@ -25,7 +27,8 @@ local LABEL = 16                              -- a label row above a box or pane
 local GROUP_BLOCK = LABEL + BOX_HEIGHT
 local ROW_GAP, COLUMN_GAP = 6, 8
 local DROPDOWN, DROPDOWN_WIDTH = 26, 260      -- the plan window's encounter box (AceGUI's Dropdown height)
-local INFO_TOP, HINT_TOP, GROUPS_TOP = 32, 60, 78
+local GROUPS_TOP = DROPDOWN + 6
+local LAYOUT_LEFT, NEW_WIDTH = 344, 84        -- an encounter's Groups box (its art starts 15 px left) and New override
 local GROUPS_WIDTH = 2 * BOX_WIDTH + COLUMN_GAP
 local GROUPS_HEIGHT = 4 * GROUP_BLOCK + 3 * ROW_GAP
 local LIST_LEFT, LIST_WIDTH = GROUPS_WIDTH + 16, 220
@@ -50,8 +53,9 @@ local SLOTS, GROUP_SIZE = 40, 5
 
 local FRAME_NAME = "UnityToolsRaidManagementGroupFrame"
 local DELETE_POPUP = "UNITYTOOLSRAIDMANAGEMENT_DELETE_OVERRIDE"
-local DISCARD_POPUP = "UNITYTOOLSRAIDMANAGEMENT_DISCARD_GROUPS"
+local NEW_POPUP = "UNITYTOOLSRAIDMANAGEMENT_NEW_OVERRIDE"
 local REMOVE_POPUP = "UNITYTOOLSRAIDMANAGEMENT_REMOVE_PLAYER"
+local GREY, OVERRIDE = "|cff999999", "|cff40d8e8"    -- Default and the named layouts in the menus
 local HIGHLIGHT = "Interface\\QuestFrame\\UI-QuestTitleHighlight"
 local PANE_BACKDROP = {
     bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
@@ -77,6 +81,16 @@ local function labels(encounters)
     local out = {}
     for i, encounter in ipairs(encounters) do out[i] = encounter.label end
     return table.concat(out, ", ")
+end
+
+-- A layout's name as shown: "Default" for the night's groups
+local function layoutName(key)
+    return key == "default" and L["Default"] or key
+end
+
+-- A layout's name in its menu colour: Default grey, a named layout (an override) highlighted
+local function coloredLayout(key)
+    return (key == "default" and GREY or OVERRIDE) .. layoutName(key) .. "|r"
 end
 
 -- The raid by GroupPlan.Key: { name = the raid's spelling, class = "WARRIOR" ... }, and the members in roster order.
@@ -118,15 +132,15 @@ local function keySet(names)
     return set
 end
 
--- Everybody the plan names: its people and the players of all its layouts (candidates for the bench), but the
--- players `removed` in the draft, and with the ones `added` in it
-local function plannedNames(plan, added, removed)
+-- Everybody the plan names: its people and the players of all the draft's layouts (candidates for the bench), but
+-- the players `removed` in the draft, and with the ones `added` in it
+local function plannedNames(plan, draft, added, removed)
     local names, gone = {}, keySet(removed)
     local function keep(name)
         if name ~= "" and not gone[GroupPlan.Key(name)] then names[#names + 1] = name end
     end
     for name in pairs(plan.people or {}) do keep(name) end
-    for _, layout in pairs(plan.layouts) do
+    for _, layout in pairs(draft.layouts) do
         for slot = 1, SLOTS do keep(layout[slot] or "") end
     end
     for _, person in ipairs(added) do names[#names + 1] = person.name end
@@ -150,15 +164,28 @@ local function sameTarget(a, b)
     return a and b and a.slot == b.slot and a.name == b.name and a.list == b.list
 end
 
--- The draft: the layout shown, and the players added to the plan ({ name, class }) and removed from it (names)
+-- The draft: every layout and which one each encounter uses (GroupEdit.NewDraft), and the players added to the plan
+-- ({ name, class }) and removed from it (names). `base` is the plan's as loaded.
 function GroupEditor:IsChanged()
-    return self.layout ~= nil
-        and (not GroupEdit.Equal(self.layout, self.original) or #self.added > 0 or #self.removed > 0)
+    return self.draft ~= nil
+        and (not GroupEdit.SameDraft(self.draft, self.base) or #self.added > 0 or #self.removed > 0)
+end
+
+-- What is shown: `view` is { layout = key } or { encounter = key }; `layoutKey` and `layout` are the draft layout
+-- shown (an encounter's is the one it uses), edited in place
+function GroupEditor:Point()
+    local draft, view = self.draft, self.view
+    if view.encounter then
+        self.layoutKey = GroupEdit.LayoutOf(draft, view.encounter)
+    else
+        self.layoutKey = draft.layouts[view.layout] and view.layout or "default"
+        view.layout = self.layoutKey
+    end
+    self.layout = draft.layouts[self.layoutKey]
 end
 
 -- The second click (or the drop) with `target`: moves, swaps, fills a slot, or takes a player out to the lists
 function GroupEditor:Pick(target)
-    if self.readOnly then return end
     local selected, layout = self.selected, self.layout
     self.message = nil
     if not selected or sameTarget(selected, target) then
@@ -184,7 +211,6 @@ end
 
 -- Right-click on a slot: the player leaves the groups
 function GroupEditor:Remove(slot)
-    if self.readOnly then return end
     GroupEdit.Remove(self.layout, slot)
     self.selected, self.message = nil, nil
     self:Render()
@@ -192,7 +218,6 @@ end
 
 -- Add: the name typed and the class chosen join the plan's people in the draft, on the bench
 function GroupEditor:AddPlayer(text)
-    if self.readOnly then return end
     local name = GroupEdit.CleanName(text)
     local plan = currentPlan()
     local byKey = currentRoster()
@@ -222,7 +247,6 @@ end
 
 -- The player leaves the plan in the draft: a player added in the draft is just forgotten
 function GroupEditor:RemovePlayer(name)
-    if self.readOnly then return end
     local key, wasAdded = GroupPlan.Key(name), false
     for i, person in ipairs(self.added) do
         if GroupPlan.Key(person.name) == key then
@@ -249,12 +273,11 @@ StaticPopupDialogs[REMOVE_POPUP] = {
     preferredIndex = 3,
 }
 
--- × on a bench row: asks first when the plan uses the player elsewhere (other groups, assignments)
+-- × on a bench row: asks first when the draft uses the player elsewhere (other groups, assignments)
 function GroupEditor:ConfirmRemovePlayer(name)
-    if self.readOnly then return end
-    local uses = GroupEdit.UsesOf(currentPlan(), name, self.layoutKey)
+    local uses = GroupEdit.UsesOf(currentPlan(), self.draft, name, self.layoutKey)
     local lines = {}
-    if uses.night then lines[#lines + 1] = L["In the night's groups."] end
+    if uses.night then lines[#lines + 1] = L["In Default, which no encounter uses."] end
     if #uses.groups > 0 then lines[#lines + 1] = format(L["In the groups of: %s"], labels(uses.groups)) end
     if #uses.holds > 0 then
         lines[#lines + 1] = format(L["Assigned in: %s (the assignments stay; change them in Assignments)"],
@@ -269,127 +292,173 @@ function GroupEditor:ConfirmRemovePlayer(name)
 end
 
 function GroupEditor:Undo()
-    self.layout = GroupEdit.Copy(self.original)
+    self.draft = GroupEdit.CopyDraft(self.base)
     self.added, self.removed = {}, {}
     self.selected, self.message = nil, nil
+    self:Point()
     self:Render()
 end
 
--- Sorts the raid when the active encounter is on the layout `layoutKey`
-local function sortIfActive(plan, layoutKey)
+-- The groups of the plan's active encounter (nil when none is active)
+local function activeGroups(plan)
     local active = findEncounter(plan, plan.active)
-    if active and active.layout == layoutKey then
-        UTRM:GetModule("RaidGroups"):Apply(plan.layouts[layoutKey])
-    end
+    return active and (plan.layouts[active.layout] or plan.layouts.default)
 end
 
--- One plan edit (PlanImport:Edit, so it gets a revision and syncs): `change(plan)` returns a result or nil and why.
--- Returns the result, or nil after showing why in the status bar (nothing when it was unchanged).
-local function edit(change, gone)
-    local result, why
-    local ok, message = UTRM:GetModule("PlanImport"):Edit(function(plan)
-        result, why = change(plan)
-        return result ~= nil
-    end)
-    if ok then return result end
-    if message or (why and why ~= "unchanged") then
-        GroupEditor.message = "|cffff4040" .. (message or gone) .. "|r"
-        GroupEditor:Render()
-    end
-    return nil
-end
-
--- Saves the groups into the layout shown; every encounter on it changes
+-- Saves the whole draft in one plan edit (PlanImport:Edit, so it gets a revision and syncs); sorts the raid when the
+-- active encounter's groups changed
 function GroupEditor:Save()
-    if self.readOnly then return end
-    local layoutKey, layout, encounterKey = self.layoutKey, self.layout, self.encounterKey
-    local added, removed = self.added, self.removed
-    local saved = edit(function(plan) return GroupEdit.SaveDraft(plan, layoutKey, layout, added, removed) end,
-        L["These groups are no longer in the raid plan."])
-    if not saved then return end
+    local draft, added, removed = self.draft, self.added, self.removed
+    local before = activeGroups(currentPlan())
+    before = before and GroupEdit.Copy(before)
+    local ok, message = UTRM:GetModule("PlanImport"):Edit(function(plan)
+        return GroupEdit.SaveDraft(plan, draft, added, removed) ~= nil
+    end)
+    if not ok then
+        if message then
+            self.message = "|cffff4040" .. message .. "|r"
+            self:Render()
+        end
+        return
+    end
     local plan = currentPlan()
-    local encounter = findEncounter(plan, encounterKey)
-    self.original = GroupEdit.Copy(plan.layouts[layoutKey])
-    self.layout = GroupEdit.Copy(self.original)
-    self.added, self.removed = {}, {}
+    self:Load(self.view)
+    self.message = L["Groups saved."]
+    self:Render()
+    local after = activeGroups(plan)
+    if after and not (before and GroupEdit.Equal(before, after)) then
+        UTRM:GetModule("RaidGroups"):Apply(after)
+    end
+end
+
+-- Groups (an encounter's layout): the encounter shown uses the layout `layoutKey` in the draft
+function GroupEditor:UseLayout(layoutKey)
+    local encounter = findEncounter(currentPlan(), self.view.encounter)
+    if not encounter or not GroupEdit.UseLayout(self.draft, encounter.key, layoutKey) then return end
+    self:Point()
     self.selected = nil
-    self.message = encounter and format(L["Groups of %s saved."], encounter.label) or L["The night's groups saved."]
-    self:Render()
-    sortIfActive(plan, saved)
-end
-
--- The encounter shown gets its own groups, a copy of the night's groups, and they can be edited
-function GroupEditor:CreateOverride()
-    local key = self.encounterKey
-    local created = edit(function(plan) return GroupEdit.CreateOverride(plan, key) end,
-        L["This encounter is no longer in the raid plan."])
-    if not created then return end
-    self:Load(key)
-    self.message = format(L["%s has its own groups now."], findEncounter(currentPlan(), key).label)
+    self.message = format(L["%s uses %s now. Save to keep it so."], encounter.label, layoutName(layoutKey))
     self:Render()
 end
 
--- The encounter shown goes back to the night's groups (after the confirmation)
-function GroupEditor:DeleteOverride()
-    local key = self.encounterKey
-    local deleted = edit(function(plan) return GroupEdit.DeleteOverride(plan, key) end,
-        L["This encounter is no longer in the raid plan."])
-    if not deleted then return end
-    local plan = currentPlan()
-    self:Load(key)
-    self.message = format(L["%s uses the night's groups again."], findEncounter(plan, key).label)
+-- New override: a new layout `name` for the encounter shown, a copy of the one it uses. Returns whether it was made.
+function GroupEditor:NewLayout(name)
+    local encounter = findEncounter(currentPlan(), self.view.encounter)
+    local key, why = GroupEdit.NewLayout(self.draft, encounter and encounter.key, name)
+    if not key then
+        local messages = {
+            empty = L["Type a name for the groups first."],
+            taken = format(L["Groups named %s exist already."], (name or ""):match("^%s*(.-)%s*$")),
+            encounter = L["This encounter is no longer in the raid plan."],
+        }
+        self.message = "|cffff4040" .. messages[why] .. "|r"
+        self:Render()
+        return false
+    end
+    self:Point()
+    self.selected = nil
+    self.message = format(L["%s has new groups: %s. Save to keep them."], encounter.label, key)
     self:Render()
-    if plan.active == key then sortIfActive(plan, "default") end
+    return true
+end
+
+-- Delete override (after the confirmation): the layout shown is deleted in the draft, its encounters use Default
+function GroupEditor:DeleteLayout()
+    local key = self.view.layout
+    local moved = key and GroupEdit.DeleteLayout(self.draft, key)
+    if not moved then return end
+    self.view = { layout = "default" }
+    self:Point()
+    self.selected = nil
+    self.message = format(L["%s deleted: %d encounters go back to Default. Save to keep it so."], key, moved)
+    self:Render()
+end
+
+local function editBoxOf(dialog)
+    return dialog.editBox or dialog.EditBox or (dialog.GetEditBox and dialog:GetEditBox())
+end
+
+local function button1Of(dialog)
+    return dialog.button1 or (dialog.GetButton1 and dialog:GetButton1())
+end
+
+-- Create is only clickable with a name no layout has
+local function updateCreate(dialog)
+    local button, box = button1Of(dialog), editBoxOf(dialog)
+    if button and box then
+        button:SetEnabled(GroupEdit.CheckLayoutName(GroupEditor.draft, box:GetText()) == nil)
+    end
+end
+
+StaticPopupDialogs[NEW_POPUP] = {
+    text = "",
+    button1 = L["Create"],
+    button2 = CANCEL,
+    hasEditBox = true,
+    editBoxWidth = 200,
+    maxLetters = 48,
+    OnShow = function(dialog, name)
+        local box = editBoxOf(dialog)
+        box:SetText(name or dialog.data or "")
+        box:HighlightText()
+        box:SetFocus()
+        updateCreate(dialog)
+    end,
+    OnAccept = function(dialog) GroupEditor:NewLayout(editBoxOf(dialog):GetText()) end,
+    EditBoxOnTextChanged = function(box) updateCreate(box:GetParent()) end,
+    EditBoxOnEnterPressed = function(box)
+        local dialog = box:GetParent()
+        if GroupEdit.CheckLayoutName(GroupEditor.draft, box:GetText()) == nil then
+            GroupEditor:NewLayout(box:GetText())
+            dialog:Hide()
+        end
+    end,
+    EditBoxOnEscapePressed = function(box) box:GetParent():Hide() end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+-- New override: asks the name, starting with the encounter's (made unique)
+function GroupEditor:ConfirmNewLayout()
+    local encounter = findEncounter(currentPlan(), self.view.encounter)
+    if not encounter then return end
+    StaticPopupDialogs[NEW_POPUP].text = L["New groups for %s, starting as a copy of %s."] .. "\n\n" .. L["Name:"]
+    StaticPopup_Show(NEW_POPUP, encounter.label, layoutName(self.layoutKey),
+        GroupEdit.NewKey(self.draft.layouts, encounter.label))
 end
 
 StaticPopupDialogs[DELETE_POPUP] = {
-    button1 = YES,
-    button2 = NO,
-    OnAccept = function() GroupEditor:DeleteOverride() end,
+    button1 = DELETE,
+    button2 = CANCEL,
+    OnAccept = function() GroupEditor:DeleteLayout() end,
     timeout = 0,
     whileDead = true,
     hideOnEscape = true,
     preferredIndex = 3,
 }
 
-StaticPopupDialogs[DISCARD_POPUP] = {
-    text = "",
-    button1 = YES,
-    button2 = NO,
-    OnAccept = function()
-        GroupEditor:Load(GroupEditor.pending)
-        GroupEditor:Render()
-    end,
-    timeout = 0,
-    whileDead = true,
-    hideOnEscape = true,
-    preferredIndex = 3,
-}
-
+-- Delete override: names the encounters that go back to Default
 function GroupEditor:ConfirmDelete()
-    local plan = currentPlan()
-    local encounter = findEncounter(plan, self.encounterKey)
-    if not encounter or encounter.layout == "default" then return end
-    local others = GroupEdit.UsersOf(plan, encounter.layout, encounter.key)
-    if #others > 0 then
-        StaticPopupDialogs[DELETE_POPUP].text = L["Use the night's groups for %s again? Its groups stay for: %s"]
-        StaticPopup_Show(DELETE_POPUP, encounter.label, labels(others))
+    local key = self.view.layout
+    if not key or key == "default" then return end
+    local users = GroupEdit.UsersOf(currentPlan(), self.draft, key)
+    local text = L["Delete the groups %s?"] .. "\n\n"
+    if #users > 0 then
+        StaticPopupDialogs[DELETE_POPUP].text = text .. L["These encounters go back to Default: %s"]
+        StaticPopup_Show(DELETE_POPUP, key, labels(users))
     else
-        StaticPopupDialogs[DELETE_POPUP].text = L["Use the night's groups for %s again? Its own groups (%s) are deleted."]
-        StaticPopup_Show(DELETE_POPUP, encounter.label, encounter.layout)
+        StaticPopupDialogs[DELETE_POPUP].text = text .. L["No encounter uses them."]
+        StaticPopup_Show(DELETE_POPUP, key)
     end
 end
 
--- The dropdown's choice: nil for the night's groups, or an encounter key. Unsaved changes are confirmed first.
-function GroupEditor:Choose(encounterKey)
-    if encounterKey == self.encounterKey then return end
-    if self:IsChanged() then
-        self.pending = encounterKey
-        StaticPopupDialogs[DISCARD_POPUP].text = L["Discard your changes to %s?"]
-        StaticPopup_Show(DISCARD_POPUP, L["Groups"])
-        return
-    end
-    self:Load(encounterKey)
+-- The dropdown's choice: { layout = key } or { encounter = key }. The draft covers every layout, so nothing is lost.
+function GroupEditor:Choose(view)
+    self.view = view
+    self.selected, self.message = nil, nil
+    self:Point()
     self:Render()
 end
 
@@ -398,7 +467,7 @@ end
 -- While dragging, the player's name follows the cursor
 local function startDrag(button)
     local target = button.target
-    if GroupEditor.readOnly or not target then return end
+    if not target then return end
     if target.slot and GroupEditor.layout[target.slot] == "" then return end
     GroupEditor.selected = target
     GroupEditor:Render()
@@ -558,25 +627,73 @@ local function openClassMenu(owner)
     end)
 end
 
+-- A menu entry with `right` at its right edge (the entries' widths are the widest one's, so these line up). Without
+-- AttachFontString the text just follows the name.
+local function withRight(description, right)
+    description:AddInitializer(function(button)
+        if not button.AttachFontString then
+            button.fontString:SetText(button.fontString:GetText() .. "  " .. right)
+            return
+        end
+        local text = button:AttachFontString()
+        text:ClearAllPoints()
+        text:SetPoint("RIGHT")
+        text:SetJustifyH("RIGHT")
+        text:SetText(right)
+        return button.fontString:GetUnboundedStringWidth() + 16 + text:GetUnboundedStringWidth() + 24, 20
+    end)
+end
+
+local function encounterCount(count)
+    return count == 1 and L["1 encounter"] or format(L["%d encounters"], count)
+end
+
+-- The section's dropdown: Default and the named layouts (with how many encounters use them), then the encounters
+-- (with the layout each uses on the right)
 local function openMenu(owner)
     local plan = currentPlan()
-    if not plan then return end
+    local draft = GroupEditor.draft
+    if not plan or not draft then return end
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(plan.event.title)
-        root:CreateRadio(L["Night's groups"],
-            function() return GroupEditor.encounterKey == nil end,
-            function()
-                GroupEditor:Choose(nil)
-                return MenuResponse and MenuResponse.Close
-            end)
+        local keys = GroupEdit.LayoutKeys(draft)
+        table.insert(keys, 1, "default")
+        for _, key in ipairs(keys) do
+            local count = #GroupEdit.UsersOf(plan, draft, key)
+            root:CreateRadio(layoutName(key) .. "  " .. GREY .. encounterCount(count) .. "|r",
+                function() return GroupEditor.view.layout == key end,
+                function()
+                    GroupEditor:Choose({ layout = key })
+                    return MenuResponse and MenuResponse.Close
+                end)
+        end
         root:CreateDivider()
         for i, encounter in ipairs(plan.encounters) do
-            local text = format("%d. %s", i, encounter.label)
-            if encounter.layout ~= "default" then text = text .. "  |cff999999" .. encounter.layout .. "|r" end
-            root:CreateRadio(text,
-                function() return GroupEditor.encounterKey == encounter.key end,
+            local radio = root:CreateRadio(format("%d. %s", i, encounter.label),
+                function() return GroupEditor.view.encounter == encounter.key end,
                 function()
-                    GroupEditor:Choose(encounter.key)
+                    GroupEditor:Choose({ encounter = encounter.key })
+                    return MenuResponse and MenuResponse.Close
+                end)
+            withRight(radio, coloredLayout(GroupEdit.LayoutOf(draft, encounter.key)))
+        end
+    end)
+end
+
+-- Groups (an encounter shown): the layout it uses, Default or a named one
+local function openLayoutMenu(owner)
+    local encounter = findEncounter(currentPlan(), GroupEditor.view.encounter)
+    local draft = GroupEditor.draft
+    if not encounter or not draft then return end
+    MenuUtil.CreateContextMenu(owner, function(_, root)
+        root:CreateTitle(format(L["Groups of %s"], encounter.label))
+        local keys = GroupEdit.LayoutKeys(draft)
+        table.insert(keys, 1, "default")
+        for _, key in ipairs(keys) do
+            root:CreateRadio(layoutName(key),
+                function() return GroupEditor.layoutKey == key end,
+                function()
+                    GroupEditor:UseLayout(key)
                     return MenuResponse and MenuResponse.Close
                 end)
         end
@@ -613,32 +730,30 @@ local function create()
     frame:SetScript("OnHide", function() frame.ghost:Hide() end)
     local content = frame
 
-    -- The dropdown (the night's groups or an encounter), and Create / Delete override beside it
+    -- The dropdown (a layout or an encounter); for a named layout Delete override beside it, for an encounter the
+    -- layout it uses (Groups) and New override
     frame.choice = CreateFrame("Frame", nil, content)
     frame.choice:SetPoint("TOPLEFT")
     frame.choice:SetSize(DROPDOWN_WIDTH, DROPDOWN)
     dropdown(frame.choice, "DropDown", function() openMenu(frame.choice) end)
 
-    frame.override = panelButton(content, BUTTON_WIDTH, 22, L["Create override"])
-    frame.override:SetPoint("LEFT", frame.choice, "RIGHT", 24, 0)
-    frame.override:SetScript("OnClick", function()
-        if GroupEditor.readOnly then GroupEditor:CreateOverride() else GroupEditor:ConfirmDelete() end
-    end)
+    frame.delete = panelButton(content, BUTTON_WIDTH, 22, L["Delete override"])
+    frame.delete:SetPoint("LEFT", frame.choice, "RIGHT", 24, 0)
+    frame.delete:SetScript("OnClick", function() GroupEditor:ConfirmDelete() end)
 
-    -- What the groups shown are and who uses them (two lines), and how to edit
-    frame.info = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    frame.info:SetPoint("TOPLEFT", 0, -INFO_TOP)
-    frame.info:SetSize(CONTENT_WIDTH, 24)
-    frame.info:SetJustifyH("LEFT")
-    frame.info:SetJustifyV("TOP")
-    frame.info:SetMaxLines(2)
+    frame.new = panelButton(content, NEW_WIDTH, 22, L["New override"])
+    frame.new:SetPoint("RIGHT", content, "TOPLEFT", CONTENT_WIDTH, -DROPDOWN / 2)
+    frame.new:SetScript("OnClick", function() GroupEditor:ConfirmNewLayout() end)
 
-    frame.hint = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    frame.hint:SetPoint("TOPLEFT", 0, -HINT_TOP)
-    frame.hint:SetSize(CONTENT_WIDTH, 12)
-    frame.hint:SetJustifyH("LEFT")
-    frame.hint:SetWordWrap(false)
-    frame.hint:SetText(L["Click a player, then a slot, a player or a list, or drag. Right-click takes a player out."])
+    frame.groupsLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    frame.groupsLabel:SetPoint("LEFT", frame.choice, "RIGHT", 24, 0)
+    frame.groupsLabel:SetText(L["Groups"])
+
+    -- The Groups box fills the row up to New override (its art reaches 17 px right of the holder)
+    frame.layoutChoice = CreateFrame("Frame", nil, content)
+    frame.layoutChoice:SetPoint("TOPLEFT", LAYOUT_LEFT, 0)
+    frame.layoutChoice:SetSize(CONTENT_WIDTH - frame.new:GetWidth() - 4 - 17 - LAYOUT_LEFT, DROPDOWN)
+    dropdown(frame.layoutChoice, "Layout", function() openLayoutMenu(frame.layoutChoice) end)
 
     -- 8 groups × 5 slots, each box with its label above it
     frame.slots, frame.boxes = {}, {}
@@ -757,61 +872,41 @@ local function fillList(box, names, classOf, empty)
         button.target = { name = name }
         showName(button, name, classOf(name), false)
         button.selected:SetShown(selected ~= nil and selected.name == name)
-        button:EnableMouse(not GroupEditor.readOnly)
-        if button.remove then button.remove:SetShown(not GroupEditor.readOnly) end
         button:Show()
     end
     for i = #names + 1, #box.buttons do
         box.buttons[i]:Hide()
     end
     box.child:SetHeight(math.max(box.visible, #names * SLOT_HEIGHT))
-    box.child:EnableMouse(not GroupEditor.readOnly)
     box.empty:SetText(empty)
     box.empty:SetShown(#names == 0)
-    box:SetAlpha(GroupEditor.readOnly and 0.5 or 1)
-end
-
--- What the groups shown are, and who else uses them
-local function infoText(plan, encounter, layoutKey)
-    if not encounter then
-        local users = GroupEdit.UsersOf(plan, "default")
-        return #users > 0 and format(L["The night's groups, used by: %s"], labels(users))
-            or L["The night's groups: no encounter uses them."]
-    end
-    if layoutKey == "default" then
-        return format(L["%s uses the night's groups. Create an override to give this fight its own groups."],
-            encounter.label)
-    end
-    local text = format(L["%s has its own groups (%s)."], encounter.label, layoutKey)
-    local others = GroupEdit.UsersOf(plan, layoutKey, encounter.key)
-    if #others > 0 then text = text .. " " .. format(L["Also used by: %s"], labels(others)) end
-    return text
 end
 
 function GroupEditor:Render()
-    if not frame or not self.layout then return end
+    if not frame or not self.draft then return end
     local plan = currentPlan()
     if not plan then return end
-    local encounter = findEncounter(plan, self.encounterKey)
-    local layout, selected, readOnly = self.layout, self.selected, self.readOnly
+    local encounter = findEncounter(plan, self.view.encounter)
+    local layout, selected = self.layout, self.selected
     local byKey, members = currentRoster()
     local inRaid = IsInRaid()
     local classOf = classFinder(plan, byKey, self.added)
 
-    -- The dropdown's text, the override button and the info line
+    -- The top row: a layout (Delete override when it is a named one), or an encounter (Groups, New override)
     if encounter then
         local index
         for i, candidate in ipairs(plan.encounters) do
             if candidate == encounter then index = i end
         end
-        frame.choice.text:SetText(format("|cff999999%d/%d|r  %s", index, #plan.encounters, encounter.label))
+        frame.choice.text:SetText(format("%s%d/%d|r  %s", GREY, index, #plan.encounters, encounter.label))
+        frame.layoutChoice.text:SetText(coloredLayout(self.layoutKey))
     else
-        frame.choice.text:SetText(L["Night's groups"])
+        frame.choice.text:SetText(layoutName(self.layoutKey))
     end
-    frame.override:SetShown(encounter ~= nil)
-    frame.override:SetText(readOnly and L["Create override"] or L["Delete override"])
-    fitText(frame.override, BUTTON_WIDTH)
-    frame.info:SetText(infoText(plan, encounter, self.layoutKey))
+    frame.delete:SetShown(not encounter and self.layoutKey ~= "default")
+    frame.groupsLabel:SetShown(encounter ~= nil)
+    frame.layoutChoice:SetShown(encounter ~= nil)
+    frame.new:SetShown(encounter ~= nil)
 
     -- The groups; planned players who are not in the raid are marked
     local missing = {}
@@ -820,11 +915,7 @@ function GroupEditor:Render()
         local absent = inRaid and name ~= "" and not byKey[GroupPlan.Key(name)]
         showName(button, name, name ~= "" and classOf(name), absent)
         button.selected:SetShown(selected ~= nil and selected.slot == slot)
-        button:EnableMouse(not readOnly)
         if absent then missing[#missing + 1] = name end
-    end
-    for _, box in ipairs(frame.boxes) do
-        box:SetAlpha(readOnly and 0.5 or 1)
     end
 
     -- The raid members who are not in the groups, by name; then the bench
@@ -837,19 +928,12 @@ function GroupEditor:Render()
     fillList(frame.raid, unplaced, classOf,
         inRaid and L["Drop a player here to take them out of the groups."] or L["Not in a raid"])
 
-    local bench = GroupEdit.Bench(plannedNames(plan, self.added, self.removed), layout,
+    local bench = GroupEdit.Bench(plannedNames(plan, self.draft, self.added, self.removed), layout,
         function(name) return byKey[GroupPlan.Key(name)] end)
     frame.bench.label:SetText(format(L["Bench (%d)"], #bench))
     fillList(frame.bench, bench, classOf, L["Drop a player here to take them out of the groups."])
 
-    -- Add a player: only where the groups can be edited
-    frame.addName:SetEnabled(not readOnly)
-    if readOnly then frame.addName:ClearFocus() end
-    frame.addName:SetAlpha(readOnly and 0.5 or 1)
-    frame.add:SetEnabled(not readOnly)
     frame.addClass.text:SetText(self.addClass and className(self.addClass) or L["Class"])
-    frame.addClass:SetAlpha(readOnly and 0.5 or 1)
-    for _, clickable in ipairs(frame.addClass.clickables) do clickable:EnableMouse(not readOnly) end
 
     local changed = self:IsChanged()
     frame.save:SetEnabled(changed)
@@ -864,21 +948,21 @@ function GroupEditor:Render()
     self.host:UpdateTree()
 end
 
--- Shows the night's groups (`encounterKey` nil, or an encounter no longer in the plan) or an encounter's groups
-function GroupEditor:Load(encounterKey)
+-- A new draft from the plan, showing `view` ({ layout = key } or { encounter = key }); an encounter no longer in the
+-- plan shows Default
+function GroupEditor:Load(view)
     local plan = currentPlan()
-    local encounter = findEncounter(plan, encounterKey)
-    self.encounterKey = encounter and encounter.key
-    self.layoutKey = encounter and encounter.layout or "default"
-    self.readOnly = encounter ~= nil and encounter.layout == "default"
-    self.original = GroupEdit.Copy(plan.layouts[self.layoutKey])
-    self.layout = GroupEdit.Copy(self.original)
+    if view.encounter and not findEncounter(plan, view.encounter) then view = { layout = "default" } end
+    self.view = view
+    self.base = GroupEdit.NewDraft(plan)
+    self.draft = GroupEdit.CopyDraft(self.base)
     self.added, self.removed = {}, {}
-    self.selected, self.message, self.pending = nil, nil, nil
+    self.selected, self.message = nil, nil
+    self:Point()
 end
 
--- Shows the section in the Raid Plan window (`host`, UI/RaidPlanWindow.lua), on the groups it showed last, else
--- the active encounter's (the night's groups when no encounter is active)
+-- Shows the section in the Raid Plan window (`host`, UI/RaidPlanWindow.lua), on what it showed last, else the
+-- active encounter (Default when no encounter is active)
 function GroupEditor:Attach(host)
     local plan = currentPlan()
     if not plan then return end
@@ -890,10 +974,11 @@ function GroupEditor:Attach(host)
     frame:SetFrameLevel(parent:GetFrameLevel() + 1)
     frame:ClearAllPoints()
     frame:SetPoint("TOPLEFT", parent, "TOPLEFT")
-    if not self.layout then
-        self:Load(plan.active)
-    elseif self.encounterKey and not findEncounter(plan, self.encounterKey) then
-        self:Load(nil)
+    if not self.draft then
+        self:Load(plan.active and { encounter = plan.active } or { layout = "default" })
+    elseif self.view.encounter and not findEncounter(plan, self.view.encounter) then
+        self.view = { layout = "default" }
+        self:Point()
     end
     frame:Show()
     self:Render()
@@ -912,31 +997,31 @@ end
 
 -- Unsaved changes are dropped (the Raid Plan window asked first)
 function GroupEditor:Discard()
-    if self.layout then self:Undo() end
+    if self.draft then self:Undo() end
 end
 
 function GroupEditor:OnEnable()
     self:RegisterEvent("GROUP_ROSTER_UPDATE", function()
         if self:IsShown() then self:Render() end
     end)
-    -- Somebody else's plan or edit arrived: show it; changes to groups that it changed are dropped
+    -- Somebody else's plan or edit arrived: show it; when it changed the layouts, the draft starts again from it
     self:RegisterMessage("UTRM_PLAN_IMPORTED", function()
-        if not self.layout then return end
+        if not self.draft then return end
         local plan = currentPlan()
-        local encounter = findEncounter(plan, self.encounterKey)
-        local layoutKey = encounter and encounter.layout or "default"
-        local same = layoutKey == self.layoutKey and (self.encounterKey == nil or encounter ~= nil)
-            and GroupEdit.Equal(plan.layouts[layoutKey], self.original)
-        if same then
+        if GroupEdit.SameDraft(GroupEdit.NewDraft(plan), self.base) then
+            if self.view.encounter and not findEncounter(plan, self.view.encounter) then
+                self.view = { layout = "default" }
+                self:Point()
+            end
             if self:IsShown() then self:Render() end
             return
         end
         local dropped = self:IsChanged()
-        self:Load(encounter and encounter.key)
+        self:Load(self.view)
         if dropped then
             self.message = "|cffffa040" .. L["The raid plan changed: your changes to these groups were dropped."] .. "|r"
         end
         if self:IsShown() then self:Render() end
     end)
-    self:RegisterMessage("UTRM_PLAN_CLEARED", function() self.layout = nil end)
+    self:RegisterMessage("UTRM_PLAN_CLEARED", function() self.draft = nil end)
 end

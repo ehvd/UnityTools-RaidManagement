@@ -157,14 +157,6 @@ L["Saved on your client only: you are not raid leader or assistant."] = true
 L["This encounter is no longer in the raid plan."] = true
 
 -- Groups editor (#26)
-L["Click a player, then a slot, a player or a list, or drag. Right-click takes a player out."] = true
-L["Night's groups"] = true
-L["The night's groups, used by: %s"] = true
-L["The night's groups: no encounter uses them."] = true
-L["%s uses the night's groups. Create an override to give this fight its own groups."] = true
-L["%s has its own groups (%s)."] = true
-L["Also used by: %s"] = true
-L["Create override"] = true
 L["Delete override"] = true
 L["Group %d"] = true
 L["In the raid, not in groups (%d)"] = true
@@ -175,13 +167,6 @@ L["not in raid"] = true
 L["Save"] = true
 L["Undo changes"] = true
 L["Planned but not in the raid: %s"] = true
-L["Groups of %s saved."] = true
-L["The night's groups saved."] = true
-L["%s has its own groups now."] = true
-L["%s uses the night's groups again."] = true
-L["Use the night's groups for %s again? Its own groups (%s) are deleted."] = true
-L["Use the night's groups for %s again? Its groups stay for: %s"] = true
-L["These groups are no longer in the raid plan."] = true
 
 -- Assignments window
 L["Assignments"] = true
@@ -249,6 +234,25 @@ L["%s is on the bench. Save to keep them in the plan."] = true
 L["%s is no longer added."] = true
 L["%s is out of the raid plan. Save to keep it so."] = true
 L["Take %s out of the raid plan?"] = true
-L["In the night's groups."] = true
 L["In the groups of: %s"] = true
 L["Assigned in: %s (the assignments stay; change them in Assignments)"] = true
+
+-- Shared group layouts (issue #55)
+L["Default"] = true
+L["New override"] = true
+L["Create"] = true
+L["Name:"] = true
+L["1 encounter"] = true
+L["%d encounters"] = true
+L["Groups of %s"] = true
+L["New groups for %s, starting as a copy of %s."] = true
+L["Type a name for the groups first."] = true
+L["Groups named %s exist already."] = true
+L["%s uses %s now. Save to keep it so."] = true
+L["%s has new groups: %s. Save to keep them."] = true
+L["Delete the groups %s?"] = true
+L["These encounters go back to Default: %s"] = true
+L["No encounter uses them."] = true
+L["%s deleted: %d encounters go back to Default. Save to keep it so."] = true
+L["Groups saved."] = true
+L["In Default, which no encounter uses."] = true
