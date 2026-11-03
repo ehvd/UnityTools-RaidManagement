@@ -12,6 +12,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   with the plan as edited in game: hand-edited notes, current assignments, edited groups, and the classes of people
   added in game when the raid roster shows them. The active encounter, the fallback note and the edit history are
   not in it yet
+- The Raid Plan window's Gargul section has a Paste string box: Save puts a Gargul import string (loot priorities from
+  anywhere that makes one) into the plan, replacing the imported one or giving a plan without one its own. It syncs
+  like other edits; Import into Gargul and the readiness check then use it. A string Gargul's importer would not
+  take, or one that imports nothing, is refused with a message before saving
+- Encounters (the Raid Plan window) changes the plan's encounter list in game. It lists every encounter in plan
+  order: rename one in its row (the label only: the sync and the note after a kill still match), move it up or
+  down with the arrow buttons, or remove it after a confirmation. Below the list, add a boss from the built-in
+  boss table (it sets the label and encounter ID) or a custom encounter with only a name; it starts with an empty
+  note on the night's groups. Removing the active encounter makes the next one active, removing the note after a
+  kill sets that back to none, and an encounter's own groups go with it when no other encounter uses them. Every
+  change syncs to the raid like other plan edits
+- New plan (its own section of the Raid Plan window, also opened by the plan window's New plan button when no plan is
+  loaded) makes a raid plan in game without the UnityWiki planner: a title (the raids and today's date unless you
+  type one) and one or more raids. The plan has, per raid, Trash and then the bosses in kill order with their
+  encounter IDs, empty notes, and the raid as it is arranged now as the night's groups (empty outside a raid). It replaces the current plan after the same
+  confirmation as an import, and syncs like one. The bosses come from a built-in table that mirrors UnityWiki's
+  (fights with several bosses, such as the Bug Trio, are one encounter); Assignments says such a plan's notes have no
+  assignment slots
 
 ## [0.2.0] - 2026-11-01
 
