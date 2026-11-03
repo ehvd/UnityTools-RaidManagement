@@ -31,7 +31,7 @@ function ExportSection:Attach(host)
 
     -- Read only: what is typed into it is undone, and focusing it selects all of it again
     local editBox = AceGUI:Create("MultiLineEditBox")
-    editBox:SetLabel(L["The raid plan as one string, for another raid leader or the raid planner. Ctrl+C to copy:"])
+    editBox:SetLabel(L["The raid plan as one string. Ctrl+C to copy:"])
     editBox:DisableButton(true)
     editBox:SetFullWidth(true)
     editBox:SetNumLines(26)
