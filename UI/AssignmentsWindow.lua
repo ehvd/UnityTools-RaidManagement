@@ -15,11 +15,14 @@ local Assignments = ns.Assignments
 local AssignmentsWindow = UTRM:NewModule("AssignmentsWindow", "AceEvent-3.0")
 UTRM.AssignmentsWindow = AssignmentsWindow
 
-local ROWS_HEIGHT = 196                 -- seven rows of jobs (a 26 tall dropdown and the layout's gap), then scrolls
+-- The jobs list and the preview share the section's height (the Raid Plan window's, UTRM.GroupEditor.HEIGHT):
+-- the list gets what its rows need, the preview the rest, each at least its minimum (FitHeight)
+local ROW_HEIGHT = 29                   -- a job's row: a 26 tall dropdown and the Flow layout's 3 px gap
+local MIN_ROWS_HEIGHT = 3 * ROW_HEIGHT
+local MIN_PREVIEW_HEIGHT = 150
 local LABEL_WIDTH = 110
 local DROPDOWN_WIDTH = 400              -- wide enough that the next label starts a new row
 local ENCOUNTER_WIDTH = 260             -- the other sections' encounter box (UI/RaidPlanWindow.lua)
-local PREVIEW_HEIGHT = 150
 local MENU_HEIGHT = 400                 -- a menu of a whole raid scrolls past this
 local GREY = "|cff808080"
 local OVERRIDE = "|cff40d8e8"           -- the Groups section's colour for a layout of its own
@@ -396,6 +399,7 @@ function AssignmentsWindow:Build(message)
     self:DetachPreview()
     frame:ReleaseChildren()
     self.jobs, self.rows, self.labels, self.preview = nil, nil, nil, nil
+    self.rowsBox, self.previewBox = nil, nil
 
     local plan = currentPlan()
     self.key = host:EncounterToEdit(self.key)
@@ -475,12 +479,13 @@ function AssignmentsWindow:BuildJobs(empty, message)
     -- The jobs: label and dropdown, in a scroll frame
     local rowsBox = AceGUI:Create("SimpleGroup")
     rowsBox:SetFullWidth(true)
-    rowsBox:SetHeight(ROWS_HEIGHT)
+    rowsBox:SetHeight(MIN_ROWS_HEIGHT)
     rowsBox:SetLayout("Fill")
     frame:AddChild(rowsBox)
     local rows = AceGUI:Create("ScrollFrame")
     rows:SetLayout("Flow")
     rowsBox:AddChild(rows)
+    self.rowsBox = rowsBox
     if #self.jobs == 0 then
         addLabel(rows, empty)
     end
@@ -537,14 +542,32 @@ function AssignmentsWindow:BuildJobs(empty, message)
         or L["Note preview"])
     previewBox:SetFullWidth(true)
     previewBox:SetAutoAdjustHeight(false)
-    previewBox:SetHeight(PREVIEW_HEIGHT)
+    previewBox:SetHeight(MIN_PREVIEW_HEIGHT)
     frame:AddChild(previewBox)
+    self.previewBox = previewBox
     self:AttachPreview(previewBox.content)
 
     self.saveButton = addButton(frame, L["Save"], 140, function() self:Save() end)
     self.undoButton = addButton(frame, L["Undo changes"], 140, function() self:Build() end)
 
     self:Update(message)
+    self:FitHeight()
+end
+
+-- Fills the section down to its bottom edge, Save and Undo changes last: after the layout, what the other rows use
+-- is measured, and the rest goes to the jobs list (as much as its rows need) and the preview
+function AssignmentsWindow:FitHeight()
+    local content, button = self.host.content, self.saveButton.frame
+    local top, bottom = content:GetTop(), button:GetBottom()
+    if not (top and bottom) then return end     -- not laid out on screen yet: the minimums stay
+    local rowsHeight, previewHeight = self.rowsBox.frame:GetHeight(), self.previewBox.frame:GetHeight()
+    local flexible = rowsHeight + previewHeight + UTRM.GroupEditor.HEIGHT - (top - bottom)
+    local needed = math.max(#self.jobs, 1) * ROW_HEIGHT
+    rowsHeight = math.max(MIN_ROWS_HEIGHT, math.min(needed, flexible - MIN_PREVIEW_HEIGHT))
+    previewHeight = math.max(MIN_PREVIEW_HEIGHT, flexible - rowsHeight)
+    self.rowsBox:SetHeight(rowsHeight)
+    self.previewBox:SetHeight(previewHeight)
+    self.host.container:DoLayout()
 end
 
 -- The rows' texts, the preview and the status line after a change
