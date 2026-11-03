@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shared Layouts Mockup</title>
+<style>
+/* 1:1 pixel wireframe of the Raid Plan window's Groups section with shared layouts (issue #55). Sizes and places
+   only: in game everything is Blizzard's own art at default sizes (AceGUI Frame + TreeGroup, AceGUI-style dropdowns,
+   UIPanelButtonTemplate red buttons 22-24 tall, MenuUtil context menus, StaticPopup dialogs 320 wide with 128x21
+   buttons, InputBoxTemplate, the raid panel's 158x14 name buttons in tooltip-bordered boxes).
+   Window 804x555 = AceGUI Frame (17 px sides, 27 top, 40 bottom) + list 170 + 10 + section 580x468 + 10. */
+:root { --gold:#ffd100; --grey:#808080; --override:#40d8e8; }   /* --override: |cff40d8e8 in game */
+body { background:#3b4a3a; margin:0; padding:24px; font:12px/1.25 "Friz Quadrata TT","Palatino Linotype",Georgia,serif; color:#fff; }
+h2 { font:600 15px system-ui,sans-serif; color:#eee; margin:34px 0 8px; }
+p.cap { font:13px/1.45 system-ui,sans-serif; color:#ddd; max-width:900px; margin:0 0 14px; }
+.win { position:relative; width:804px; height:601px; background:rgba(0,0,0,.82); border:4px solid #9a9a9a; border-radius:8px;
+  box-shadow:inset 0 0 0 2px #444, 0 0 0 2px #222; box-sizing:border-box; flex:none; }
+.title { position:absolute; left:50%; top:-14px; transform:translateX(-50%); background:#5a4630; border:2px solid #b89a60;
+  border-radius:4px; padding:4px 22px; color:var(--gold); white-space:nowrap; }
+.gold { color:var(--gold); } .grey { color:var(--grey); } .small { font-size:11px; } .warn { color:#ffa040; }
+.abs { position:absolute; white-space:nowrap; }
+.dd { position:absolute; height:26px; display:flex; align-items:center; }
+.dd .box { height:22px; width:100%; background:#111; border:2px solid #6c5a3c; border-radius:3px; padding:0 30px 0 10px; line-height:20px;
+  box-sizing:border-box; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; position:relative; }
+.dd .box::after { content:"▼"; position:absolute; right:2px; top:1px; width:18px; height:16px; background:#7a6a1a;
+  color:#ffd; font-size:9px; text-align:center; line-height:16px; border-radius:3px; }
+.btn { position:absolute; height:22px; background:linear-gradient(#a01c10,#5c0c06); border:2px solid #c9a65a; border-radius:4px;
+  color:var(--gold); text-align:center; line-height:18px; box-sizing:border-box; white-space:nowrap; overflow:hidden; }
+.btn.tall { height:24px; line-height:20px; }
+.btn.off { filter:grayscale(1); color:#999; }
+.pane { position:absolute; border:1px solid #666; background:rgba(20,20,20,.9); border-radius:4px; box-sizing:border-box; }
+.cat { height:18px; line-height:18px; padding-left:8px; color:var(--gold); margin-bottom:5px; }
+.cat.sel { background:linear-gradient(90deg,rgba(80,130,220,.75),rgba(80,130,220,.15)); color:#fff; }
+.cat.dirty::after { content:" *"; color:#ffa040; }
+.slot { height:14px; line-height:14px; padding-left:4px; font-size:11px; white-space:nowrap; overflow:hidden; }
+.menu { position:absolute; background:rgba(0,0,0,.94); border:2px solid #777; border-radius:6px; padding:8px 14px; line-height:25px;
+  font-size:13px; box-shadow:0 2px 10px #000; z-index:5; }
+.menu .t { color:var(--gold); }
+.menu .r::before { content:"○ "; color:#aaa; } .menu .r.on::before { content:"◉ "; color:var(--gold); }
+.sep { height:1px; background:#555; margin:5px 0; }
+.popup { position:absolute; width:320px; background:rgba(0,0,0,.92); border:4px solid #9a9a9a; border-radius:10px; box-sizing:border-box;
+  padding:16px 18px 14px; text-align:center; line-height:16px; z-index:6; box-shadow:0 0 0 2px #222, 0 4px 18px #000; }
+.popup .pb { display:inline-block; position:relative; width:128px; height:21px; margin:12px 3px 0; }
+.popup .pb .btn { position:static; display:block; height:21px; line-height:17px; }
+.input { position:absolute; height:20px; border:1px solid #777; background:#000; border-radius:3px; box-sizing:border-box; padding:0 6px; line-height:18px; }
+.status { position:absolute; left:15px; bottom:15px; right:132px; height:24px; border:1px solid #555; border-radius:4px; background:rgba(0,0,0,.6);
+  box-sizing:border-box; padding:0 8px; line-height:22px; font-size:11px; }
+.ann { font:12.5px/1.5 system-ui,sans-serif; color:#cde; background:#223; border-left:3px solid #6af; padding:8px 12px; width:300px; box-sizing:border-box; }
+.ann b { color:#fff; }
+.row { display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; padding:16px 0 4px; }
+.row.tall { padding-bottom:150px; }   /* the encounter menu runs past the window, as in game */
+.mark { position:absolute; width:18px; height:18px; border-radius:9px; background:#3a7bd5; color:#fff; font:bold 11px/18px system-ui,sans-serif;
+  text-align:center; z-index:9; }
+</style>
+</head>
+<body>
+
+<p class="cap"><b>Issue #55 — Share one group layout between several encounters.</b> The Raid Plan window's Groups section,
+with the same parts: 8 groups (2×4), "In the raid, not in groups", Bench with ×, Add a player (name, Class, Add) and
+Save / Undo changes. The info line and the hint under the dropdown are gone: the groups start 6 px under the dropdown row,
+so the section is 580×468 and the window 804×555 (46 px shorter; same width). What else changes is the top row and the
+dropdown's list. Layouts are first class: <b>Default</b> (was "Night's groups") and the named layouts (e.g. "MC Default") sit above the
+divider; encounters below, each with the layout it uses greyed after it. Blue numbers refer to the notes beside each frame.
+Example plan: BWL + MC, BWL bosses on "BWL Default", MC bosses on "MC Default", the two trash entries on Default.</p>
+
+<div id="out"></div>
+
+<script>
+const SECTIONS = ["Groups", "Assignments", "Notes", "Encounters", "Gargul", "Config", "New plan", "Import", "Export", "Raid members"];
+const C = { war:"#c79c6e", pal:"#f58cba", rog:"#fff569", dru:"#ff7d0a", mag:"#69ccf0", hun:"#abd473", pri:"#ffffff", loc:"#9482c9", sha:"#0070de" };
+const X0 = 197, Y0 = 37;               // the section's top left in the window
+const T = 32;                          // the groups' top: right under the dropdown row (no info line, no hint)
+const WIN_H = 601 - 46;                // the window loses the 46 px of the info line and the hint
+const sx = x => X0 + x, sy = y => Y0 + y;
+
+// Encounters (label, layout) as in the user's in-game plan
+const BWL = ["Razorgore the Untamed","Vaelastrasz the Corrupt","Broodlord Lashlayer","Firemaw","Ebonroc","Flamegor","Chromaggus","Nefarian"];
+const MC = ["Lucifron","Magmadar","Gehennas","Garr","Shazzrah","Baron Geddon","Golemagg the Incinerator","Sulfuron Harbinger","Majordomo Executus","Ragnaros"];
+const ENC = [["Trash","Default"], ...BWL.map(b => [b,"BWL Default"]), ["Trash","Default"], ...MC.map(b => [b,"MC Default"])];
+const LAYOUTS = ["Default","BWL Default","MC Default"];
+const usedBy = k => ENC.map(([l, k2], i) => k2 === k ? l : null).filter(Boolean);
+
+const ROSTER = [["Durance",C.war],["Jugildina",C.war],["Jmdruid",C.dru],["Gizzmo",C.hun],["Jasmine",C.pal],
+  ["Rigwar",C.war],["Rosblack",C.war],["Silverfang",C.rog],["Mellow",C.hun],["Mutton",C.pal],
+  ["Gibrar",C.war],["Koskader",C.war],["Shinystab",C.rog],["Fránkly",C.hun],["Flapkan",C.pal],
+  ["Abysswatcher",C.war],["Tracedeneïg",C.war],["Karthas",C.war],["Jslv",C.rog],["Ashirael",C.pal],
+  ["Yesmum",C.war],["Crau",C.war],["Francisdrake",C.rog],null,["Solxinvictus",C.pal],
+  ["Minthara",C.pri],["Yrélos",C.war],null,["Shadowhealer",C.pri],["Yules",C.pal],
+  ["Moredotts",C.loc],["Darkbrogart",C.loc],["Abraxxis",C.loc],["Quillan",C.dru],["Taromi",C.dru],
+  ["Mariori",C.mag],["Ksusa",C.mag],["Elayo",C.mag],["Raeburn",C.mag],["Cnarwal",C.pri]];
+
+const mark = (n, x, y) => `<div class="mark" style="left:${x}px;top:${y}px">${n}</div>`;
+const dd = (x, y, w, text) => `<div class="dd" style="left:${x}px;top:${y}px;width:${w}px"><div class="box">${text}</div></div>`;
+const btn = (x, y, w, text, cls = "") => `<div class="btn ${cls}" style="left:${x}px;top:${y}px;width:${w}px">${text}</div>`;
+
+function groups(shift = 0) {
+  let h = "";
+  for (let g = 0; g < 8; g++) {
+    const col = g % 2, row = Math.floor(g / 2);
+    const x = sx(col * 176), y = sy(T + row * 102);
+    h += `<div class="abs gold small" style="left:${x}px;top:${y + 1}px">Group ${g + 1}</div>
+      <div class="pane" style="left:${x}px;top:${y + 16}px;width:168px;height:80px;padding:4px 5px">`;
+    for (let i = 0; i < 5; i++) {
+      const p = ROSTER[(g * 5 + i + shift) % 40];
+      h += p ? `<div class="slot" style="color:${p[1]}">${p[0]}</div>` : `<div class="slot grey">Empty</div>`;
+    }
+    h += `</div>`;
+  }
+  return h;
+}
+
+function rightColumn() {
+  const L = sx(360);
+  const bench = [["Katty",C.pri],["Pyeli",C.mag],["Tahrz",C.war]];
+  return `<div class="abs gold small" style="left:${L}px;top:${sy(T + 1)}px">In the raid, not in groups (0)</div>
+    <div class="pane" style="left:${L}px;top:${sy(T + 16)}px;width:220px;height:162px;padding:8px 6px">
+      <div class="small grey" style="white-space:normal;width:180px">Drop a player here to take them out of the groups.</div>
+      <div class="abs" style="right:6px;top:8px;width:16px;bottom:8px;border-left:1px solid #444;background:#151515"></div></div>
+    <div class="abs gold small" style="left:${L}px;top:${sy(T + 187)}px">Bench (${bench.length})</div>
+    <div class="pane" style="left:${L}px;top:${sy(T + 202)}px;width:220px;height:162px;padding:8px 5px">
+      ${bench.map(([n, c]) => `<div class="slot" style="color:${c};width:186px;position:relative">${n}<span style="position:absolute;right:2px;top:1px;width:11px;height:11px;background:#a01010;border:1px solid #d0a050;font:bold 8px/10px sans-serif;text-align:center;color:#fff">×</span></div>`).join("")}
+      <div class="abs" style="right:6px;top:8px;width:16px;bottom:8px;border-left:1px solid #444;background:#151515"></div></div>
+    <div class="abs gold small" style="left:${L}px;top:${sy(T + 373)}px">Add a player</div>
+    <div class="input" style="left:${L + 6}px;top:${sy(T + 388)}px;width:214px"></div>
+    ${dd(L, sy(T + 411), 130, "Class")}
+    ${btn(sx(510), sy(T + 413), 70, "Add")}`;
+}
+
+function shell(body, opts) {
+  const cats = SECTIONS.map(s => `<div class="cat${s === "Groups" ? " sel" : ""}${s === "Groups" && opts.dirty ? " dirty" : ""}">${s}</div>`).join("");
+  return `<div class="win" style="height:${WIN_H}px"><div class="title">Raid Plan</div>
+    <div class="pane" style="left:13px;top:23px;width:170px;height:${WIN_H - 67}px;padding:6px 4px">${cats}</div>
+    <div class="pane" style="left:183px;top:23px;width:600px;height:${WIN_H - 67}px;background:rgba(10,10,10,.6)"></div>
+    ${groups(opts.shift || 0)}${rightColumn()}
+    ${btn(sx(0), sy(T + 412), 140, "Save", "tall" + (opts.dirty ? "" : " off"))}
+    ${btn(sx(144), sy(T + 412), 140, "Undo changes", "tall" + (opts.dirty ? "" : " off"))}
+    ${body}
+    <div class="status">${opts.status || ""}</div>
+    ${btn(804 - 8 - 27 - 100, WIN_H - 8 - 17 - 20, 100, "Close")}
+  </div>`;
+}
+
+
+// The section's top row for a layout: the dropdown and (not for Default) Delete override
+function layoutTop(key, del = true) {
+  return dd(sx(0), sy(0), 260, key) + (del ? btn(sx(284), sy(2), 140, "Delete override") : "");
+}
+// The top row for an encounter: the dropdown, "Groups" + its layout, New override
+function encounterTop(i, layout) {
+  return dd(sx(0), sy(0), 260, `${i + 1}/${ENC.length}  ${ENC[i][0]}`)
+    + `<div class="abs gold" style="left:${sx(284)}px;top:${sy(6)}px">Groups</div>`
+    + dd(sx(344), sy(0), 130, layout)
+    + btn(sx(496), sy(2), 84, "New override");
+}
+
+function mainMenu(selected, x, y) {
+  let h = `<div class="menu" style="left:${x}px;top:${y}px;width:300px"><div class="t">BWL + MC</div>`;
+  for (const k of LAYOUTS) {
+    const n = usedBy(k).length;
+    h += `<div class="r${selected === k ? " on" : ""}">${k}  <span class="grey">${n} encounter${n === 1 ? "" : "s"}</span></div>`;
+  }
+  h += `<div class="sep"></div>`;
+  // The layout on the right: Default grey, an override in the highlight colour
+  ENC.forEach(([l, k], i) => {
+    h += `<div class="r${selected === i ? " on" : ""}" style="display:flex;gap:16px">${i + 1}. ${l}<span style="margin-left:auto;color:${k === "Default" ? "var(--grey)" : "var(--override)"}">${k}</span></div>`;
+  });
+  return h + `</div>`;
+}
+
+function frame(title, cap, win, notes, tall = false) {
+  return `<h2>${title}</h2>${cap ? `<p class="cap">${cap}</p>` : ""}<div class="row${tall ? " tall" : ""}">${win}<div>${notes.map(n => `<div class="ann" style="margin-bottom:10px">${n}</div>`).join("")}</div></div>`;
+}
+
+const list = names => names.join(", ");
+let html = "";
+
+// 1 ------------------------------------------------------------ the dropdown open
+html += frame("1 · The dropdown open", "The section's dropdown (MenuUtil context menu, as now) lists the layouts first, then the encounters.",
+  shell(layoutTop("MC Default")
+    + mainMenu("MC Default", sx(0) + 10, sy(26)) + mark(1, sx(0) + 2, sy(26) + 14) + mark(2, sx(0) + 2, sy(26) + 112), {}),
+  ["<b>1 · Layouts above the divider.</b> Default (renamed from \"Night's groups\") first, then the named layouts in name order, each with how many encounters use it, greyed.",
+   "<b>2 · Encounters below</b>, numbered as in the plan, each with the layout it uses aligned to the right: Default in grey, an override in cyan (|cff40d8e8), so every row says where its groups come from.",
+   "Picking an entry never changes the active encounter; it only picks what is edited. Leaving unsaved changes asks first, as now."], true);
+
+// 2 ------------------------------------------------------------ a named layout
+html += frame("2 · A named layout selected (MC Default)", "",
+  shell(layoutTop("MC Default")
+    + mark(1, sx(284) - 8, sy(-8)), { dirty: true, status: "Gibrar and Durance swapped. Save to keep it." }),
+  ["<b>1 · Delete override</b> (red UIPanelButtonTemplate, 140×22, where it is now). It asks first (frame 5); then the layout is gone and its encounters use Default.",
+   "The groups are editable; Save stores the layout, and if the active encounter uses it the raid is sorted, as now. Which encounters use it shows in the dropdown (greyed after each encounter) and in the delete confirmation.",
+   "Renaming is left out: the top row has no room for it without shrinking things. It could be a third entry later (StaticPopup with a name box, like frame 4c)."]);
+
+// 3 ------------------------------------------------------------ Default
+html += frame("3 · Default selected", "",
+  shell(layoutTop("Default", false)
+    + mark(1, sx(284) - 8, sy(4)), {}),
+  ["<b>1 · No button:</b> Default can't be deleted. The right of the top row stays empty.",
+   "Its groups are editable, as the night's groups are today."]);
+
+// 4 ------------------------------------------------------------ an encounter
+html += frame("4 · An encounter selected (12. Magmadar)", "",
+  shell(encounterTop(11, "MC Default")
+    + mark(1, sx(284) - 8, sy(-8)) + mark(2, sx(496) - 8, sy(-8)), {}),
+  ["<b>1 · Groups</b> (GameFontNormal label + a 130 wide dropdown): the layout this encounter uses. Its menu lists Default and the named layouts (4b). Choosing one is a draft change: Save / Undo changes, and the groups below switch to that layout at once.",
+   "<b>2 · New override</b> (red button, 84×22): a new named layout for this encounter, starting as a copy of the one it uses now (4c).",
+   "The groups shown are its layout's: editing them edits that layout, for every encounter using it. No more read-only view and no Create / Delete override here; deleting a layout is done on the layout itself (frame 2)."]);
+
+// 4b ----------------------------------------------------------- the Groups menu
+html += frame("4b · The Groups dropdown open", "",
+  shell(encounterTop(11, "MC Default")
+    + `<div class="menu" style="left:${sx(344) + 10}px;top:${sy(26)}px;width:190px"><div class="t">Groups of Magmadar</div>
+      ${LAYOUTS.map(k => `<div class="r${k === "MC Default" ? " on" : ""}">${k}</div>`).join("")}</div>`, {}),
+  ["Only the layouts: Default and every named one. Picking BWL Default makes Magmadar use those groups (in the draft)."]);
+
+// 4c ----------------------------------------------------------- New override: the name
+html += frame("4c · New override: the name box", "A StaticPopup with an edit box (hasEditBox), Blizzard's own dialog for typing a name.",
+  shell(encounterTop(11, "MC Default")
+    + `<div class="popup" style="left:${(804 - 320) / 2}px;top:150px">New groups for Magmadar, starting as a copy of MC Default.<br><br>Name:
+      <div style="position:relative;height:24px;margin-top:8px"><div class="input" style="left:${(284 - 200) / 2}px;top:2px;width:200px">Magmadar</div></div>
+      <div class="pb"><div class="btn">Create</div></div><div class="pb"><div class="btn">Cancel</div></div></div>`, {}),
+  ["The name starts as the encounter's name. <b>Create</b> is greyed while the name is empty or already a layout (\"Default\" included); Enter creates, Escape cancels.",
+   "After Create: the layout exists in the draft, Groups shows \"Magmadar\", and it is listed above the divider. Save stores it; Undo changes drops it."]);
+
+// 5 ------------------------------------------------------------ delete confirmation
+html += frame("5 · Delete override: the confirmation", "",
+  shell(layoutTop("MC Default")
+    + `<div class="popup" style="left:${(804 - 320) / 2}px;top:150px">Delete the groups MC Default?<br><br>These encounters go back to Default: ${list(usedBy("MC Default"))}.
+      <br><div class="pb"><div class="btn">Delete</div></div><div class="pb"><div class="btn">Cancel</div></div></div>`, {}),
+  ["Names every encounter that uses the layout (a layout no encounter uses just says so). After Delete the dropdown shows Default, and the status bar says \"MC Default deleted: 10 encounters use Default. Save to keep it so.\"",
+   "Like every change here it is part of the draft: Undo changes brings the layout back; Save stores it through PlanImport:Edit, so it syncs. If the active encounter used it, saving sorts the raid to Default."]);
+
+document.getElementById("out").innerHTML = html;
+</script>
+</body>
+</html>

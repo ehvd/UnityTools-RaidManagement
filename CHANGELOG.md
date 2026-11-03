@@ -45,6 +45,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   confirmation as an import, and syncs like one. The bosses come from a built-in table that mirrors UnityWiki's
   (fights with several bosses, such as the Bug Trio, are one encounter); Assignments says such a plan's notes have no
   assignment slots
+- Groups (the Raid Plan window) shares one group layout between several encounters. The dropdown lists the layouts
+  first: Default (the night's groups, before "Night's groups") and every named layout such as "MC Default", each
+  with how many encounters use it; below them the encounters, each with its layout on the right (overrides
+  highlighted). A named layout's groups are edited for every encounter on it; Delete override removes it after a
+  confirmation naming its encounters, which go back to Default (Default can't be deleted). An encounter picks the
+  layout it uses in its Groups box, or gets a new one with New override (a name, starting as a copy of its current
+  layout); its groups are its layout's, and editing them edits that layout. All of it is part of the section's
+  unsaved changes (Save / Undo changes) and syncs like other group edits; Save sorts the raid when the active
+  encounter's groups changed
+
+### Changed
+
+- Groups no longer shows the info line and the hint above the groups, and an encounter's groups are never read-only:
+  the window is 46 px shorter
 
 ## [0.2.0] - 2026-11-01
 
