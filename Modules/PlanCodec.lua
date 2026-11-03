@@ -1,7 +1,7 @@
 local _, ns = ...
 
--- Decodes the raid plan export of the UnityWiki raid planner. UnityWiki owns the format
--- (docs/addon-export.md there): base64(zlib(JSON)) with the version in the JSON's `protocol` key.
+-- Decodes the raid plan export of the UnityWiki raid planner, and encodes a plan the same way (issue #46). UnityWiki
+-- owns the format (docs/addon-export.md there): base64(zlib(JSON)) with the version in the JSON's `protocol` key.
 -- Pure Lua apart from LibDeflate, which the caller passes in, and NoteTemplate (loaded first), so tests/plan-codec
 -- can run it outside the game.
 local PlanCodec = {}
@@ -49,6 +49,22 @@ function PlanCodec.Base64Decode(text)
     return concat(out)
 end
 
+local ALPHABET = {}
+for c, value in pairs(BASE64) do ALPHABET[value] = char(c) end
+
+-- Standard base64 with "=" padding, one line
+function PlanCodec.Base64Encode(bytes)
+    local out, n = {}, 0
+    for i = 1, #bytes, 3 do
+        local a, b, c = byte(bytes, i, i + 2)
+        local v = a * 65536 + (b or 0) * 256 + (c or 0)
+        n = n + 1
+        out[n] = ALPHABET[floor(v / 262144)] .. ALPHABET[floor(v / 4096) % 64]
+            .. (b and ALPHABET[floor(v / 64) % 64] or "=") .. (c and ALPHABET[v % 64] or "=")
+    end
+    return concat(out)
+end
+
 -------------------------------------------------------------------------------------------------- JSON ---
 
 local ESCAPES = { ['"'] = '"', ["\\"] = "\\", ["/"] = "/", b = "\b", f = "\f", n = "\n", r = "\r", t = "\t" }
@@ -64,6 +80,11 @@ local function utf8(code)
     return char(0xF0 + floor(code / 0x40000), 0x80 + floor(code / 0x1000) % 0x40,
         0x80 + floor(code / 0x40) % 0x40, 0x80 + code % 0x40)
 end
+
+-- Lua has one table for JSON's arrays and objects: a table with keys 1..n is an array, and an empty one is [].
+-- OBJECT marks a table as an object, so that it is {} when empty (a person with neither class nor role, no people);
+-- decoded objects have it, so encoding what was decoded gives the same JSON.
+local OBJECT = {}
 
 local decodeValue
 
@@ -124,7 +145,7 @@ local function decodeArray(s, i)
 end
 
 local function decodeObject(s, i)
-    local object = {}
+    local object = setmetatable({}, OBJECT)
     i = skip(s, i)
     if sub(s, i, i) == "}" then return object, i + 1 end
     while true do
@@ -165,6 +186,85 @@ function PlanCodec.JSONDecode(text)
     if not ok then return nil, value end
     if skip(text, i) <= #text then return nil, "trailing characters" end
     return value
+end
+
+-- Marks t as an object for JSONEncode (OBJECT above)
+function PlanCodec.Object(t)
+    return setmetatable(t or {}, OBJECT)
+end
+
+local SHORT_ESCAPES = { ['"'] = '\\"', ["\\"] = "\\\\", ["\b"] = "\\b", ["\f"] = "\\f", ["\n"] = "\\n",
+    ["\r"] = "\\r", ["\t"] = "\\t" }
+
+local function encodeString(s)
+    -- Bytes from 0x80 up (UTF-8) and MRT's | markup go as they are; JSON only needs " \ and control characters
+    return '"' .. s:gsub('[%c"\\]', function(c)
+        return SHORT_ESCAPES[c] or string.format("\\u%04x", byte(c))
+    end) .. '"'
+end
+
+local encodeValue
+
+local function isArray(t)
+    local n = #t
+    if n == 0 then return getmetatable(t) ~= OBJECT and next(t) == nil end
+    local count = 0
+    for _ in pairs(t) do count = count + 1 end
+    return count == n
+end
+
+-- Object keys in a fixed order (`protocol` first, as the format requires; then sorted), so one plan always gives
+-- one string
+local function sortedKeys(t)
+    local keys = {}
+    for key in pairs(t) do
+        if type(key) ~= "string" then error("an object key that is not a string", 0) end
+        keys[#keys + 1] = key
+    end
+    table.sort(keys, function(a, b)
+        if a == "protocol" or b == "protocol" then return a == "protocol" and b ~= "protocol" end
+        return a < b
+    end)
+    return keys
+end
+
+encodeValue = function(v, out)
+    local t = type(v)
+    if t == "string" then
+        out[#out + 1] = encodeString(v)
+    elseif t == "number" then
+        if v ~= v or v == math.huge or v == -math.huge then error("a number JSON cannot hold", 0) end
+        -- %.0f: integers exactly (unix times), also where %d is 32 bit
+        out[#out + 1] = v == floor(v) and string.format("%.0f", v) or string.format("%.17g", v)
+    elseif t == "boolean" then
+        out[#out + 1] = tostring(v)
+    elseif t == "table" then
+        if isArray(v) then
+            out[#out + 1] = "["
+            for i = 1, #v do
+                if i > 1 then out[#out + 1] = "," end
+                encodeValue(v[i], out)
+            end
+            out[#out + 1] = "]"
+        else
+            out[#out + 1] = "{"
+            for i, key in ipairs(sortedKeys(v)) do
+                if i > 1 then out[#out + 1] = "," end
+                out[#out + 1] = encodeString(key) .. ":"
+                encodeValue(v[key], out)
+            end
+            out[#out + 1] = "}"
+        end
+    else
+        error("a " .. t .. " JSON cannot hold", 0)
+    end
+end
+
+-- Compact JSON of a value (nil in an object is an absent key); errors on what JSON cannot hold
+function PlanCodec.JSONEncode(value)
+    local out = {}
+    encodeValue(value, out)
+    return concat(out)
 end
 
 -- A short fingerprint of a string (djb2 over its bytes, as 8 hex digits): enough to tell whether two strings
@@ -283,4 +383,93 @@ function PlanCodec.Check(data)
         return "gargul"
     end
     return nil
+end
+
+------------------------------------------------------------------------------------------------ export ---
+
+-- The protocol the export writes: UnityWiki's own, so the wiki and this addon's import both read it
+PlanCodec.EXPORT_PROTOCOL = 2
+
+local function copyStrings(list)
+    local out = {}
+    for i = 1, #list do out[i] = list[i] end
+    return out
+end
+
+local function exportSlot(slot)
+    return {
+        n = slot.n, token = slot.token, key = slot.key, kind = slot.kind, multi = slot.multi, pad = slot.pad,
+        sep = slot.sep, holders = copyStrings(slot.holders), candidates = copyStrings(slot.candidates),
+    }
+end
+
+-- A stored plan -> the payload of its export (protocol 2 of UnityWiki's docs/addon-export.md), made at `now` (unix
+-- seconds). Each encounter goes with the note as used in game: a hand-edited note (customNote) replaces the note,
+-- and that encounter goes without template and slots, which would no longer give it; otherwise template and slots
+-- go with their current holders. `people` keeps the plan's entries and adds everybody else the payload names, with
+-- the class `classOf(name)` gives (a class token or nil; the raid roster in game). Only the layouts an encounter
+-- uses go, and `default`. What only this addon keeps (the active encounter, import and sync times, the revision,
+-- the fallback) stays out until UnityWiki settles their names (ehvd/UnityWiki#143).
+function PlanCodec.Payload(plan, now, classOf)
+    local used = { default = true }
+    local encounters = {}
+    for i, encounter in ipairs(plan.encounters) do
+        local out = {
+            key = encounter.key, label = encounter.label, raid = encounter.raid, encounterId = encounter.encounterId,
+            note = encounter.customNote or encounter.note, layout = encounter.layout,
+        }
+        if encounter.customNote == nil and encounter.template ~= nil then
+            out.template = encounter.template
+            out.slots = {}
+            for j, slot in ipairs(encounter.slots) do out.slots[j] = exportSlot(slot) end
+        end
+        used[encounter.layout] = true
+        encounters[i] = out
+    end
+
+    local layouts = PlanCodec.Object()
+    for key in pairs(used) do
+        if plan.layouts[key] then layouts[key] = copyStrings(plan.layouts[key]) end
+    end
+
+    local people = PlanCodec.Object()
+    for name, person in pairs(plan.people or {}) do
+        people[name] = PlanCodec.Object({ class = person.class, role = person.role })
+    end
+    local function add(name)
+        if name ~= "" and not people[name] then
+            people[name] = PlanCodec.Object({ class = classOf and classOf(name) or nil })
+        end
+    end
+    for _, names in pairs(layouts) do
+        for _, name in ipairs(names) do add(name) end
+    end
+    for _, encounter in ipairs(encounters) do
+        for _, slot in ipairs(encounter.slots or {}) do
+            for _, name in ipairs(slot.holders) do add(name) end
+            for _, name in ipairs(slot.candidates) do add(name) end
+        end
+    end
+
+    local event = plan.event
+    local raids
+    if event.raids then
+        raids = {}
+        for i, raid in ipairs(event.raids) do raids[i] = { slug = raid.slug, name = raid.name } end
+    end
+    return {
+        protocol = PlanCodec.EXPORT_PROTOCOL,
+        generatedAt = now,
+        url = plan.url,
+        event = { id = event.id, title = event.title, startsAt = event.startsAt, raids = raids },
+        layouts = layouts,
+        people = people,
+        encounters = encounters,
+        gargul = plan.gargul and { string = plan.gargul.string, generatedAt = plan.gargul.generatedAt },
+    }
+end
+
+-- The reverse of Decode: a payload -> base64(zlib(JSON)), the string UnityWiki's Export for addon gives
+function PlanCodec.Encode(payload, LibDeflate)
+    return PlanCodec.Base64Encode(LibDeflate:CompressZlib(PlanCodec.JSONEncode(payload)))
 end

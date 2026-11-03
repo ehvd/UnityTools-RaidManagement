@@ -10,11 +10,14 @@ UTRM.ImportWindow = ImportWindow
 
 -- A night's export is up to ~60,000 characters. Rendering that much text in a multi-line edit box freezes the
 -- client, so (like the import of WeakAuras) the edit box keeps only the first bytes while OnChar, which still fires
--- for every pasted character, collects the whole paste; the paste ends on the next frame.
+-- for every pasted character, collects the whole paste; the paste ends on the next frame. The Gargul section uses it
+-- too (a loot priority string is as long).
 local SHOWN_BYTES = 2500
 local MIN_PASTE = 50   -- fewer characters in one frame is typing, not a paste
 
-local function hookPaste(widget)
+-- Collects long pastes into the MultiLineEditBox `widget`: `onPaste(text)` gets the whole paste when one ends, or nil
+-- when the characters were typing
+function ImportWindow.HookPaste(widget, onPaste)
     local editBox = widget.editBox
     local buffer, count = {}, 0
     editBox:SetMaxBytes(SHOWN_BYTES)
@@ -27,13 +30,9 @@ local function hookPaste(widget)
             buffer = {}
             self:SetScript("OnUpdate", function(box)
                 box:SetScript("OnUpdate", nil)
-                if count >= MIN_PASTE then
-                    ImportWindow.pasted = table.concat(buffer)
-                    ImportWindow:SetStatus(format(L["%d characters pasted. Press Import."], #ImportWindow.pasted))
-                else
-                    ImportWindow.pasted = nil
-                end
+                local pasted = count >= MIN_PASTE and table.concat(buffer) or nil
                 count = 0
+                onPaste(pasted)
             end)
         end
         count = count + 1
@@ -42,7 +41,7 @@ local function hookPaste(widget)
 end
 
 -- AceGUI widgets are shared with other addons: leave the edit box as it was
-local function unhookPaste(widget)
+function ImportWindow.UnhookPaste(widget)
     local editBox = widget.editBox
     editBox:SetScript("OnChar", nil)
     editBox:SetScript("OnUpdate", nil)
@@ -71,21 +70,29 @@ function ImportWindow:Import()
         self:SetStatus("|cffff4040" .. message .. "|r")
         return
     end
-    local current = PlanImport:GetPlan()
+    self:Offer(plan, L["Imported %s."])
+end
+
+-- Stores `plan` (imported here or made in the New plan section, UI/NewPlanSection.lua), asking first when it replaces
+-- one. `done` is the status message ("%s" the title); `onStored()` runs once the plan is stored.
+function ImportWindow:Offer(plan, done, onStored)
+    local current = UTRM:GetModule("PlanImport"):GetPlan()
     if current then
-        StaticPopup_Show("UNITYTOOLSRAIDMANAGEMENT_REPLACE_PLAN", current.event.title, plan.event.title, plan)
+        StaticPopup_Show("UNITYTOOLSRAIDMANAGEMENT_REPLACE_PLAN", current.event.title, plan.event.title,
+            { plan = plan, done = done, onStored = onStored })
     else
-        self:Store(plan)
+        self:Store(plan, done, onStored)
     end
 end
 
-function ImportWindow:Store(plan)
+function ImportWindow:Store(plan, done, onStored)
     UTRM:GetModule("PlanImport"):Store(plan)
     self.pasted = nil
     if self.editBox then
         self.editBox:SetText("")
     end
-    self:Refresh(format(L["Imported %s."], plan.event.title))
+    if onStored then onStored() end
+    UTRM.RaidPlanWindow:SetStatus(format(done, plan.event.title))
     UTRM.PlanWindow:Show()
 end
 
@@ -93,7 +100,7 @@ StaticPopupDialogs["UNITYTOOLSRAIDMANAGEMENT_REPLACE_PLAN"] = {
     text = L["Replace the imported raid plan \"%s\" with \"%s\"?"],
     button1 = YES,
     button2 = NO,
-    OnAccept = function(_, plan) ImportWindow:Store(plan) end,
+    OnAccept = function(_, data) ImportWindow:Store(data.plan, data.done, data.onStored) end,
     timeout = 0,
     whileDead = true,
     hideOnEscape = true,
@@ -107,11 +114,16 @@ function ImportWindow:Attach(host)
     container:ReleaseChildren()
 
     local editBox = AceGUI:Create("MultiLineEditBox")
-    editBox:SetLabel(L["Paste the string from Export for addon in the UnityWiki raid planner:"])
+    editBox:SetLabel(L["Paste a raid plan string:"])
     editBox:DisableButton(true)
     editBox:SetFullWidth(true)
     editBox:SetNumLines(12)
-    hookPaste(editBox)
+    ImportWindow.HookPaste(editBox, function(pasted)
+        self.pasted = pasted
+        if pasted then
+            self:SetStatus(format(L["%d characters pasted. Press Import."], #pasted))
+        end
+    end)
     container:AddChild(editBox)
 
     local import = AceGUI:Create("Button")
@@ -143,7 +155,7 @@ function ImportWindow:Attach(host)
 end
 
 function ImportWindow:Detach()
-    if self.editBox then unhookPaste(self.editBox) end
+    if self.editBox then ImportWindow.UnhookPaste(self.editBox) end
     self.host, self.editBox, self.summary, self.clear, self.pasted = nil, nil, nil, nil, nil
 end
 
