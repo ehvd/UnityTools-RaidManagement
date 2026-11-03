@@ -648,8 +648,8 @@ local function encounterCount(count)
     return count == 1 and L["1 encounter"] or format(L["%d encounters"], count)
 end
 
--- The section's dropdown: Default and the named layouts (with how many encounters use them), then the encounters
--- (with the layout each uses on the right)
+-- The section's dropdown: Default and the named layouts (how many encounters use them on the right), then the
+-- encounters (the layout each uses on the right)
 local function openMenu(owner)
     local plan = currentPlan()
     local draft = GroupEditor.draft
@@ -660,12 +660,13 @@ local function openMenu(owner)
         table.insert(keys, 1, "default")
         for _, key in ipairs(keys) do
             local count = #GroupEdit.UsersOf(plan, draft, key)
-            root:CreateRadio(layoutName(key) .. "  " .. GREY .. encounterCount(count) .. "|r",
+            local radio = root:CreateRadio(layoutName(key),
                 function() return GroupEditor.view.layout == key end,
                 function()
                     GroupEditor:Choose({ layout = key })
                     return MenuResponse and MenuResponse.Close
                 end)
+            withRight(radio, GREY .. encounterCount(count) .. "|r")
         end
         root:CreateDivider()
         for i, encounter in ipairs(plan.encounters) do
