@@ -29,15 +29,21 @@ Works with [Method Raid Tools](https://www.curseforge.com/wow/addons/method-raid
 
 ## Features
 
-- Import the night's raid plan from the guild's raid planner and switch the Method Raid Tools note with one click per
-  encounter, from a small window (`/utrm plan`); the raid is sorted into the planned groups at the same time
-- Change the plan in game in one Raid Plan window (`/utrm edit`): the groups, who fills the assignments, an
-  encounter's note (and back to the plan's note with one click), the note after a boss kill, Gargul and the import
-- Export who is really in the raid and their groups (`/utrm roster`) for the raid planner, to match the signups' names
-  with the raid's characters
+- Make the night's raid plan in game: pick the raids, and every boss comes in kill order with the raid's current
+  groups. Or import a raid plan string
+- Switch the Method Raid Tools note with one click per encounter, from a small window (`/utrm plan`); the raid is
+  sorted into the planned groups at the same time
+- Change the whole plan in game in one Raid Plan window (`/utrm edit`):
+  - the encounters: add a boss or your own entry, rename, reorder, remove
+  - the groups: one layout for the whole night, or layouts shared by several encounters (say one for Molten Core);
+    add players by name and class, take them out again
+  - the assignments: a default for the night, with exceptions per encounter shown in colour
+  - each encounter's note (and back to the plan's note with one click), and the note after a boss kill
 - After a boss kill, the note switches by itself to the one you chose (for example the night's trash note)
-- Loads the guild's loot priorities into [Gargul](https://www.curseforge.com/wow/addons/gargul) with one click and shows
-  whether Gargul has the current ones
+- Export the plan as one string, to give it to another raid leader or keep a copy, and export who is really in the
+  raid and their groups (`/utrm roster`), to match signup names with the raid's characters
+- Loads loot priorities into [Gargul](https://www.curseforge.com/wow/addons/gargul) with one click (paste a Gargul
+  import string into the plan) and shows whether Gargul has the current ones
 - A readiness icon: Master Loot on, the planned players in the raid, Method Raid Tools and Gargul ready
 - The raid leader and assistants share the plan and the active encounter with the whole raid automatically
 - A minimap button for the Raid Plan window and the small plan window
