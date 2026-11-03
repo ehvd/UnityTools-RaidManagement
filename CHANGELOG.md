@@ -13,6 +13,63 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   dropdown shows how many overrides each encounter has. An imported plan takes each job's most common players as
   its default, so its exceptions show as overrides at once. The defaults are kept in the plan and sync with it;
   the export still writes each encounter's own players
+- Groups (the Raid Plan window) adds players to the raid plan by hand: type a name, choose the class and Add, and the
+  player is on the bench in their class colour, from where they go into a group like anyone else. A name already in
+  the plan or the raid, or an empty one, is refused with a message. The × on a bench player takes them out of the
+  plan and out of every group layout, after a confirmation when other encounters' groups or assignments use them
+  (assignments stay as they are). Both are part of the section's unsaved changes: Save stores them (and syncs them
+  like other group edits), Undo changes drops them
+### Fixed
+
+- The Raid Plan window's Notes section: the note box fills the section instead of leaving empty space under it
+### Changed
+
+- The addon's texts no longer name UnityWiki or its raid planner: the import asks for a raid plan string, and an
+  encounter whose note has no assignment slots says to write the names in the note
+### Added
+
+- Export, a new section of the Raid Plan window, gives the raid plan as one string, selected for Ctrl+C, to import
+  on another client or bring back to the UnityWiki raid planner. It is the planner's own export format (protocol 2),
+  with the plan as edited in game: hand-edited notes, current assignments, edited groups, and the classes of people
+  added in game when the raid roster shows them. The active encounter, the fallback note and the edit history are
+  not in it yet
+- The Raid Plan window's Gargul section has a Paste string box: Save puts a Gargul import string (loot priorities from
+  anywhere that makes one) into the plan, replacing the imported one or giving a plan without one its own. It syncs
+  like other edits; Import into Gargul and the readiness check then use it. A string Gargul's importer would not
+  take, or one that imports nothing, is refused with a message before saving
+- Encounters (the Raid Plan window) changes the plan's encounter list in game. It lists every encounter in plan
+  order: rename one in its row (the label only: the sync and the note after a kill still match), move it up or
+  down with the arrow buttons, or remove it after a confirmation. Below the list, add a boss from the built-in
+  boss table (it sets the label and encounter ID) or a custom encounter with only a name; it starts with an empty
+  note on the night's groups. Removing the active encounter makes the next one active, removing the note after a
+  kill sets that back to none, and an encounter's own groups go with it when no other encounter uses them. Every
+  change syncs to the raid like other plan edits
+- New plan (its own section of the Raid Plan window, also opened by the plan window's New plan button when no plan is
+  loaded) makes a raid plan in game without the UnityWiki planner: a title (the raids and today's date unless you
+  type one) and one or more raids. The plan has, per raid, Trash and then the bosses in kill order with their
+  encounter IDs, empty notes, and the raid as it is arranged now as the night's groups (empty outside a raid). It replaces the current plan after the same
+  confirmation as an import, and syncs like one. The bosses come from a built-in table that mirrors UnityWiki's
+  (fights with several bosses, such as the Bug Trio, are one encounter); Assignments says such a plan's notes have no
+  assignment slots
+- Groups (the Raid Plan window) shares one group layout between several encounters. The dropdown lists the layouts
+  first: Default (the night's groups, before "Night's groups") and every named layout such as "MC Default", each
+  with how many encounters use it; below them the encounters, each with its layout on the right (overrides
+  highlighted). A named layout's groups are edited for every encounter on it; Delete override removes it after a
+  confirmation naming its encounters, which go back to Default (Default can't be deleted). An encounter picks the
+  layout it uses in its Groups box, or gets a new one with New override (a name, starting as a copy of its current
+  layout); its groups are its layout's, and editing them edits that layout. All of it is part of the section's
+  unsaved changes (Save / Undo changes) and syncs like other group edits; Save sorts the raid when the active
+  encounter's groups changed
+- Export raid (a button in Groups of the Raid Plan window, or `/utrm roster`) gives the raid's members and groups as
+  one string, selected for Ctrl+C, for pasting into a raid planner: it matches the plan's names (from the signups)
+  with the characters really in the raid. Each member goes with their realm, class, level, group, rank, whether they
+  are online and their zone (UnityWiki's roster protocol 1). It works without a plan; outside a raid the dialog says
+  so, and Refresh makes the string again
+
+### Changed
+
+- Groups no longer shows the info line and the hint above the groups, and an encounter's groups are never read-only:
+  the window is 46 px shorter
 
 ## [0.2.0] - 2026-11-01
 

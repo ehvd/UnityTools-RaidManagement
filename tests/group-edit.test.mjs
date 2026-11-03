@@ -109,76 +109,86 @@ const PLAN = `
   local edited = names("Brumm")
 `;
 
-test('saving changes the layout for every encounter on it', () => {
+test('a draft copies every layout and which layout each encounter uses', () => {
   assert.equal(run(`${PLAN}
-    local key = GroupEdit.Save(plan, "default", edited)
-    return key .. " " .. plan.layouts.default[1] .. " " .. plan.encounters[2].layout`), 'default Brumm default');
+    local draft = GroupEdit.NewDraft(plan)
+    draft.layouts.default[1] = "Draft"
+    return plan.layouts.default[1] .. " " .. draft.uses.twins .. " " .. draft.uses.rag .. " "
+      .. tostring(GroupEdit.SameDraft(draft, GroupEdit.NewDraft(plan)))
+      .. tostring(GroupEdit.SameDraft(GroupEdit.CopyDraft(draft), draft))`), 'Aldreth Twins swap default falsetrue');
 });
 
-test('the saved layout is a copy, not the editor\'s table', () => {
+test('the named layouts are sorted and leave Default out', () => {
   assert.equal(run(`${PLAN}
-    GroupEdit.Save(plan, "default", edited)
-    edited[1] = "Later"
-    return plan.layouts.default[1]`), 'Brumm');
+    local draft = GroupEdit.NewDraft(plan)
+    draft.layouts["aq default"] = names("")
+    return table.concat(GroupEdit.LayoutKeys(draft), ",")`), 'aq default,Twins swap');
 });
 
-test('saving an unchanged or missing layout changes nothing', () => {
+test('the users of a layout are its encounters in the draft, in plan order', () => {
   assert.equal(run(`${PLAN}
-    local key, why = GroupEdit.Save(plan, "default", names("Aldreth"))
-    return tostring(key) .. " " .. why`), 'nil unchanged');
-  assert.equal(run(`${PLAN}
-    local key, why = GroupEdit.Save(plan, "gone", edited)
-    return tostring(key) .. " " .. why`), 'nil layout');
-});
-
-test('the users of a layout are its encounters in plan order', () => {
-  assert.equal(run(`${PLAN}
+    local draft = GroupEdit.NewDraft(plan)
+    draft.uses.golemagg = "Twins swap"
     local labels = {}
-    for _, e in ipairs(GroupEdit.UsersOf(plan, "default")) do labels[#labels + 1] = e.label end
-    for _, e in ipairs(GroupEdit.UsersOf(plan, "default", "rag")) do labels[#labels + 1] = e.label end
-    return table.concat(labels, ",")`), 'Ragnaros,Golemagg,Golemagg');
+    for _, e in ipairs(GroupEdit.UsersOf(plan, draft, "Twins swap")) do labels[#labels + 1] = e.label end
+    for _, e in ipairs(GroupEdit.UsersOf(plan, draft, "Twins swap", "golemagg")) do labels[#labels + 1] = e.label end
+    return table.concat(labels, ",")`), 'Golemagg,Twins,Twins');
 });
 
-test('creating an override copies the night\'s groups into a layout only that encounter uses', () => {
+test('an encounter naming a missing layout uses Default', () => {
   assert.equal(run(`${PLAN}
-    local key = GroupEdit.CreateOverride(plan, "rag")
-    plan.layouts.Ragnaros[2] = "Own"
-    return key .. "|" .. plan.encounters[1].layout .. "|" .. plan.layouts.Ragnaros[1] .. "|"
-      .. plan.layouts.default[2] .. "|" .. plan.encounters[2].layout .. "|" .. #plan.layouts.Ragnaros`),
-  'Ragnaros|Ragnaros|Aldreth||default|40');
+    local draft = GroupEdit.NewDraft(plan)
+    draft.uses.rag = "Gone"
+    return GroupEdit.LayoutOf(draft, "rag") .. " " .. GroupEdit.LayoutOf(draft, "twins")`), 'default Twins swap');
 });
 
-test('an override never reuses a layout name, and is made only once', () => {
+test('a layout name must be new in any case, and Default is taken', () => {
   assert.equal(run(`${PLAN}
-    plan.layouts.Ragnaros = names("Planner")
-    local key = GroupEdit.CreateOverride(plan, "rag")
-    local again, why = GroupEdit.CreateOverride(plan, "rag")
-    local gone, why2 = GroupEdit.CreateOverride(plan, "gone")
-    return key .. "|" .. plan.layouts.Ragnaros[1] .. "|" .. tostring(again) .. why .. "|" .. tostring(gone) .. why2`),
-  'Ragnaros (2)|Planner|niloverride|nilencounter');
+    local draft = GroupEdit.NewDraft(plan)
+    return tostring(GroupEdit.CheckLayoutName(draft, "  ")) .. " " .. tostring(GroupEdit.CheckLayoutName(draft, "DEFAULT"))
+      .. " " .. tostring(GroupEdit.CheckLayoutName(draft, "twins SWAP ")) .. " "
+      .. tostring(GroupEdit.CheckLayoutName(draft, "MC Default"))`), 'empty taken taken nil');
 });
 
-test('deleting an override goes back to the night\'s groups and removes the unused layout', () => {
+test('a new layout copies the encounter\'s layout and only that encounter moves to it', () => {
   assert.equal(run(`${PLAN}
-    local key, removed = GroupEdit.DeleteOverride(plan, "twins")
-    return key .. "|" .. tostring(removed) .. "|" .. plan.encounters[3].layout .. "|"
-      .. tostring(plan.layouts["Twins swap"])`), 'Twins swap|true|default|nil');
+    local draft = GroupEdit.NewDraft(plan)
+    local key = GroupEdit.NewLayout(draft, "twins", " Twins own ")
+    draft.layouts[key][2] = "Own"
+    return key .. "|" .. draft.uses.twins .. "|" .. draft.layouts[key][1] .. "|" .. draft.layouts["Twins swap"][2]
+      .. "|" .. draft.uses.rag .. "|" .. #draft.layouts[key] .. "|" .. plan.encounters[3].layout`),
+  'Twins own|Twins own|Swap||default|40|Twins swap');
 });
 
-test('deleting a shared override keeps the layout for the other encounters', () => {
+test('a new layout with a taken name or for a missing encounter is refused', () => {
   assert.equal(run(`${PLAN}
-    plan.encounters[2].layout = "Twins swap"
-    local key, removed = GroupEdit.DeleteOverride(plan, "twins")
-    return key .. "|" .. tostring(removed) .. "|" .. plan.encounters[3].layout .. "|"
-      .. plan.layouts["Twins swap"][1]`), 'Twins swap|false|default|Swap');
+    local draft = GroupEdit.NewDraft(plan)
+    local a, why = GroupEdit.NewLayout(draft, "rag", "twins swap")
+    local b, why2 = GroupEdit.NewLayout(draft, "gone", "New")
+    return tostring(a) .. why .. " " .. tostring(b) .. why2 .. " " .. draft.uses.rag`),
+  'niltaken nilencounter default');
 });
 
-test('the night\'s groups or a missing encounter have no override to delete', () => {
+test('an encounter can use any layout of the draft', () => {
   assert.equal(run(`${PLAN}
-    local a, why = GroupEdit.DeleteOverride(plan, "rag")
-    local b, why2 = GroupEdit.DeleteOverride(plan, "gone")
-    return tostring(a) .. why .. " " .. tostring(b) .. why2 .. " " .. tostring(plan.layouts.default ~= nil)`),
-  'nildefault nilencounter true');
+    local draft = GroupEdit.NewDraft(plan)
+    local key = GroupEdit.UseLayout(draft, "rag", "Twins swap")
+    local a, why = GroupEdit.UseLayout(draft, "rag", "Gone")
+    local b, why2 = GroupEdit.UseLayout(draft, "gone", "default")
+    return key .. " " .. draft.uses.rag .. " " .. tostring(a) .. why .. " " .. tostring(b) .. why2`),
+  'Twins swap Twins swap nillayout nilencounter');
+});
+
+test('deleting a layout moves its encounters to Default; Default can\'t be deleted', () => {
+  assert.equal(run(`${PLAN}
+    local draft = GroupEdit.NewDraft(plan)
+    draft.uses.rag = "Twins swap"
+    local moved = GroupEdit.DeleteLayout(draft, "Twins swap")
+    local a, why = GroupEdit.DeleteLayout(draft, "default")
+    local b, why2 = GroupEdit.DeleteLayout(draft, "Twins swap")
+    return moved .. " " .. draft.uses.rag .. draft.uses.twins .. " " .. tostring(draft.layouts["Twins swap"]) .. " "
+      .. tostring(a) .. why .. " " .. tostring(b) .. why2`),
+  '2 defaultdefault nil nildefault nillayout');
 });
 
 test('the bench is the planned people neither in the groups nor in the raid, once each and sorted', () => {
@@ -200,4 +210,111 @@ test('a player taken out of the groups goes to the bench, and a bench player fil
     GroupEdit.Place(l, ${slot(2, 1)}, "Zoë")
     return first .. "|" .. table.concat(GroupEdit.Bench(people, l, nobody), ",") .. "|" .. l[${slot(2, 1)}]`),
   'Aldreth,Zoë|Aldreth,Brumm|Zoë');
+});
+
+test('a typed name is trimmed and capitalized as WoW spells it', () => {
+  assert.equal(run(`return GroupEdit.CleanName("  aLDRETH ")`), 'Aldreth');
+  assert.equal(run(`return GroupEdit.CleanName("brumm-Firemaw")`), 'Brumm-Firemaw');
+  assert.equal(run(`return "[" .. GroupEdit.CleanName("   ") .. "]"`), '[]');
+});
+
+test('an empty name or one already in the plan or raid is refused', () => {
+  assert.equal(run(`
+    local taken = { aldreth = true }
+    local function isTaken(name) return taken[name:lower()] end
+    return tostring(GroupEdit.CheckNewName("", isTaken)) .. " " .. tostring(GroupEdit.CheckNewName("-Firemaw", isTaken))
+      .. " " .. tostring(GroupEdit.CheckNewName("Aldreth", isTaken)) .. " "
+      .. tostring(GroupEdit.CheckNewName("Zoë", isTaken))`),
+  'empty empty taken nil');
+});
+
+test('adding a player puts them in the people, once, any spelling', () => {
+  assert.equal(run(`${PLAN}
+    local added = GroupEdit.AddPerson(plan, "Zoë", "MAGE")
+    local again, why = GroupEdit.AddPerson(plan, "Zoë", "PRIEST")
+    local planned, why2 = GroupEdit.AddPerson(plan, "aldreth-Firemaw", "PRIEST")
+    return added .. " " .. plan.people["Zoë"].class .. " " .. tostring(again) .. why .. " " .. tostring(planned) .. why2`),
+  'Zoë MAGE niltaken niltaken');
+});
+
+test('removing a player takes them out of the people and every layout', () => {
+  assert.equal(run(`${PLAN}
+    plan.people = { Swap = { class = "ROGUE" }, Brumm = { class = "MAGE" } }
+    plan.layouts.default[5] = "swap-Firemaw"
+    local changed = GroupEdit.RemovePerson(plan, "Swap")
+    local again = GroupEdit.RemovePerson(plan, "Swap")
+    return tostring(changed) .. " " .. tostring(again) .. " " .. tostring(plan.people.Swap) .. " ["
+      .. plan.layouts["Twins swap"][1] .. "|" .. plan.layouts.default[5] .. "|" .. plan.layouts.default[1]
+      .. "] " .. plan.people.Brumm.class`),
+  'true false nil [||Aldreth] MAGE');
+});
+
+test('the uses of a player are the other encounters\' groups and the assignments naming them', () => {
+  assert.equal(run(`${PLAN}
+    plan.encounters[1].slots = { { n = 1, holders = { "Tank", "swap" } } }
+    local draft = GroupEdit.NewDraft(plan)
+    local uses = GroupEdit.UsesOf(plan, draft, "Swap", "default")
+    local mine = GroupEdit.UsesOf(plan, draft, "Swap", "Twins swap")
+    local out = {}
+    for _, e in ipairs(uses.groups) do out[#out + 1] = e.label end
+    out[#out + 1] = "/"
+    for _, e in ipairs(uses.holds) do out[#out + 1] = e.label end
+    return table.concat(out, ",") .. " " .. #mine.groups .. tostring(uses.night)`),
+  'Twins,/,Ragnaros 0false');
+});
+
+test('the uses of a player follow the draft, not the saved plan', () => {
+  assert.equal(run(`${PLAN}
+    local draft = GroupEdit.NewDraft(plan)
+    draft.uses.rag = "Twins swap"
+    local out = {}
+    for _, e in ipairs(GroupEdit.UsesOf(plan, draft, "Swap", "default").groups) do out[#out + 1] = e.label end
+    return table.concat(out, ",")`), 'Ragnaros,Twins');
+});
+
+test('Default counts as a use when no encounter is on it', () => {
+  assert.equal(run(`${PLAN}
+    local draft = GroupEdit.NewDraft(plan)
+    draft.uses.rag, draft.uses.golemagg = "Twins swap", "Twins swap"
+    return tostring(GroupEdit.UsesOf(plan, draft, "Aldreth", "Twins swap").night)`), 'true');
+});
+
+test('saving the draft removes, adds, then stores every layout and which one each encounter uses', () => {
+  assert.equal(run(`${PLAN}
+    plan.people = { Swap = { class = "ROGUE" } }
+    local draft = GroupEdit.NewDraft(plan)
+    draft.layouts["Twins swap"][2] = "Zoë"
+    GroupEdit.NewLayout(draft, "rag", "Rag")
+    draft.layouts.Rag[3] = "Swap"
+    local ok = GroupEdit.SaveDraft(plan, draft, { { name = "Zoë", class = "MAGE" } }, { "Swap" })
+    draft.layouts.Rag[4] = "Later"
+    return tostring(ok) .. " " .. tostring(plan.people.Swap) .. " " .. plan.people["Zoë"].class .. " ["
+      .. plan.layouts["Twins swap"][1] .. "|" .. plan.layouts["Twins swap"][2] .. "] " .. plan.encounters[1].layout
+      .. " [" .. plan.layouts.Rag[1] .. "|" .. plan.layouts.Rag[3] .. "|" .. plan.layouts.Rag[4] .. "]"`),
+  'true nil MAGE [|Zoë] Rag [Aldreth||]');
+});
+
+test('saving a deleted layout removes it from the plan and its encounters use Default', () => {
+  assert.equal(run(`${PLAN}
+    local draft = GroupEdit.NewDraft(plan)
+    GroupEdit.DeleteLayout(draft, "Twins swap")
+    local ok = GroupEdit.SaveDraft(plan, draft, {}, {})
+    return tostring(ok) .. " " .. tostring(plan.layouts["Twins swap"]) .. " " .. plan.encounters[3].layout`),
+  'true nil default');
+});
+
+test('a draft with nothing new is unchanged', () => {
+  assert.equal(run(`${PLAN}
+    local key, why = GroupEdit.SaveDraft(plan, GroupEdit.NewDraft(plan), {}, { "Nobody" })
+    return tostring(key) .. why .. " " .. tostring(plan.people)`),
+  'nilunchanged nil');
+});
+
+test('a removed player is not saved back from any draft layout', () => {
+  assert.equal(run(`${PLAN}
+    local draft = GroupEdit.NewDraft(plan)
+    draft.layouts["Twins swap"][9] = "aldreth"
+    local ok = GroupEdit.SaveDraft(plan, draft, {}, { "Aldreth" })
+    return tostring(ok) .. "[" .. plan.layouts.default[1] .. "|" .. plan.layouts["Twins swap"][9] .. "]"`),
+  'true[|]');
 });

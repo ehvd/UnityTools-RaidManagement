@@ -33,6 +33,8 @@ Works with [Method Raid Tools](https://www.curseforge.com/wow/addons/method-raid
   encounter, from a small window (`/utrm plan`); the raid is sorted into the planned groups at the same time
 - Change the plan in game in one Raid Plan window (`/utrm edit`): the groups, who fills the assignments, an
   encounter's note (and back to the plan's note with one click), the note after a boss kill, Gargul and the import
+- Export who is really in the raid and their groups (`/utrm roster`) for the raid planner, to match the signups' names
+  with the raid's characters
 - After a boss kill, the note switches by itself to the one you chose (for example the night's trash note)
 - Loads the guild's loot priorities into [Gargul](https://www.curseforge.com/wow/addons/gargul) with one click and shows
   whether Gargul has the current ones
