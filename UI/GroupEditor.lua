@@ -18,8 +18,8 @@ UTRM.GroupEditor = GroupEditor
 
 -- Layout (1 px = 1 UI pixel at 100% scale), inside the Raid Plan window's section: the dropdown row (for an
 -- encounter also Groups and New override), then the groups like Blizzard's raid panel (two columns of four, the label
--- above each box), the two lists on the right with Add a player under them, and Save / Undo under the groups. The
--- window's status bar shows the messages.
+-- above each box), the two lists on the right with Add a player under them, and Save / Undo under the groups; last,
+-- under a divider, Export raid. The window's status bar shows the messages.
 local SLOT_WIDTH, SLOT_HEIGHT = 158, 14       -- the raid panel's name buttons
 local BOX_PAD = 5                             -- the tooltip border is 4 px wide
 local BOX_WIDTH, BOX_HEIGHT = SLOT_WIDTH + 2 * BOX_PAD, 5 * SLOT_HEIGHT + 2 * BOX_PAD
@@ -47,7 +47,10 @@ local SCROLLBAR = 22                          -- UIPanelScrollFrameTemplate's ba
 local REMOVE_SIZE = 18                        -- the close button's art on a bench row (the red square is ~11 px)
 local CLOSE_ART = "Interface\\Buttons\\UI-Panel-MinimizeButton-"
 local CONTENT_WIDTH = LIST_LEFT + LIST_WIDTH
-local CONTENT_HEIGHT = BUTTONS_TOP + BUTTON_HEIGHT
+-- Export raid (issue #47) on its own row under everything else, a divider above it
+local DIVIDER_TOP, DIVIDER_HEIGHT = BUTTONS_TOP + BUTTON_HEIGHT + 8, 8
+local EXPORT_TOP = DIVIDER_TOP + DIVIDER_HEIGHT + 4
+local CONTENT_HEIGHT = EXPORT_TOP + BUTTON_HEIGHT
 GroupEditor.WIDTH, GroupEditor.HEIGHT = CONTENT_WIDTH, CONTENT_HEIGHT   -- what the Raid Plan window must fit
 local SLOTS, GROUP_SIZE = 40, 5
 
@@ -809,6 +812,16 @@ local function create()
     frame.undo = panelButton(content, BUTTON_WIDTH, BUTTON_HEIGHT, L["Undo changes"])
     frame.undo:SetPoint("LEFT", frame.save, "RIGHT", 4, 0)
     frame.undo:SetScript("OnClick", function() GroupEditor:Undo() end)
+
+    -- Below everything, under a divider (AceGUI's Heading line): Export raid (issue #47, UI/RosterDialog.lua)
+    local divider = content:CreateTexture(nil, "BACKGROUND")
+    divider:SetTexture("Interface\\Tooltips\\UI-Tooltip-Border")
+    divider:SetTexCoord(0.81, 0.94, 0.5, 1)
+    divider:SetPoint("TOPLEFT", 0, -DIVIDER_TOP)
+    divider:SetSize(CONTENT_WIDTH, DIVIDER_HEIGHT)
+    frame.export = panelButton(content, BUTTON_WIDTH, BUTTON_HEIGHT, L["Export raid"])
+    frame.export:SetPoint("TOPLEFT", 0, -EXPORT_TOP)
+    frame.export:SetScript("OnClick", function() UTRM.RosterDialog:Open() end)
 
     -- The name under the cursor while dragging
     frame.ghost = CreateFrame("Frame", nil, UIParent)

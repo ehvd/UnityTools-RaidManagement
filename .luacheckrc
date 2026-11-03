@@ -16,6 +16,7 @@ globals = {
     "UnityToolsRaidManagementNoteFrame",
     "UnityToolsRaidManagementPlanFrame",
     "UnityToolsRaidManagementRaidPlanFrame",
+    "UnityToolsRaidManagementRosterFrame",
     "SlashCmdList",
     "StaticPopupDialogs",
     "UISpecialFrames",

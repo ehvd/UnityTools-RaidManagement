@@ -5,11 +5,15 @@ local L = UTRM.L
 local AceGUI = LibStub("AceGUI-3.0")
 local LibDeflate = LibStub("LibDeflate")
 
--- The Raid members section of the Raid Plan window (UI/RaidPlanWindow.lua, issue #47): the raid's members as one
--- string (Modules/Roster.lua) for the UnityWiki raid planner's Paste raid roster, which compares the plan with who is
--- really in the raid. Needs no plan. The string is made when the section opens and on Refresh.
-local RosterSection = {}
-UTRM.RosterSection = RosterSection
+-- Export raid (issue #47): the raid's members and groups as one string (Modules/Roster.lua, UnityWiki's roster
+-- format, docs/addon-roster.md there) in a read-only box, all selected for Ctrl+C: the game has no clipboard API.
+-- Opened from the Groups section of the Raid Plan window and `/utrm roster`; needs no plan. The string is made when
+-- the dialog opens and on Refresh, so it does not change under a selection being copied.
+local RosterDialog = {}
+UTRM.RosterDialog = RosterDialog
+
+local FRAME_GLOBAL = "UnityToolsRaidManagementRosterFrame"
+local specialFrameAdded = false
 
 -- GetRaidRosterInfo(1..n) as rows for Roster.Payload
 local function raidRows()
@@ -24,22 +28,22 @@ local function raidRows()
     return rows
 end
 
--- Fills the box with a new string, all selected for Ctrl+C: the game has no clipboard API
-function RosterSection:Refresh()
+-- Fills the box with a new string, all selected
+function RosterDialog:Refresh()
     if not self.editBox then return end
     if not IsInRaid() then
         self.text = ""
         self.editBox:SetText("")
         self.editBox:SetDisabled(true)
-        self.editBox:SetLabel("|cffffa040" .. L["Not in a raid: join one, then press Refresh."] .. "|r")
-        self.host:SetStatus("")
+        self.editBox:SetLabel("|cffffa040" .. L["Not in a raid"] .. "|r")
+        self.frame:SetStatusText("")
         return
     end
     local Roster = ns.Roster
     local payload, skipped = Roster.Payload(raidRows(), UnitName("player"), GetNormalizedRealmName(), time())
     self.text = Roster.Encode(payload, LibDeflate)
     self.editBox:SetDisabled(false)
-    self.editBox:SetLabel(L["The raid's members as one string. Ctrl+C to copy:"])
+    self.editBox:SetLabel(L["The raid's members and groups as one string. Ctrl+C to copy:"])
     self.editBox:SetText(self.text)
     self.editBox:SetFocus()
     self.editBox:HighlightText()
@@ -47,20 +51,23 @@ function RosterSection:Refresh()
     if skipped > 0 then
         status = status .. " |cffffa040" .. format(L["%d not loaded yet: press Refresh."], skipped) .. "|r"
     end
-    self.host:SetStatus(status)
+    self.frame:SetStatusText(status)
 end
 
-function RosterSection:Attach(host)
-    self.host = host
-    local container = host.container
-    container:ReleaseChildren()
-
-    local about = AceGUI:Create("Label")
-    about:SetFullWidth(true)
-    about:SetFontObject(GameFontHighlight)
-    about:SetText(
-        L["Who is in the raid, for the UnityWiki raid planner: paste it into Paste raid roster there to match the plan's names."])
-    container:AddChild(about)
+function RosterDialog:Create()
+    local frame = AceGUI:Create("Frame")
+    frame:SetTitle(L["Export raid"])
+    frame:SetLayout("Flow")
+    frame:EnableResize(false)
+    frame:SetWidth(520)
+    frame:SetHeight(330)
+    frame.frame:SetFrameStrata("DIALOG")   -- above the Raid Plan window it is opened from
+    frame:SetCallback("OnClose", function(widget)
+        _G[FRAME_GLOBAL] = nil
+        self.frame, self.editBox, self.text = nil, nil, nil
+        AceGUI:Release(widget)
+    end)
+    self.frame = frame
 
     -- Read only: what is typed into it is undone, and focusing it selects all of it again
     local editBox = AceGUI:Create("MultiLineEditBox")
@@ -74,23 +81,25 @@ function RosterSection:Attach(host)
         widget:HighlightText()
     end)
     editBox:SetCallback("OnEditFocusGained", function(widget) widget:HighlightText() end)
-    container:AddChild(editBox)
+    frame:AddChild(editBox)
+    self.editBox = editBox
 
     local refresh = AceGUI:Create("Button")
     refresh:SetText(L["Refresh"])
     refresh:SetWidth(140)
     refresh:SetCallback("OnClick", function() self:Refresh() end)
-    container:AddChild(refresh)
+    frame:AddChild(refresh)
 
-    self.editBox = editBox
+    -- Close with Escape
+    _G[FRAME_GLOBAL] = frame.frame
+    if not specialFrameAdded then
+        tinsert(UISpecialFrames, FRAME_GLOBAL)
+        specialFrameAdded = true
+    end
+end
+
+-- The Groups section's Export raid and `/utrm roster`: opens the dialog, or makes the string again when it is open
+function RosterDialog:Open()
+    if not self.frame then self:Create() end
     self:Refresh()
-end
-
-function RosterSection:Detach()
-    self.host, self.editBox, self.text = nil, nil, nil
-end
-
--- `/utrm roster`
-function RosterSection:Open()
-    UTRM.RaidPlanWindow:Open("roster")
 end

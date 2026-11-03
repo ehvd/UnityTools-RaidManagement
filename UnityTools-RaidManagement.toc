@@ -42,5 +42,5 @@ UI\PlanWindow.lua
 UI\GroupEditor.lua
 UI\AssignmentsWindow.lua
 UI\RaidPlanWindow.lua
-UI\RosterSection.lua
+UI\RosterDialog.lua
 UI\Minimap.lua
