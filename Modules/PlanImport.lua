@@ -126,6 +126,17 @@ function PlanImport:EditNote(key, text)
     return ok, message
 end
 
+-- The plan as one string in UnityWiki's own format (issue #46), to import on another client or bring back to the
+-- wiki: what goes in is PlanCodec.Payload's. Names the plan has no class for get the one the raid roster shows.
+function PlanImport:Export(plan)
+    local classes = {}
+    for i = 1, GetNumGroupMembers() do
+        local name, _, _, _, _, class = GetRaidRosterInfo(i)
+        if name then classes[name] = class end
+    end
+    return Codec.Encode(Codec.Payload(plan, GetServerTime(), function(name) return classes[name] end), LibDeflate)
+end
+
 -- A few lines describing a plan for the import window
 function PlanImport:Summary(plan)
     if not plan then
