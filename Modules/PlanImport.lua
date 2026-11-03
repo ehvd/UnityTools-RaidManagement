@@ -126,6 +126,17 @@ function PlanImport:EditNote(key, text)
     return ok, message
 end
 
+-- The plan as one string in UnityWiki's own format (issue #46), to import on another client or bring back to the
+-- wiki: what goes in is PlanCodec.Payload's. Names the plan has no class for get the one the raid roster shows.
+function PlanImport:Export(plan)
+    local classes = {}
+    for i = 1, GetNumGroupMembers() do
+        local name, _, _, _, _, class = GetRaidRosterInfo(i)
+        if name then classes[name] = class end
+    end
+    return Codec.Encode(Codec.Payload(plan, GetServerTime(), function(name) return classes[name] end), LibDeflate)
+end
+
 -- A few lines describing a plan for the import window
 function PlanImport:Summary(plan)
     if not plan then
@@ -138,8 +149,9 @@ function PlanImport:Summary(plan)
             .. (plan.event.startsAt and ("  " .. date("%Y-%m-%d %H:%M", plan.event.startsAt)) or ""),
         format(L["%d encounters, %d named group layouts"], #plan.encounters, named),
         plan.gargul and L["Gargul loot priorities included"] or L["No Gargul loot priorities"],
-        format(L["Exported %s, imported %s"], date("%Y-%m-%d %H:%M", plan.generatedAt or 0),
-            date("%Y-%m-%d %H:%M", plan.importedAt or 0)),
+        ns.NewPlan.IsMadeInGame(plan) and format(L["Made in game %s"], date("%Y-%m-%d %H:%M", plan.generatedAt or 0))
+            or format(L["Exported %s, imported %s"], date("%Y-%m-%d %H:%M", plan.generatedAt or 0),
+                date("%Y-%m-%d %H:%M", plan.importedAt or 0)),
     }
     if plan.syncedFrom then
         lines[#lines + 1] = format(L["Synced from %s"], plan.syncedFrom)
