@@ -52,7 +52,44 @@ local function raidMembers()
     return members
 end
 
+-- The raid now: { names (the raid's spelling), classes (name → class token) }, or nil outside a raid
+local function raidRoster()
+    if not IsInRaid() then return nil end
+    local names, classes = {}, {}
+    for i = 1, GetNumGroupMembers() do
+        local name, _, _, _, _, class = GetRaidRosterInfo(i)
+        if name then
+            names[#names + 1] = name
+            classes[name] = class
+        end
+    end
+    return { names = names, classes = classes }
+end
+
+-- The plan's people and the raid's members it does not have (their class from the raid), for the names' colours
+-- and the preview; the plan's people are not changed
+local function withRaid(people, roster)
+    local out = {}
+    for name, person in pairs(people or {}) do out[name] = person end
+    if roster then
+        for _, name in ipairs(roster.names) do
+            if out[name] == nil then out[name] = { class = roster.classes[name] } end
+        end
+    end
+    return out
+end
+
 ------------------------------------------------------------------------------------------------- texts ---
+
+-- The raid's names as Build saw them ({} outside a raid)
+function AssignmentsWindow:RaidNames()
+    return self.roster and self.roster.names or {}
+end
+
+-- A raid member's class token, for the plan's people when they are saved as a holder
+function AssignmentsWindow:ClassOf(name)
+    return self.roster and self.roster.classes[name] or nil
+end
 
 function AssignmentsWindow:InRaid(name)
     return not self.raid or self.raid[ns.GroupPlan.Key(name)] == true
@@ -109,37 +146,47 @@ end
 
 ------------------------------------------------------------------------------------------------- menus ---
 
--- A job's menu: its candidates in alphabetical order. Several holders: check boxes, the menu stays open;
--- one holder: radio buttons and Nobody last, the menu closes. An AceGUI Frame is FULLSCREEN_DIALOG,
+-- A job's menu: its candidates in alphabetical order, then (under "Others in the raid") the raid's members it does
+-- not offer (job.others, Assignments.AddRaid). Several holders: check boxes, the menu stays open;
+-- one holder: radio buttons and Nobody after the candidates, the menu closes. An AceGUI Frame is FULLSCREEN_DIALOG,
 -- level 100, top level) in other addons, above Blizzard's menus: the menu goes to the TOOLTIP strata so it shows
 -- over any window.
 function AssignmentsWindow:OpenMenu(job, owner)
     local menu = MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(table.concat(job.tokens, " · "))
         local function holds(name) return Assignments.Holds(job, name) end
-        for _, name in ipairs(job.candidates) do
-            if job.multi then
-                root:CreateCheckbox(self:CandidateText(name), holds, function()
-                    Assignments.Toggle(job, name)
-                    self:Update()
-                    return MenuResponse and MenuResponse.Refresh
-                end)
-            else
-                root:CreateRadio(self:CandidateText(name), holds, function()
-                    Assignments.Set(job, name)
-                    self:Update()
-                    return MenuResponse and MenuResponse.Close
-                end)
+        local function addNames(names)
+            for _, name in ipairs(names) do
+                if job.multi then
+                    root:CreateCheckbox(self:CandidateText(name), holds, function()
+                        Assignments.Toggle(job, name)
+                        self:Update()
+                        return MenuResponse and MenuResponse.Refresh
+                    end)
+                else
+                    root:CreateRadio(self:CandidateText(name), holds, function()
+                        Assignments.Set(job, name)
+                        self:Update()
+                        return MenuResponse and MenuResponse.Close
+                    end)
+                end
             end
         end
+        addNames(job.candidates)
+        local others = job.others or {}
         if not job.multi then
             root:CreateRadio(L["Nobody"], function() return #job.holders == 0 end, function()
                 Assignments.Set(job, nil)
                 self:Update()
                 return MenuResponse and MenuResponse.Close
             end)
-        elseif #job.candidates == 0 then
+        elseif #job.candidates == 0 and #others == 0 then
             root:CreateTitle(L["Nobody can fill this."])
+        end
+        if #others > 0 then
+            root:CreateDivider()
+            root:CreateTitle(L["Others in the raid"])
+            addNames(others)
         end
         -- An override goes back to the default (greyed out when the default's players cannot fill it here)
         if not self.showDefault and Assignments.IsOverride(job, self.defaults) then
@@ -152,6 +199,7 @@ function AssignmentsWindow:OpenMenu(job, owner)
             end)
             if button.SetEnabled and not Assignments.CanUse(job, default) then button:SetEnabled(false) end
         end
+        if root.SetScrollMode then root:SetScrollMode(MENU_HEIGHT) end
     end)
     if menu then menu:SetFrameStrata("TOOLTIP") end
 end
@@ -410,7 +458,8 @@ function AssignmentsWindow:Build(message)
         host:UpdateTree()
         return
     end
-    self.people, self.raid = plan.people, raidMembers()
+    self.roster = raidRoster()
+    self.people, self.raid = withRaid(plan.people, self.roster), raidMembers()
     self.defaults = Assignments.Defaults(plan)
     self:AddEncounterRow(frame, plan, encounter)
 
@@ -436,7 +485,7 @@ function AssignmentsWindow:Build(message)
         return
     end
 
-    self.jobs = Assignments.GroupJobs(Assignments.Jobs(encounter))
+    self.jobs = Assignments.AddRaid(Assignments.GroupJobs(Assignments.Jobs(encounter)), self:RaidNames())
     self.encounter = encounter
     self:BuildJobs(L["This encounter's note has no assignments."], message)
 end
@@ -463,7 +512,7 @@ end
 -- Default: every job key of the plan's encounters with the default holders. The preview shows the encounter the
 -- section showed last (else the first that takes part) as the new defaults would make it.
 function AssignmentsWindow:BuildDefault(plan, encounter, message)
-    self.jobs = Assignments.DefaultJobs(plan, self.defaults)
+    self.jobs = Assignments.AddRaid(Assignments.DefaultJobs(plan, self.defaults), self:RaidNames())
     self.encounter = nil
     if Assignments.TakesPart(encounter) then
         self.encounter = encounter
@@ -634,10 +683,12 @@ function AssignmentsWindow:SaveDefault()
         self.host:SetStatus("|cffff4040" .. format(L["%s cannot be saved like this: choose again."], invalid) .. "|r")
         return
     end
-    local defaults, jobs, rebuilt, kept = self.defaults, self.jobs, {}, {}
+    local defaults, jobs, raid, rebuilt, kept = self.defaults, self.jobs, self:RaidNames(), {}, {}
+    local function classOf(name) return self:ClassOf(name) end
     self.editing = true
     local ok, message = UTRM:GetModule("PlanImport"):Edit(function(plan)
-        rebuilt, kept = Assignments.SaveDefaults(plan, defaults, jobs, plan.people)
+        Assignments.AddPeople(plan, jobs, classOf)
+        rebuilt, kept = Assignments.SaveDefaults(plan, defaults, jobs, plan.people, raid)
     end)
     self.editing = false
     if not ok then
@@ -661,10 +712,13 @@ function AssignmentsWindow:Save()
         return
     end
     local jobs = self.jobs
+    local function classOf(name) return self:ClassOf(name) end
     local ok, message = self:EditEncounter(function(encounter, plan)
         if encounter.customNote ~= nil or not Assignments.HasTemplate(encounter) then return false end
         -- The defaults stay what they are now, also when this changes which holders are the most common
         if plan.assignmentDefaults == nil then Assignments.KeepDefaults(plan) end
+        -- A raid member who is not on the plan becomes one of its people, so the note colours them
+        Assignments.AddPeople(plan, jobs, classOf)
         Assignments.Apply(encounter, jobs, plan.people)
     end)
     if not ok then

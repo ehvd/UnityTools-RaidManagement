@@ -184,6 +184,7 @@ L["The raid plan changed: the assignments are shown as they are now."] = true
 L["Nobody"] = true
 L["nobody"] = true
 L["Nobody can fill this."] = true
+L["Others in the raid"] = true
 L["Tank"] = true
 L["Healer"] = true
 L["Melee"] = true

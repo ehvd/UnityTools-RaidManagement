@@ -155,6 +155,7 @@ L["The raid plan changed: the assignments are shown as they are now."] = "Le pla
 L["Nobody"] = "Personne"
 L["nobody"] = "personne"
 L["Nobody can fill this."] = "Personne ne peut occuper ce rôle."
+L["Others in the raid"] = "Autres membres du raid"
 L["Tank"] = "Tank"
 L["Healer"] = "Soigneur"
 L["Melee"] = "Mêlée"

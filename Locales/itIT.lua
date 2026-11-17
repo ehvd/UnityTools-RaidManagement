@@ -155,6 +155,7 @@ L["The raid plan changed: the assignments are shown as they are now."] = "Il pia
 L["Nobody"] = "Nessuno"
 L["nobody"] = "nessuno"
 L["Nobody can fill this."] = "Nessuno può occupare questo ruolo."
+L["Others in the raid"] = "Altri nell'incursione"
 L["Tank"] = "Difensore"
 L["Healer"] = "Guaritore"
 L["Melee"] = "Mischia"
