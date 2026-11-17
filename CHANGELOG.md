@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+### Added
+
+- Assignments: every job's menu also offers the raid's members it does not have, under "Others in the raid", for an
+  encounter and for the Default. Saved, they join the slot's candidates and the plan's people (with their class), so
+  the note colours them and the plan exports and syncs with them
+
 ## [0.3.1] - 2026-11-03
 
 ### Fixed

@@ -105,6 +105,35 @@ function defaults(planJson, stepsJson, save, keep)
     return encode(result)
 end
 
+-- Raid members not on the plan (\`raid\`: names, \`classes\`: name -> class): an encounter's jobs with AddRaid, after
+-- \`steps\`, saved as the window saves them (AddPeople, Apply); with \`default\`, the Default's jobs saved instead
+function withRaid(planJson, key, raidJson, classesJson, stepsJson, default)
+    local plan, raid, classes, steps = Codec.JSONDecode(planJson), Codec.JSONDecode(raidJson),
+        Codec.JSONDecode(classesJson), Codec.JSONDecode(stepsJson)
+    local function classOf(name) return classes[name] end
+    local encounter
+    for _, e in ipairs(plan.encounters) do
+        if e.key == key then encounter = e end
+    end
+    local d = A.Defaults(plan)
+    local jobs = A.AddRaid(default and A.DefaultJobs(plan, d) or A.Jobs(encounter), raid)
+    for _, step in ipairs(steps) do
+        if step.set then A.Set(jobOf(jobs, step.set), step.name) end
+        if step.toggle then A.Toggle(jobOf(jobs, step.toggle), step.name) end
+    end
+    local result = { jobs = jobs, invalid = A.Validate(jobs) or false }
+    if not result.invalid then
+        A.AddPeople(plan, jobs, classOf)
+        if default then
+            result.rebuilt, result.kept = A.SaveDefaults(plan, d, jobs, plan.people, raid)
+        else
+            A.Apply(encounter, jobs, plan.people)
+        end
+    end
+    result.plan = plan
+    return encode(result)
+end
+
 -- An encounter's job back to the default: { ok, holders }
 function useDefault(planJson, key, token)
     local plan = Codec.JSONDecode(planJson)
@@ -349,4 +378,53 @@ test('an override goes back to the default, unless the default cannot fill it th
   p.assignmentDefaults = { 'role=healer&order=1': ['Aldreth'] };
   assert.deepEqual(callLua('useDefault', p, 'molten-core:magmadar', 'HEALER1'),
     { ok: false, holders: [], override: true });
+});
+
+// Raid members who are not on the plan
+
+const RAID = ['Aldreth', 'Brunhild', 'Kael', 'Ursa', 'bob-Firemaw'];
+const CLASSES = { Ursa: 'DRUID', 'bob-Firemaw': 'WARRIOR' };
+const withRaid = (p, key, steps = [], isDefault = false) =>
+  callLua('withRaid', p, key, RAID, CLASSES, steps, isDefault);
+
+test('every job offers the raid members its candidates do not have, alphabetical, realms ignored', () => {
+  const p = plan();
+  encounterOf(p, 'molten-core:lucifron').slots.find((s) => s.token === 'HEALER1').candidates.push('Bob');
+  const { jobs } = withRaid(p, 'molten-core:lucifron');
+  const job = (token) => jobs.find((j) => j.tokens.includes(token));
+  assert.deepEqual(job('TANK1').others, ['bob-Firemaw', 'Kael', 'Ursa']);
+  assert.deepEqual(job('HEALER1').others, ['Aldreth', 'Brunhild', 'Kael', 'Ursa']);   // "Bob" is bob-Firemaw
+  assert.deepEqual(job('@Kicker').others, ['bob-Firemaw', 'Ursa']);
+  assert.deepEqual(withRaid(plan(), 'molten-core:lucifron').jobs.find((j) => j.tokens.includes('TANK1')).others,
+    ['bob-Firemaw', 'Kael', 'Ursa']);
+});
+
+test('a raid member can be saved: they become a candidate of the slots and one of the plan\'s people', () => {
+  const result = withRaid(plan(), 'molten-core:lucifron', [{ set: 'TANK1', name: 'Ursa' }, { toggle: '@Kicker', name: 'bob-Firemaw' }]);
+  assert.equal(result.invalid, false);
+  const lucifron = encounterOf(result.plan, 'molten-core:lucifron');
+  for (const slot of lucifron.slots.filter((s) => s.token === 'TANK1' || s.token === 'MT')) {
+    assert.deepEqual(slot.holders, ['Ursa']);
+    assert.deepEqual(slot.candidates, ['Aldreth', 'Brunhild', 'Fenlyn', 'Ursa']);
+  }
+  assert.deepEqual(lucifron.slots.find((s) => s.token === 'TANK2').candidates, ['Aldreth', 'Brunhild', 'Fenlyn']);
+  assert.deepEqual(result.plan.people.Ursa, { class: 'DRUID' });
+  assert.deepEqual(result.plan.people['bob-Firemaw'], { class: 'WARRIOR' });
+  assert.equal(result.plan.people.Kael.class, PAYLOAD.people.Kael.class);   // the plan's own entries stay
+  assert.match(lucifron.note, /\|cffff7d0aUrsa\|r/);                       // druid orange
+});
+
+test('without the raid, somebody who is not a candidate still cannot be saved', () => {
+  assert.equal(run(encounter('molten-core:lucifron'), [{ set: 'TANK1', name: 'Ursa' }]).invalid, 'TANK1');
+});
+
+test('a raid member as the default fills every encounter that follows it', () => {
+  const result = withRaid(plan(), 'molten-core:lucifron', [{ set: 'TANK1', name: 'Ursa' }], true);
+  assert.equal(result.invalid, false);
+  assert.deepEqual(result.rebuilt, ['molten-core:lucifron', 'ahn-qiraj:bug-trio']);
+  assert.deepEqual(result.kept, []);
+  assert.deepEqual(slotHolders(result.plan, 'ahn-qiraj:bug-trio', 'MT'), ['Ursa']);
+  assert.ok(encounterOf(result.plan, 'ahn-qiraj:bug-trio').slots[0].candidates.includes('Ursa'));
+  assert.deepEqual(result.plan.assignmentDefaults['role=tank&order=1'], ['Ursa']);
+  assert.deepEqual(result.plan.people.Ursa, { class: 'DRUID' });
 });

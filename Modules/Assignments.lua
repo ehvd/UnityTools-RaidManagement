@@ -114,6 +114,54 @@ function Assignments.Holds(job, name)
     return false
 end
 
+------------------------------------------------------------------------------------- the raid's members ---
+-- Raid members the plan does not offer for a job (not on the plan, or not what the wiki picked for it) can fill it
+-- too: the contract allows any holder ("Changing holders"). They come as `job.others`, apart from the candidates;
+-- once saved, a holder is one of its slot's candidates (Slots) and one of the plan's people (AddPeople).
+
+-- A name as the raid and the plan both know it: without its realm, lower case (GroupPlan.Key)
+local function nameKey(name)
+    return (name:match("^[^-]+") or name):lower()
+end
+
+-- Gives every job `others`: the names of `raid` (the raid's spelling) its candidates do not have, alphabetical.
+-- Returns the jobs.
+function Assignments.AddRaid(jobs, raid)
+    for _, job in ipairs(jobs) do
+        local known, others = {}, {}
+        for _, name in ipairs(job.candidates) do known[nameKey(name)] = true end
+        for _, name in ipairs(raid or {}) do
+            if not known[nameKey(name)] then
+                known[nameKey(name)] = true
+                others[#others + 1] = name
+            end
+        end
+        table.sort(others, byName)
+        job.others = others
+    end
+    return jobs
+end
+
+-- Whether the job offers `name`: one of its candidates or of the raid's others
+function Assignments.Offers(job, name)
+    for _, list in ipairs({ job.candidates, job.others or {} }) do
+        for _, candidate in ipairs(list) do
+            if candidate == name then return true end
+        end
+    end
+    return false
+end
+
+-- Adds every holder of the jobs the plan's people do not have, with the class `classOf(name)` gives (the raid's)
+function Assignments.AddPeople(plan, jobs, classOf)
+    plan.people = plan.people or {}
+    for _, job in ipairs(jobs) do
+        for _, name in ipairs(job.holders) do
+            if plan.people[name] == nil then plan.people[name] = { class = classOf and classOf(name) or nil } end
+        end
+    end
+end
+
 -- A job of one person: `name` fills it, nil empties it
 function Assignments.Set(job, name)
     job.holders = name and { name } or {}
@@ -143,7 +191,7 @@ function Assignments.Changed(encounter, jobs)
 end
 
 -- nil when the jobs can be saved, else the first token whose holders cannot: more than one in a job of one,
--- somebody twice, or somebody who is not a candidate (the wiki would not offer them)
+-- somebody twice, or somebody the job does not offer (neither a candidate nor one of the raid's others)
 function Assignments.Validate(jobs)
     for _, job in ipairs(jobs) do
         local seen = {}
@@ -151,11 +199,7 @@ function Assignments.Validate(jobs)
         for _, holder in ipairs(job.holders) do
             if seen[holder] then return job.tokens[1] end
             seen[holder] = true
-            local candidate = false
-            for _, name in ipairs(job.candidates) do
-                if name == holder then candidate = true end
-            end
-            if not candidate then return job.tokens[1] end
+            if not Assignments.Offers(job, holder) then return job.tokens[1] end
         end
     end
     return nil
@@ -171,7 +215,15 @@ function Assignments.Slots(encounter, jobs)
         for field, value in pairs(slot) do out[field] = value end
         local job = offered(slot) and byKey[slot.key]
         out.holders = copy(job and job.holders or slot.holders)
+        -- Holders are always candidates (the contract): one of the raid's others becomes one
         out.candidates = copy(slot.candidates)
+        for _, holder in ipairs(out.holders) do
+            local known = false
+            for _, name in ipairs(out.candidates) do
+                if name == holder then known = true end
+            end
+            if not known then out.candidates[#out.candidates + 1] = holder end
+        end
         slots[i] = out
     end
     return slots
@@ -281,15 +333,11 @@ function Assignments.Overrides(jobs, defaults)
     return count
 end
 
--- Whether the default's holders can fill the job: one at most for a job of one, all of them candidates
+-- Whether the default's holders can fill the job: one at most for a job of one, all of them offered (Offers)
 function Assignments.CanUse(job, holders)
     if not job.multi and #holders > 1 then return false end
     for _, holder in ipairs(holders) do
-        local candidate = false
-        for _, name in ipairs(job.candidates) do
-            if name == holder then candidate = true end
-        end
-        if not candidate then return false end
+        if not Assignments.Offers(job, holder) then return false end
     end
     return true
 end
@@ -333,13 +381,14 @@ function Assignments.FollowDefaults(jobs, defaults, defaultJobs)
 end
 
 -- Stores the Default's jobs as the plan's defaults (plan.assignmentDefaults) and rebuilds the note of every
--- encounter they change (FollowDefaults). Returns the keys of the encounters rebuilt and of those that keep their
--- own holders for a job.
-function Assignments.SaveDefaults(plan, defaults, defaultJobs, people)
+-- encounter they change (FollowDefaults). `raid` (optional) is the raid's names, offered on every encounter as on
+-- the Default (AddRaid). Returns the keys of the encounters rebuilt and of those that keep their own holders for a job.
+function Assignments.SaveDefaults(plan, defaults, defaultJobs, people, raid)
     local rebuilt, kept = {}, {}
     for _, encounter in ipairs(plan.encounters or {}) do
         if Assignments.TakesPart(encounter) then
-            local jobs, changed, keeps = Assignments.FollowDefaults(Assignments.Jobs(encounter), defaults, defaultJobs)
+            local own = Assignments.AddRaid(Assignments.Jobs(encounter), raid)
+            local jobs, changed, keeps = Assignments.FollowDefaults(own, defaults, defaultJobs)
             if changed then
                 Assignments.Apply(encounter, jobs, people)
                 rebuilt[#rebuilt + 1] = encounter.key
